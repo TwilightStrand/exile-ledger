@@ -1,0 +1,67 @@
+{
+	"result": [
+		{
+			"id": "a1b2c3",
+			"listing": {
+				"method": "psapi",
+				"indexed": "2026-11-20T10:00:00Z",
+				"stash": { "name": "~price 2 divine", "x": 3, "y": 4 },
+				"whisper": "@Exile Hi, I would like to buy your Doom Shelter Expert Waxed Jacket",
+				"account": {
+					"name": "Exile#1234",
+					"online": { "league": "Standard" },
+					"lastCharacterName": "Exile"
+				},
+				"price": { "type": "~price", "amount": 2, "currency": "divine" }
+			},
+			"item": {
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/x.png",
+				"league": "Standard",
+				"id": "a1b2c3",
+				"name": "Doom Shelter",
+				"typeLine": "Expert Waxed Jacket",
+				"baseType": "Expert Waxed Jacket",
+				"rarity": "Rare",
+				"ilvl": 82,
+				"identified": true,
+				"explicitMods": [
+					"+92 to maximum Life",
+					"+34% to Fire Resistance",
+					"+12% to Cold Resistance"
+				],
+				"implicitMods": [],
+				"extended": {
+					"hashes": {
+						"explicit": [
+							["explicit.stat_3299347043", [0]],
+							["explicit.stat_3372524247", [1]],
+							["explicit.stat_4220027924", [2]]
+						]
+					}
+				}
+			}
+		},
+		null,
+		{
+			"id": "d4e5f6",
+			"listing": {
+				"indexed": "2026-11-21T10:00:00Z",
+				"account": { "name": "Other#99", "lastCharacterName": "Other" }
+			},
+			"item": {
+				"name": "",
+				"typeLine": "Expert Waxed Jacket",
+				"baseType": "Expert Waxed Jacket",
+				"ilvl": 79,
+				"explicitMods": ["+81 to maximum Life"],
+				"extended": {
+					"hashes": { "explicit": [["explicit.stat_3299347043", [0]]] }
+				},
+				"someNewField": { "x": 1 }
+			}
+		}
+	]
+}

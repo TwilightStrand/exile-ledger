@@ -1,0 +1,27 @@
+{
+	"query": {
+		"status": { "option": "online" },
+		"type": "Expert Waxed Jacket",
+		"stats": [
+			{
+				"type": "and",
+				"filters": [
+					{
+						"id": "explicit.stat_3299347043",
+						"value": { "min": 80 },
+						"disabled": false
+					},
+					{ "id": "explicit.stat_4220027924", "value": { "min": 30 } }
+				],
+				"disabled": false
+			}
+		],
+		"filters": {
+			"type_filters": { "filters": { "rarity": { "option": "nonunique" } } },
+			"trade_filters": {
+				"filters": { "price": { "max": 5, "option": "divine" } }
+			}
+		}
+	},
+	"sort": { "price": "asc" }
+}

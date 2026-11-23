@@ -1,7 +1,30 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
+import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 
-export function Panel() {
+function useCapture(feed: CaptureFeed): CaptureState {
+	const [state, setState] = useState(feed.get);
+	useEffect(() => {
+		const unsubscribe = feed.subscribe(setState);
+		return () => {
+			unsubscribe();
+		};
+	}, [feed]);
+	return state;
+}
+
+function describeSearch(state: CaptureState): string {
+	const query = state.search?.search.query.query;
+	if (!query) return "No search yet.";
+	const what =
+		typeof query.type === "string"
+			? query.type
+			: (query.type?.option ?? query.term ?? "Any item");
+	return `${what} · ${state.search?.search.total ?? 0} results`;
+}
+
+export function Panel({ feed }: { feed: CaptureFeed }) {
 	const [open, setOpen] = useState(true);
+	const capture = useCapture(feed);
 
 	return (
 		<aside
@@ -25,7 +48,9 @@ export function Panel() {
 					<header class="border-b border-ledger-border px-3 py-2 font-semibold text-ledger-accent">
 						Exile Ledger
 					</header>
-					<p class="px-3 py-2 text-ledger-muted">No bookmarks yet.</p>
+					<p class="px-3 py-2 text-ledger-muted" data-testid="current-search">
+						{describeSearch(capture)}
+					</p>
 				</div>
 			)}
 		</aside>

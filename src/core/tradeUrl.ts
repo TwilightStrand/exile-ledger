@@ -19,7 +19,7 @@ export interface ParsedTradeUrl {
 }
 
 const GAME_PATHS: Record<Game, string> = { poe1: "trade", poe2: "trade2" };
-const REALMS = new Set(["xbox", "sony", "poe2"]);
+export const REALMS = new Set(["xbox", "sony", "poe2"]);
 
 function gameFromPath(segment: string | undefined): Game | null {
 	if (segment === "trade") return "poe1";
@@ -31,7 +31,7 @@ function tradeTypeFrom(segment: string | undefined): TradeType | null {
 	return segment === "search" || segment === "exchange" ? segment : null;
 }
 
-function decodePath(pathname: string): string[] | null {
+export function decodePath(pathname: string): string[] | null {
 	try {
 		return pathname.split("/").filter(Boolean).map(decodeURIComponent);
 	} catch {
