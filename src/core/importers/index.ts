@@ -5,8 +5,9 @@ import {
 	SHARE_PREFIX,
 } from "../exchange";
 import { parseBetterTrading } from "./betterTrading";
+import { parsePoeTradePlus } from "./poeTradePlus";
 
-export type ImportSource = "exile-ledger" | "better-trading";
+export type ImportSource = "exile-ledger" | "better-trading" | "poe-trade-plus";
 
 /** Recognises any pasted export we can read and says which tool it came from. */
 export function decodeImport(
@@ -20,6 +21,12 @@ export function decodeImport(
 			? { ok: true, value: { source: "exile-ledger", payload: share.value } }
 			: share;
 	}
+	const poeTradePlus = parsePoeTradePlus(trimmed, now);
+	if (poeTradePlus)
+		return {
+			ok: true,
+			value: { source: "poe-trade-plus", payload: poeTradePlus },
+		};
 	const betterTrading = parseBetterTrading(trimmed, now);
 	if (betterTrading)
 		return {
@@ -29,6 +36,6 @@ export function decodeImport(
 	return {
 		ok: false,
 		message:
-			"This is not an Exile Ledger share string or a Better Trading export.",
+			"This is not an Exile Ledger, Better Trading or Poe Trade Plus export.",
 	};
 }

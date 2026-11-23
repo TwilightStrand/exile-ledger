@@ -111,7 +111,7 @@ describe("SettingsPage", () => {
 		});
 		await act(async () => button(root, "Read")?.click());
 		expect(root.querySelector("[role=alert]")?.textContent).toContain(
-			"not an Exile Ledger share string or a Better Trading export",
+			"not an Exile Ledger, Better Trading or Poe Trade Plus export",
 		);
 		expect((await library.load()).folders).toHaveLength(1);
 

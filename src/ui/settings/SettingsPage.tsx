@@ -75,6 +75,7 @@ type Pending =
 const SOURCE_LABELS: Record<ImportSource, string> = {
 	"exile-ledger": "Shared folder",
 	"better-trading": "Better Trading export",
+	"poe-trade-plus": "Poe Trade Plus export",
 };
 
 function countText(folders: number, bookmarks: number): string {
@@ -132,10 +133,24 @@ function BackupSection({
 	};
 
 	const readFile = async (file: File) => {
-		const parsed = parseBackup(await file.text());
+		const text = await file.text();
+		const parsed = parseBackup(text);
+		if (parsed.ok) {
+			stage({ ok: true, value: { kind: "backup", backup: parsed.value } });
+			return;
+		}
+		// Other extensions' backup files (Poe Trade Plus saves JSON) import like pasted exports.
+		const other = decodeImport(text, clock().now);
 		stage(
-			parsed.ok
-				? { ok: true, value: { kind: "backup", backup: parsed.value } }
+			other.ok
+				? {
+						ok: true,
+						value: {
+							kind: "share",
+							source: other.value.source,
+							payload: other.value.payload,
+						},
+					}
 				: parsed,
 		);
 	};

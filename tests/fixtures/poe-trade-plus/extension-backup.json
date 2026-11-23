@@ -1,0 +1,146 @@
+{
+	"app": "Poe Trade Plus",
+	"schema": 3,
+	"version": "3.0",
+	"exportedAt": "2026-11-01T10:00:00.000Z",
+	"data": {
+		"settings": {
+			"global": {}
+		},
+		"bookmarks": {
+			"poe1": {
+				"format": "poe-trade-plus",
+				"version": 1,
+				"game": "poe1",
+				"folders": [
+					{
+						"id": "f1",
+						"title": "Flipping",
+						"game": "poe1",
+						"position": 0,
+						"icon": "chaos",
+						"archivedAt": null,
+						"createdAt": "2026-11-01T10:00:00.000Z",
+						"updatedAt": "2026-11-01T10:00:00.000Z",
+						"categories": [
+							{
+								"id": "k1",
+								"folderId": "f1",
+								"title": "Currency",
+								"position": 0
+							}
+						],
+						"bookmarks": [
+							{
+								"id": "b1",
+								"title": "Divines",
+								"folderId": "x",
+								"categoryId": "k1",
+								"position": 0,
+								"location": {
+									"game": "poe1",
+									"realm": "pc",
+									"type": "bulk",
+									"league": "Mercenaries",
+									"slug": "Dv1"
+								},
+								"createdAt": "2026-11-01T10:00:00.000Z",
+								"updatedAt": "2026-11-01T10:00:00.000Z",
+								"completedAt": null,
+								"archivedAt": null
+							},
+							{
+								"id": "b2",
+								"title": "Mageblood",
+								"folderId": "x",
+								"categoryId": null,
+								"position": 1,
+								"location": {
+									"game": "poe1",
+									"realm": "pc",
+									"type": "search",
+									"league": null,
+									"slug": "Mb2"
+								},
+								"createdAt": "2026-11-01T10:00:00.000Z",
+								"updatedAt": "2026-11-01T10:00:00.000Z",
+								"completedAt": null,
+								"archivedAt": null
+							}
+						]
+					},
+					{
+						"id": "f2",
+						"title": "Old",
+						"game": "poe1",
+						"position": 1,
+						"icon": null,
+						"archivedAt": "2026-11-01T10:00:00.000Z",
+						"createdAt": "2026-11-01T10:00:00.000Z",
+						"updatedAt": "2026-11-01T10:00:00.000Z",
+						"categories": [],
+						"bookmarks": [
+							{
+								"id": "b3",
+								"title": "HH",
+								"folderId": "x",
+								"categoryId": null,
+								"position": 0,
+								"location": {
+									"game": "poe1",
+									"realm": "pc",
+									"type": "search",
+									"league": "Standard",
+									"slug": "Hh3"
+								},
+								"createdAt": "2026-11-01T10:00:00.000Z",
+								"updatedAt": "2026-11-01T10:00:00.000Z",
+								"completedAt": null,
+								"archivedAt": null
+							}
+						]
+					}
+				]
+			},
+			"poe2": {
+				"format": "poe-trade-plus",
+				"version": 1,
+				"game": "poe2",
+				"folders": [
+					{
+						"id": "g1",
+						"title": "Sorc",
+						"game": "poe2",
+						"position": 0,
+						"icon": "poe2-chronomancer",
+						"archivedAt": null,
+						"createdAt": "2026-11-01T10:00:00.000Z",
+						"updatedAt": "2026-11-01T10:00:00.000Z",
+						"categories": [],
+						"bookmarks": [
+							{
+								"id": "p1",
+								"title": "Staff",
+								"folderId": "x",
+								"categoryId": null,
+								"position": 0,
+								"location": {
+									"game": "poe2",
+									"realm": "pc",
+									"type": "search",
+									"league": "Standard",
+									"slug": "St1"
+								},
+								"createdAt": "2026-11-01T10:00:00.000Z",
+								"updatedAt": "2026-11-01T10:00:00.000Z",
+								"completedAt": null,
+								"archivedAt": null
+							}
+						]
+					}
+				]
+			}
+		},
+		"history": {}
+	}
+}
