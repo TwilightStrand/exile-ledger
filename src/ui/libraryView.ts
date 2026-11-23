@@ -2,7 +2,8 @@ import { bookmarkTree, type FolderNode } from "../core/library";
 import type { Library } from "../core/model";
 import { bookmarkHref } from "../core/openUrl";
 import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
-import type { TreeNodeView } from "./viewModels";
+import { archivedRoots, subtreeStats } from "../core/tree";
+import type { ArchivedFolderView, TreeNodeView } from "./viewModels";
 
 /** The game's folders and bookmarks as panel rows, with links for the open page. */
 export function libraryView(
@@ -10,12 +11,13 @@ export function libraryView(
 	game: Game,
 	page: ParsedTradeUrl | null,
 ): TreeNodeView[] {
-	const toView = (node: FolderNode): TreeNodeView => ({
+	const toView = (node: FolderNode, depth: number): TreeNodeView => ({
 		kind: "folder",
 		id: node.folder.id,
 		name: node.folder.name,
+		depth,
 		children: [
-			...node.folders.map(toView),
+			...node.folders.map((child) => toView(child, depth + 1)),
 			...node.bookmarks.map(
 				(b): TreeNodeView => ({
 					kind: "bookmark",
@@ -29,5 +31,16 @@ export function libraryView(
 			),
 		],
 	});
-	return bookmarkTree(library, game).map(toView);
+	return bookmarkTree(library, game).map((node) => toView(node, 1));
+}
+
+export function archivedView(
+	library: Library,
+	game: Game,
+): ArchivedFolderView[] {
+	return archivedRoots(library, game).map((folder) => ({
+		id: folder.id,
+		name: folder.name,
+		bookmarks: subtreeStats(library, folder.id).bookmarks,
+	}));
 }

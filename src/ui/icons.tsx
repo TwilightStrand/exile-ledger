@@ -124,3 +124,24 @@ export const Check = (p: IconProps) => (
 		<path d="m5 12.5 4.5 4.5L19 7.5" />
 	</Svg>
 );
+
+export const FolderPlus = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2h9A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" />
+		<path d="M12 11v5M9.5 13.5h5" />
+	</Svg>
+);
+
+export const Archive = (p: IconProps) => (
+	<Svg {...p}>
+		<rect x="3.5" y="4.5" width="17" height="4" rx="1" />
+		<path d="M5 8.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V8.5M10 12.5h4" />
+	</Svg>
+);
+
+export const Restore = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M4 12a8 8 0 1 0 2.3-5.6" />
+		<path d="M4 4.5V9h4.5" />
+	</Svg>
+);

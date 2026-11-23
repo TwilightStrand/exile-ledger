@@ -12,8 +12,10 @@ import {
 	createMemorySettings,
 	type SettingsSource,
 } from "../../src/core/settings";
+import { createMemorySource } from "../../src/core/source";
 import { parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
+import type { UiState } from "../../src/core/uiState";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { Panel, type PanelProps } from "../../src/ui/Panel";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
@@ -193,7 +195,12 @@ describe("Panel bookmarks", () => {
 		);
 		await act(async () => folder?.click());
 		expect(folder?.getAttribute("aria-expanded")).toBe("false");
-		expect(folder?.nextElementSibling?.hasAttribute("inert")).toBe(true);
+		expect(
+			folder
+				?.closest("li")
+				?.querySelector(":scope > div.grid")
+				?.hasAttribute("inert"),
+		).toBe(true);
 	});
 
 	it("deletes a bookmark after confirming", async () => {
@@ -208,7 +215,88 @@ describe("Panel bookmarks", () => {
 		const stored = await library.load();
 		expect(stored.bookmarks).toEqual([]);
 		expect(stored.tombstones).toHaveLength(1);
-		expect(treeText(root)).toContain("No bookmarks yet");
+		expect(treeText(root)).not.toContain("Body Armour");
+		expect(treeText(root)).toContain(DEFAULT_FOLDER_NAME);
+	});
+});
+
+describe("Panel folders", () => {
+	async function typeName(root: HTMLElement, label: string, name: string) {
+		const input = root.querySelector<HTMLInputElement>(
+			`input[aria-label='${label}']`,
+		);
+		if (!input) throw new Error(`no ${label} field`);
+		input.value = name;
+		await act(async () => {
+			input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+		});
+	}
+
+	it("creates a folder and a subfolder", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ library });
+
+		await act(async () => button(root, "New folder")?.click());
+		await typeName(root, "New folder name", "Gear");
+		await act(async () => button(root, "New folder in Gear")?.click());
+		await typeName(root, "New folder name", "Rings");
+
+		const { folders } = await library.load();
+		const gear = folders.find((f) => f.name === "Gear");
+		expect(gear).toMatchObject({ parentId: null, game: "poe2" });
+		expect(folders.find((f) => f.name === "Rings")?.parentId).toBe(gear?.id);
+		expect(treeText(root)).toContain("Rings");
+	});
+
+	it("shows what a folder delete takes with it", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ feed: capturedFeed(), library });
+		await act(async () => button(root, "Save search")?.click());
+
+		await act(async () =>
+			button(root, `Delete ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		expect(treeText(root)).toContain(
+			`Delete “${DEFAULT_FOLDER_NAME}” and its 1 bookmark?`,
+		);
+		await act(async () => button(root, "Delete")?.click());
+		expect(await library.load()).toMatchObject({ folders: [], bookmarks: [] });
+	});
+
+	it("archives a folder and restores it", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ feed: capturedFeed(), library });
+		await act(async () => button(root, "Save search")?.click());
+
+		await act(async () =>
+			button(root, `Archive ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		expect(root.querySelector("nav")).toBeNull();
+		await act(async () =>
+			[...root.querySelectorAll("button")]
+				.find((b) => b.textContent?.startsWith("Archived"))
+				?.click(),
+		);
+		await act(async () =>
+			button(root, `Restore ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		expect((await library.load()).folders[0]?.archived).toBe(false);
+		expect(treeText(root)).toContain("Body Armour");
+	});
+
+	it("remembers collapsed folders in the UI state", async () => {
+		const uiState = createMemorySource<UiState>({ collapsed: [] });
+		const library = createMemoryLibrary();
+		const root = await mount({ feed: capturedFeed(), library, uiState });
+		await act(async () => button(root, "Save search")?.click());
+
+		await act(async () =>
+			root
+				.querySelector<HTMLButtonElement>("nav button[aria-expanded]")
+				?.click(),
+		);
+		const folderId = (await library.load()).folders[0]?.id;
+		expect((await uiState.load()).collapsed).toEqual([folderId]);
 	});
 });
 

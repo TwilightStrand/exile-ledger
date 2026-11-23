@@ -9,6 +9,7 @@ import {
 	TombstoneSchema,
 } from "./model";
 import type { TradeQuery } from "./query";
+import { createMemorySource, type Source } from "./source";
 import type { Game } from "./tradeUrl";
 
 export const DEFAULT_FOLDER_NAME = "Saved searches";
@@ -167,28 +168,10 @@ export function bookmarkTree(library: Library, game: Game): FolderNode[] {
 	return build(null);
 }
 
-/** What the UI needs from the library; browser storage in the extension, memory in previews and tests. */
-export interface LibrarySource {
-	load(): Promise<Library>;
-	update(change: (library: Library) => Library): Promise<Library>;
-	watch(onChange: (library: Library) => void): () => void;
-}
+export type LibrarySource = Source<Library>;
 
 export function createMemoryLibrary(
 	initial: Library = emptyLibrary(),
 ): LibrarySource {
-	let current = initial;
-	const listeners = new Set<(library: Library) => void>();
-	return {
-		load: async () => current,
-		update: async (change) => {
-			current = change(current);
-			for (const listener of listeners) listener(current);
-			return current;
-		},
-		watch: (onChange) => {
-			listeners.add(onChange);
-			return () => listeners.delete(onChange);
-		},
-	};
+	return createMemorySource(initial);
 }

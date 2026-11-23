@@ -8,19 +8,26 @@ import {
 	renameBookmark,
 	saveSearch,
 } from "../core/library";
-import type { Library } from "../core/model";
 import {
 	DEFAULT_SETTINGS,
 	type PanelSide,
 	type SettingsSource,
 } from "../core/settings";
+import { createMemorySource, type Source } from "../core/source";
 import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
+import {
+	createFolder,
+	deleteFolder,
+	renameFolder,
+	setArchived,
+} from "../core/tree";
+import { setCollapsed, type UiState } from "../core/uiState";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
-import { BookmarkTree } from "./BookmarkTree";
+import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
 import { HistoryList } from "./HistoryList";
 import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
-import { libraryView } from "./libraryView";
+import { archivedView, libraryView } from "./libraryView";
 import { EmptyState } from "./parts";
 import { countBookmarks, type HistoryEntryView } from "./viewModels";
 
@@ -35,20 +42,21 @@ function useCapture(feed: CaptureFeed): CaptureState {
 	return state;
 }
 
-function useLibrary(source: LibrarySource): Library {
-	const [library, setLibrary] = useState<Library>(emptyLibrary);
+/** Loads a source and follows its changes. */
+function useSource<T>(source: Source<T>, initial: () => T): T {
+	const [value, setValue] = useState<T>(initial);
 	useEffect(() => {
 		let active = true;
-		source.load().then((l) => {
-			if (active) setLibrary(l);
+		source.load().then((v) => {
+			if (active) setValue(() => v);
 		});
-		const stop = source.watch(setLibrary);
+		const stop = source.watch((v) => setValue(() => v));
 		return () => {
 			active = false;
 			stop();
 		};
 	}, [source]);
-	return library;
+	return value;
 }
 
 function usePanelSide(settings: SettingsSource): PanelSide {
@@ -99,6 +107,8 @@ export interface PanelProps {
 	feed: CaptureFeed;
 	settings: SettingsSource;
 	library: LibrarySource;
+	/** Per-machine view state such as collapsed folders. */
+	uiState?: Source<UiState>;
 	/** Read on each render: the trade site changes its URL without reloading. */
 	page: () => ParsedTradeUrl | null;
 	history?: HistoryEntryView[];
@@ -113,6 +123,7 @@ export function Panel({
 	feed,
 	settings,
 	library: librarySource,
+	uiState,
 	page,
 	history = [],
 	initiallyOpen = true,
@@ -125,11 +136,17 @@ export function Panel({
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
 	const side = usePanelSide(settings);
-	const library = useLibrary(librarySource);
+	const library = useSource(librarySource, emptyLibrary);
+	const [ownUiState] = useState(() =>
+		createMemorySource<UiState>({ collapsed: [] }),
+	);
+	const uiStateSource = uiState ?? ownUiState;
+	const ui = useSource(uiStateSource, () => ({ collapsed: [] }));
 	const currentPage = page();
 	const game: Game | null =
 		currentPage?.location.game ?? capture.search?.game ?? null;
 	const bookmarks = game ? libraryView(library, game, currentPage) : [];
+	const archived = game ? archivedView(library, game) : [];
 	const searchId = capture.search?.search.searchId;
 	const saved =
 		searchId !== undefined &&
@@ -157,12 +174,28 @@ export function Panel({
 			return saved.library;
 		});
 	};
-	const actions = {
+	const actions: TreeActions = {
 		highlightId: lastSavedId,
-		onRename: (id: string, name: string) =>
+		onRename: (id, name) =>
 			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
-		onDelete: (id: string) =>
+		onDelete: (id) =>
 			librarySource.update((lib) => deleteBookmark(lib, id, now())),
+		onCreateFolder: (parentId, name) => {
+			if (!game) return;
+			librarySource.update((lib) => {
+				const created = createFolder(lib, { name, game, parentId }, clock());
+				return created.ok ? created.library : lib;
+			});
+		},
+		onRenameFolder: (id, name) =>
+			librarySource.update((lib) => renameFolder(lib, id, name, now())),
+		onArchiveFolder: (id, isArchived) =>
+			librarySource.update((lib) => setArchived(lib, id, isArchived, now())),
+		onDeleteFolder: (id) =>
+			librarySource.update((lib) => deleteFolder(lib, id, now())),
+		isCollapsed: (id) => ui.collapsed.includes(id),
+		onToggleFolder: (id, collapsed) =>
+			uiStateSource.update((state) => setCollapsed(state, id, collapsed)),
 	};
 	const classes = SIDE_CLASSES[side];
 	const CollapseIcon = side === "left" ? ChevronLeft : ChevronRight;
@@ -250,7 +283,11 @@ export function Panel({
 					>
 						<div key={tab} class="animate-fade-in">
 							{tab === "bookmarks" && (
-								<BookmarkTree nodes={bookmarks} actions={actions} />
+								<BookmarkTree
+									nodes={bookmarks}
+									archived={archived}
+									actions={actions}
+								/>
 							)}
 							{tab === "history" && (
 								<HistoryList entries={history} now={now()} />

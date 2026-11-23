@@ -15,7 +15,15 @@ export interface FolderView {
 	kind: "folder";
 	id: string;
 	name: string;
+	/** 1 at the root; new subfolders are offered only below MAX_DEPTH. */
+	depth: number;
 	children: TreeNodeView[];
+}
+
+export interface ArchivedFolderView {
+	id: string;
+	name: string;
+	bookmarks: number;
 }
 
 export type TreeNodeView = FolderView | BookmarkView;
