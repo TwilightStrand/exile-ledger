@@ -2,6 +2,7 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { browserSettings } from "../../core/settingsStore";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
 import { listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
@@ -21,7 +22,7 @@ export default defineContentScript({
 			position: "overlay",
 			anchor: "body",
 			onMount(container) {
-				render(<Panel feed={feed} />, container);
+				render(<Panel feed={feed} settings={browserSettings} />, container);
 				return container;
 			},
 			onRemove(container) {

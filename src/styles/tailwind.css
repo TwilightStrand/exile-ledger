@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Previews build from another root; this keeps class scanning on the UI sources either way. */
+@source "../";
 
 @theme {
 	--color-ledger-bg: #0f0d0b;
