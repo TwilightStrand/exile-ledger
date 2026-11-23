@@ -17,6 +17,8 @@ export interface Settings {
 	historyEnabled: boolean;
 	/** Bookmarks through storage.sync; settings themselves always sync. */
 	syncEnabled: boolean;
+	/** Mark the result mod lines the search filtered on. */
+	highlightMods: boolean;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	panelWidth: PANEL_WIDTH.default,
 	historyEnabled: true,
 	syncEnabled: true,
+	highlightMods: true,
 };
 
 export function clampWidth(width: number): number {
@@ -46,6 +49,7 @@ export const SettingsSchema = v.fallback(
 		),
 		historyEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.historyEnabled),
 		syncEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.syncEnabled),
+		highlightMods: v.fallback(v.boolean(), DEFAULT_SETTINGS.highlightMods),
 	}),
 	DEFAULT_SETTINGS,
 );

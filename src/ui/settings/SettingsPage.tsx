@@ -417,6 +417,22 @@ export function SettingsPage({
 					)}
 				</Section>
 
+				<Section
+					title="Results"
+					description="Additions to the trade site's own result list."
+				>
+					<Field
+						label="Highlight searched mods"
+						hint="Marks the mod lines on each result that your search filtered on."
+					>
+						<Toggle
+							label="Highlight searched mods"
+							checked={prefs.highlightMods}
+							onChange={(highlightMods) => settings.save({ highlightMods })}
+						/>
+					</Field>
+				</Section>
+
 				<Section title="History">
 					<Field
 						label="Record searches"

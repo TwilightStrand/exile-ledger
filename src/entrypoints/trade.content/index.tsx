@@ -12,6 +12,8 @@ import { browserSyncStatus } from "../../storage/syncPorts";
 import { browserUiState } from "../../storage/uiStateStore";
 import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
+import { highlightMods, installPageStyles } from "../../trade/enhanceResults";
+import { observeResults } from "../../trade/observeResults";
 import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
 import { Panel } from "../../ui/Panel";
@@ -39,6 +41,19 @@ export default defineContentScript({
 				browserHistory.update((history) => recordSearch(history, entry));
 			});
 		}
+
+		installPageStyles(document);
+		let prefs = await browserSettings.load();
+		const enhance = () =>
+			highlightMods(document, feed.get(), prefs.highlightMods);
+		ctx.onInvalidated(
+			browserSettings.watch((next) => {
+				prefs = next;
+				enhance();
+			}),
+		);
+		ctx.onInvalidated(feed.subscribe(enhance));
+		ctx.onInvalidated(observeResults(document, enhance));
 
 		const ui = await createShadowRootUi(ctx, {
 			name: "exile-ledger",
