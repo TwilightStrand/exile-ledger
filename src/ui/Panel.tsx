@@ -5,6 +5,27 @@ import {
 	type SettingsSource,
 } from "../core/settings";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
+import { BookmarkTree } from "./BookmarkTree";
+import { CurrentSearch } from "./CurrentSearch";
+import { HistoryList } from "./HistoryList";
+import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
+import { EmptyState } from "./parts";
+import {
+	countBookmarks,
+	type HistoryEntryView,
+	type TreeNodeView,
+} from "./viewModels";
+
+function useCapture(feed: CaptureFeed): CaptureState {
+	const [state, setState] = useState(feed.get);
+	useEffect(() => {
+		const unsubscribe = feed.subscribe(setState);
+		return () => {
+			unsubscribe();
+		};
+	}, [feed]);
+	return state;
+}
 
 function usePanelSide(settings: SettingsSource): PanelSide {
 	const [side, setSide] = useState(DEFAULT_SETTINGS.panelSide);
@@ -22,84 +43,163 @@ function usePanelSide(settings: SettingsSource): PanelSide {
 	return side;
 }
 
-function useCapture(feed: CaptureFeed): CaptureState {
-	const [state, setState] = useState(feed.get);
-	useEffect(() => {
-		const unsubscribe = feed.subscribe(setState);
-		return () => {
-			unsubscribe();
-		};
-	}, [feed]);
-	return state;
-}
+export const TABS = ["bookmarks", "history", "pinned"] as const;
+export type TabId = (typeof TABS)[number];
 
-function describeSearch(state: CaptureState): string {
-	const query = state.search?.search.query.query;
-	if (!query) return "No search yet.";
-	const what =
-		typeof query.type === "string"
-			? query.type
-			: (query.type?.option ?? query.term ?? "Any item");
-	return `${what} · ${state.search?.search.total ?? 0} results`;
-}
+const TAB_LABELS: Record<TabId, string> = {
+	bookmarks: "Bookmarks",
+	history: "History",
+	pinned: "Pinned",
+};
 
 // Literal class strings so Tailwind's scanner picks them up.
 const SIDE_CLASSES = {
 	left: {
-		aside: "left-0 flex-row-reverse",
-		toggle: "rounded-r border-l-0",
+		aside: "left-0",
 		panel: "border-r",
+		tab: "left-0 rounded-r-md border-l-0",
 	},
 	right: {
 		aside: "right-0",
-		toggle: "rounded-l border-r-0",
 		panel: "border-l",
+		tab: "right-0 rounded-l-md border-r-0",
 	},
 } as const;
+
+// Box shadows set by hand: Tailwind's shadow utilities rely on @property, which
+// shadow roots ignore.
+const PANEL_SHADOW =
+	"[box-shadow:0_0_0_1px_rgb(0_0_0/0.4),0_12px_40px_rgb(0_0_0/0.55)]";
 
 export interface PanelProps {
 	feed: CaptureFeed;
 	settings: SettingsSource;
-	/** Previews pass this to show the collapsed state. */
+	bookmarks?: TreeNodeView[];
+	history?: HistoryEntryView[];
+	onSaveSearch?: () => void;
+	/** Previews pass these to show a given state. */
 	initiallyOpen?: boolean;
+	initialTab?: TabId;
+	now?: () => number;
 }
 
-export function Panel({ feed, settings, initiallyOpen = true }: PanelProps) {
+export function Panel({
+	feed,
+	settings,
+	bookmarks = [],
+	history = [],
+	onSaveSearch,
+	initiallyOpen = true,
+	initialTab = "bookmarks",
+	now = Date.now,
+}: PanelProps) {
 	const [open, setOpen] = useState(initiallyOpen);
+	const [tab, setTab] = useState<TabId>(initialTab);
 	const capture = useCapture(feed);
 	const side = usePanelSide(settings);
 	const classes = SIDE_CLASSES[side];
-	// Open, the arrow points the way the panel collapses; closed, the way it expands.
-	const pointsLeft = (side === "left") === open;
+	const CollapseIcon = side === "left" ? ChevronLeft : ChevronRight;
+	const ExpandIcon = side === "left" ? ChevronRight : ChevronLeft;
+	const counts: Record<TabId, number> = {
+		bookmarks: countBookmarks(bookmarks),
+		history: history.length,
+		pinned: 0,
+	};
 
 	return (
 		<aside
-			class={`fixed top-0 z-[2147483000] flex h-full font-sans text-sm text-ledger-text ${classes.aside}`}
+			class={`fixed top-0 z-[2147483000] h-full font-sans text-[13px] leading-5 text-ledger-text antialiased [color-scheme:dark] ${classes.aside}`}
 			aria-label="Exile Ledger"
 			data-side={side}
 		>
-			<button
-				type="button"
-				class={`mt-24 h-24 w-6 self-start border border-ledger-border bg-ledger-panel text-ledger-accent ${classes.toggle}`}
-				aria-expanded={open}
-				aria-controls="exile-ledger-panel"
-				aria-label={open ? "Collapse Exile Ledger" : "Expand Exile Ledger"}
-				onClick={() => setOpen((v) => !v)}
-			>
-				{pointsLeft ? "‹" : "›"}
-			</button>
-			{open && (
+			{open ? (
 				<div
 					id="exile-ledger-panel"
-					class={`flex w-72 flex-col border-ledger-border bg-ledger-panel ${classes.panel}`}
+					class={`flex h-full w-[19rem] flex-col border-ledger-line/70 bg-ledger-panel ${classes.panel} ${PANEL_SHADOW}`}
 				>
-					<header class="border-b border-ledger-border px-3 py-2 font-semibold text-ledger-accent">
-						Exile Ledger
+					<header class="flex h-12 shrink-0 items-center gap-2.5 border-b border-ledger-line/60 bg-[linear-gradient(180deg,#1f1912,#14110d)] px-3.5">
+						<Mark class="size-5 text-ledger-gold" />
+						<h1 class="font-display text-[17px] tracking-[0.04em] text-ledger-gold-bright">
+							Exile Ledger
+						</h1>
+						<button
+							type="button"
+							class="ml-auto grid size-7 place-items-center rounded text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold focus-visible:outline-2 focus-visible:outline-ledger-gold"
+							aria-expanded={true}
+							aria-controls="exile-ledger-panel"
+							aria-label="Collapse Exile Ledger"
+							onClick={() => setOpen(false)}
+						>
+							<CollapseIcon class="size-4" />
+						</button>
 					</header>
-					<p class="px-3 py-2 text-ledger-muted" data-testid="current-search">
-						{describeSearch(capture)}
-					</p>
+
+					<CurrentSearch capture={capture} onSave={onSaveSearch} />
+
+					<div
+						role="tablist"
+						aria-label="Panel sections"
+						class="mt-3 flex shrink-0 border-b border-ledger-border px-3"
+					>
+						{TABS.map((id) => {
+							const label = TAB_LABELS[id];
+							const selected = tab === id;
+							return (
+								<button
+									key={id}
+									type="button"
+									role="tab"
+									id={`exile-ledger-tab-${id}`}
+									aria-selected={selected}
+									aria-controls="exile-ledger-tabpanel"
+									class={`-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2 font-display text-[14px] tracking-[0.03em] transition-colors focus-visible:outline-2 focus-visible:outline-ledger-gold ${
+										selected
+											? "border-ledger-gold text-ledger-gold-bright"
+											: "border-transparent text-ledger-muted hover:text-ledger-text"
+									}`}
+									onClick={() => setTab(id)}
+								>
+									{label}
+									{counts[id] > 0 && (
+										<span class="rounded-full bg-ledger-raised px-1.5 text-[10px] leading-4 text-ledger-muted tabular-nums">
+											{counts[id]}
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</div>
+
+					<div
+						id="exile-ledger-tabpanel"
+						role="tabpanel"
+						aria-labelledby={`exile-ledger-tab-${tab}`}
+						class="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#4a3b27_transparent] [scrollbar-width:thin]"
+					>
+						{tab === "bookmarks" && <BookmarkTree nodes={bookmarks} />}
+						{tab === "history" && <HistoryList entries={history} now={now()} />}
+						{tab === "pinned" && (
+							<EmptyState icon={Pin} title="Nothing pinned">
+								Pin result rows to compare them while you keep searching.
+							</EmptyState>
+						)}
+					</div>
 				</div>
+			) : (
+				<button
+					type="button"
+					class={`absolute top-24 flex h-32 w-8 flex-col items-center justify-center gap-2 border border-ledger-line/70 bg-ledger-panel text-ledger-gold transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold ${classes.tab} ${PANEL_SHADOW}`}
+					aria-expanded={false}
+					aria-controls="exile-ledger-panel"
+					aria-label="Expand Exile Ledger"
+					onClick={() => setOpen(true)}
+				>
+					<Mark class="size-4" />
+					<span class="font-display text-[12px] tracking-[0.08em] [writing-mode:vertical-rl]">
+						Ledger
+					</span>
+					<ExpandIcon class="size-3.5" />
+				</button>
 			)}
 		</aside>
 	);

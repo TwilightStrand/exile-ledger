@@ -47,7 +47,9 @@ describe("Panel", () => {
 	});
 
 	it("works with no search captured", async () => {
-		expect(searchText(await mount())).toBe("No search yet.");
+		expect(searchText(await mount())).toContain(
+			"Run a search on the trade site",
+		);
 	});
 
 	it("shows a captured search", async () => {
@@ -64,6 +66,70 @@ describe("Panel", () => {
 				search,
 			});
 		});
-		expect(searchText(root)).toBe("Any item · 10000 results");
+		expect(searchText(root)).toContain("Body Armour");
+		expect(searchText(root)).toContain("10,000 results");
+	});
+});
+
+describe("Panel tabs and collapse", () => {
+	beforeEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	const tab = (root: HTMLElement, name: string) =>
+		[...root.querySelectorAll<HTMLButtonElement>("[role=tab]")].find((t) =>
+			t.textContent?.startsWith(name),
+		);
+
+	it("shows bookmarks with counts and switches to history", async () => {
+		const root = document.createElement("div");
+		document.body.append(root);
+		await act(async () => {
+			render(
+				<Panel
+					feed={createCaptureFeed()}
+					settings={createMemorySettings()}
+					bookmarks={[
+						{
+							kind: "folder",
+							id: "f",
+							name: "Gear",
+							children: [
+								{
+									kind: "bookmark",
+									id: "b",
+									title: "Bow",
+									game: "poe2",
+									league: "Standard",
+									live: true,
+									href: "#",
+								},
+							],
+						},
+					]}
+					history={[]}
+				/>,
+				root,
+			);
+		});
+		expect(tab(root, "Bookmarks")?.getAttribute("aria-selected")).toBe("true");
+		expect(tab(root, "Bookmarks")?.textContent).toBe("Bookmarks1");
+		expect(root.querySelector("nav")?.textContent).toContain("Bow");
+
+		await act(async () => tab(root, "History")?.click());
+		expect(root.querySelector("[role=tabpanel]")?.textContent).toContain(
+			"No history yet",
+		);
+	});
+
+	it("collapses to an edge tab and expands again", async () => {
+		const root = await mount();
+		const button = (label: string) =>
+			root.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
+		await act(async () => button("Collapse Exile Ledger")?.click());
+		expect(root.querySelector("#exile-ledger-panel")).toBeNull();
+		await act(async () => button("Expand Exile Ledger")?.click());
+		expect(root.querySelector("#exile-ledger-panel")).not.toBeNull();
 	});
 });
