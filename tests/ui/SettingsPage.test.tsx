@@ -30,6 +30,8 @@ function seededLibrary() {
 	return library;
 }
 
+let grantPricing = true;
+
 async function mount() {
 	const settings = createMemorySettings();
 	const library = createMemoryLibrary(seededLibrary());
@@ -50,6 +52,7 @@ async function mount() {
 					usedBytes: 20480,
 					lastSyncAt: Date.UTC(2026, 10, 24) - 120_000,
 				})}
+				requestPricingAccess={async () => grantPricing}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
 				now={() => Date.UTC(2026, 10, 24)}
@@ -76,6 +79,23 @@ describe("SettingsPage", () => {
 		expect(root.textContent).toContain(
 			"Synced 2m ago · 20% of sync space used",
 		);
+	});
+
+	it("turns on equivalent prices only when poe.ninja access is granted", async () => {
+		const { root, settings } = await mount();
+		const toggle = () =>
+			root.querySelector<HTMLButtonElement>(
+				"[role=switch][aria-label='Equivalent prices']",
+			);
+		grantPricing = false;
+		await act(async () => toggle()?.click());
+		expect((await settings.load()).equivalentPricing).toBe(false);
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			"need access to poe.ninja",
+		);
+		grantPricing = true;
+		await act(async () => toggle()?.click());
+		expect((await settings.load()).equivalentPricing).toBe(true);
 	});
 
 	it("changes panel settings", async () => {

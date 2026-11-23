@@ -13,7 +13,9 @@ import { browserUiState } from "../../storage/uiStateStore";
 import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
 import { highlightMods, installPageStyles } from "../../trade/enhanceResults";
+import { annotatePrices } from "../../trade/equivalentPrices";
 import { observeResults } from "../../trade/observeResults";
+import { createRatesClient } from "../../trade/ratesClient";
 import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
 import { Panel } from "../../ui/Panel";
@@ -44,10 +46,24 @@ export default defineContentScript({
 
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
-		const enhance = () =>
-			highlightMods(document, feed.get(), prefs.highlightMods);
+		const rates = createRatesClient(() => enhance());
+		const enhance = () => {
+			const capture = feed.get();
+			const search = capture.search;
+			highlightMods(document, capture, prefs.highlightMods);
+			annotatePrices(
+				document,
+				capture,
+				search && prefs.equivalentPricing
+					? rates.get(search.game, search.league)
+					: null,
+				prefs.equivalentPricing,
+			);
+		};
 		ctx.onInvalidated(
 			browserSettings.watch((next) => {
+				// Turning pricing on after a denied or missing permission should retry.
+				if (next.equivalentPricing && !prefs.equivalentPricing) rates.reset();
 				prefs = next;
 				enhance();
 			}),

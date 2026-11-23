@@ -230,6 +230,7 @@ function SettingsPreview() {
 				usedBytes: 23_500,
 				lastSyncAt: Date.now() - 90_000,
 			})}
+			requestPricingAccess={async () => true}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}
 		/>

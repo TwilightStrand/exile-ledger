@@ -1,0 +1,40 @@
+{
+	"core": {
+		"primary": "divine",
+		"secondary": "chaos",
+		"rates": {
+			"exalted": 160.2,
+			"chaos": 1.93
+		}
+	},
+	"lines": [
+		{
+			"id": "alch",
+			"primaryValue": 0.01471
+		},
+		{
+			"id": "exalted",
+			"primaryValue": 0.006241
+		},
+		{
+			"id": "divine",
+			"primaryValue": 1
+		},
+		{
+			"id": "annul",
+			"primaryValue": 0.3647
+		},
+		{
+			"id": "chaos",
+			"primaryValue": 0.5178
+		},
+		{
+			"id": "regal",
+			"primaryValue": 0.001689
+		},
+		{
+			"id": "mirror",
+			"primaryValue": 9889
+		}
+	]
+}

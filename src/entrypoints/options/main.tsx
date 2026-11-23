@@ -1,6 +1,7 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
+import { NINJA_ORIGIN } from "../../pricing/ratesService";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
@@ -27,6 +28,9 @@ if (root) {
 			library={browserLibrary}
 			history={browserHistory}
 			syncStatus={browserSyncStatus}
+			requestPricingAccess={() =>
+				browser.permissions.request({ origins: [NINJA_ORIGIN] })
+			}
 			version={browser.runtime.getManifest().version}
 			download={download}
 		/>,

@@ -19,6 +19,8 @@ export interface Settings {
 	syncEnabled: boolean;
 	/** Mark the result mod lines the search filtered on. */
 	highlightMods: boolean;
+	/** Off until the user grants access to poe.ninja. */
+	equivalentPricing: boolean;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	historyEnabled: true,
 	syncEnabled: true,
 	highlightMods: true,
+	equivalentPricing: false,
 };
 
 export function clampWidth(width: number): number {
@@ -50,6 +53,10 @@ export const SettingsSchema = v.fallback(
 		historyEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.historyEnabled),
 		syncEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.syncEnabled),
 		highlightMods: v.fallback(v.boolean(), DEFAULT_SETTINGS.highlightMods),
+		equivalentPricing: v.fallback(
+			v.boolean(),
+			DEFAULT_SETTINGS.equivalentPricing,
+		),
 	}),
 	DEFAULT_SETTINGS,
 );

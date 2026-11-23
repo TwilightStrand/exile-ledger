@@ -10,6 +10,9 @@ export default defineConfig({
 		description:
 			"Bookmarks, history and price tools for the Path of Exile trade site, synced across machines.",
 		permissions: ["storage"],
+		// Asked for only when the user turns on equivalent prices; poe.ninja sends
+		// no CORS headers, so the fetch needs host access.
+		optional_host_permissions: ["https://poe.ninja/*"],
 		browser_specific_settings: {
 			gecko: {
 				id: "exile-ledger@twilightstrand",

@@ -1,6 +1,9 @@
+import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { RatesRequestSchema } from "../core/messages";
 import { OFF_STATUS, type SyncStatus, syncOnce } from "../core/syncEngine";
+import { getRates } from "../pricing/ratesService";
 import { browserSettings } from "../storage/settingsStore";
 import { browserSyncPorts, browserSyncStatus } from "../storage/syncPorts";
 
@@ -64,6 +67,13 @@ export default defineBackground(() => {
 		if (area === "sync" && keys.some((k) => k.startsWith("el:")))
 			schedule(PULL_DELAY_MS);
 		if (area === "sync" && keys.includes("settings")) schedule(0);
+	});
+
+	browser.runtime.onMessage.addListener((message: unknown) => {
+		const request = v.safeParse(RatesRequestSchema, message);
+		if (!request.success) return undefined;
+		// Returning the promise answers the content script (both browsers accept this form).
+		return getRates(request.output.game, request.output.league);
 	});
 
 	schedule(0);

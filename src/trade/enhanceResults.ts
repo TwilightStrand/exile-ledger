@@ -17,7 +17,10 @@ export function installPageStyles(doc: Document): void {
 	if (doc.getElementById(STYLE_ID)) return;
 	const style = doc.createElement("style");
 	style.id = STYLE_ID;
-	style.textContent = `[${HIGHLIGHT_ATTR}] { background: rgb(214 173 98 / 0.16); box-shadow: inset 3px 0 0 #d6ad62; border-radius: 2px; }`;
+	style.textContent = [
+		`[${HIGHLIGHT_ATTR}] { background: rgb(214 173 98 / 0.16); box-shadow: inset 3px 0 0 #d6ad62; border-radius: 2px; }`,
+		"[data-exile-ledger-price] { display: block; margin-top: 2px; font-size: 11px; color: #d6ad62; opacity: 0.9; }",
+	].join("\n");
 	doc.head.append(style);
 }
 

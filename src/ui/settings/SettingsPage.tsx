@@ -38,6 +38,8 @@ export interface SettingsPageProps {
 	history: Source<HistoryEntry[]>;
 	syncStatus: Source<SyncStatus>;
 	version: string;
+	/** Asks for access to poe.ninja; resolves to whether it was granted. */
+	requestPricingAccess: () => Promise<boolean>;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
 	now?: () => number;
@@ -318,6 +320,7 @@ export function SettingsPage({
 	library,
 	history,
 	syncStatus,
+	requestPricingAccess,
 	version,
 	download,
 	now = Date.now,
@@ -325,6 +328,7 @@ export function SettingsPage({
 }: SettingsPageProps) {
 	const prefs = useSettingsValue(settings);
 	const [historyCleared, setHistoryCleared] = useState(false);
+	const [pricingDenied, setPricingDenied] = useState(false);
 	const sync = useSourceValue(syncStatus, OFF_STATUS);
 	const clock = (): Clock => ({ now: now(), newId });
 
@@ -431,6 +435,28 @@ export function SettingsPage({
 							onChange={(highlightMods) => settings.save({ highlightMods })}
 						/>
 					</Field>
+					<Field
+						label="Equivalent prices"
+						hint="Shows each price in chaos and divine (PoE1) or exalted and divine (PoE2), using poe.ninja rates refreshed every 30 minutes. Turning this on asks permission to read poe.ninja."
+					>
+						<Toggle
+							label="Equivalent prices"
+							checked={prefs.equivalentPricing}
+							onChange={async (equivalentPricing) => {
+								if (equivalentPricing && !(await requestPricingAccess())) {
+									setPricingDenied(true);
+									return;
+								}
+								setPricingDenied(false);
+								settings.save({ equivalentPricing });
+							}}
+						/>
+					</Field>
+					{pricingDenied && (
+						<Notice tone="error">
+							Equivalent prices need access to poe.ninja. Nothing was changed.
+						</Notice>
+					)}
 				</Section>
 
 				<Section title="History">
