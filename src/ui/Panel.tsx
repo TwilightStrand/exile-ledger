@@ -1,5 +1,6 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { titleOfQuery } from "../core/describe";
+import { encodeShare } from "../core/exchange";
 import { clearHistory, type HistoryEntry } from "../core/history";
 import {
 	type Clock,
@@ -11,8 +12,11 @@ import {
 } from "../core/library";
 import { applyPlace } from "../core/placement";
 import {
+	clampWidth,
 	DEFAULT_SETTINGS,
+	PANEL_WIDTH,
 	type PanelSide,
+	type Settings,
 	type SettingsSource,
 } from "../core/settings";
 import { createMemorySource, type Source } from "../core/source";
@@ -24,7 +28,7 @@ import {
 	setArchived,
 	setFolderIcon,
 } from "../core/tree";
-import { setCollapsed, type UiState } from "../core/uiState";
+import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
@@ -62,20 +66,64 @@ function useSource<T>(source: Source<T>, initial: () => T): T {
 	return value;
 }
 
-function usePanelSide(settings: SettingsSource): PanelSide {
-	const [side, setSide] = useState(DEFAULT_SETTINGS.panelSide);
+function useSettings(settings: SettingsSource): Settings {
+	const [value, setValue] = useState<Settings>(DEFAULT_SETTINGS);
 	useEffect(() => {
 		let active = true;
 		settings.load().then((s) => {
-			if (active) setSide(s.panelSide);
+			if (active) setValue(s);
 		});
-		const stop = settings.watch((s) => setSide(s.panelSide));
+		const stop = settings.watch(setValue);
 		return () => {
 			active = false;
 			stop();
 		};
 	}, [settings]);
-	return side;
+	return value;
+}
+
+/** Drag the panel's inner edge to resize; saved once, when the drag ends. */
+function useResize(
+	side: PanelSide,
+	width: number,
+	onDone: (width: number) => void,
+): {
+	width: number;
+	onPointerDown: (e: PointerEvent) => void;
+	resizing: boolean;
+} {
+	const [dragWidth, setDragWidth] = useState<number | null>(null);
+	const onPointerDown = (e: PointerEvent) => {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		const startX = e.clientX;
+		const startWidth = width;
+		const direction = side === "left" ? 1 : -1;
+		let latest = startWidth;
+		const move = (ev: PointerEvent) => {
+			latest = clampWidth(startWidth + (ev.clientX - startX) * direction);
+			setDragWidth(latest);
+		};
+		const up = () => {
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", up);
+			setDragWidth(null);
+			if (latest !== startWidth) onDone(latest);
+		};
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", up);
+	};
+	return {
+		width: dragWidth ?? width,
+		onPointerDown,
+		resizing: dragWidth !== null,
+	};
+}
+
+/** The strip of page the panel takes in push mode; 0 when it floats or is closed. */
+export interface Reserve {
+	side: PanelSide;
+	px: number;
 }
 
 export const TABS = ["bookmarks", "history", "pinned"] as const;
@@ -92,11 +140,13 @@ const SIDE_CLASSES = {
 	left: {
 		aside: "left-0",
 		panel: "border-r animate-panel-in-left",
+		handle: "-right-1",
 		tab: "left-0 rounded-r-md border-l-0",
 	},
 	right: {
 		aside: "right-0",
 		panel: "border-l animate-panel-in-right",
+		handle: "-left-1",
 		tab: "right-0 rounded-l-md border-r-0",
 	},
 } as const;
@@ -116,6 +166,10 @@ export interface PanelProps {
 	page: () => ParsedTradeUrl | null;
 	/** Searches the page ran; recorded by the content script, read here. */
 	history?: Source<HistoryEntry[]>;
+	/** Clipboard write; injectable because tests and previews have no clipboard. */
+	copyText?: (text: string) => Promise<void>;
+	/** Push mode: the host narrows the page by this much on this side. */
+	onReserve?: (reserve: Reserve) => void;
 	/** Previews pass these to show a given state. */
 	initiallyOpen?: boolean;
 	initialTab?: TabId;
@@ -130,25 +184,44 @@ export function Panel({
 	uiState,
 	page,
 	history: historySource,
+	onReserve,
+	copyText = (text) => navigator.clipboard.writeText(text),
 	initiallyOpen = true,
 	initialTab = "bookmarks",
 	now = Date.now,
 	newId = () => crypto.randomUUID(),
 }: PanelProps) {
-	const [open, setOpen] = useState(initiallyOpen);
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
-	const side = usePanelSide(settings);
+	const prefs = useSettings(settings);
+	const side = prefs.panelSide;
 	const library = useSource(librarySource, emptyLibrary);
 	const [ownUiState] = useState(() =>
-		createMemorySource<UiState>({ collapsed: [] }),
+		createMemorySource<UiState>({
+			...DEFAULT_UI_STATE,
+			panelOpen: initiallyOpen,
+		}),
 	);
 	const uiStateSource = uiState ?? ownUiState;
 	const [ownHistory] = useState(() => createMemorySource<HistoryEntry[]>([]));
 	const historyStore = historySource ?? ownHistory;
 	const historyEntries = useSource(historyStore, (): HistoryEntry[] => []);
-	const ui = useSource(uiStateSource, () => ({ collapsed: [] }));
+	const ui = useSource(uiStateSource, () => ({
+		...DEFAULT_UI_STATE,
+		panelOpen: initiallyOpen,
+	}));
+	const open = ui.panelOpen;
+	const setOpen = (panelOpen: boolean) =>
+		uiStateSource.update((state) => ({ ...state, panelOpen }));
+	const resize = useResize(side, prefs.panelWidth, (panelWidth) =>
+		settings.save({ panelWidth }),
+	);
+	const reservePx = prefs.panelMode === "push" && open ? resize.width : 0;
+	// Layout effect so the page margin changes in the same frame as the panel.
+	useLayoutEffect(() => {
+		onReserve?.({ side, px: reservePx });
+	}, [onReserve, side, reservePx]);
 	const currentPage = page();
 	const game: Game | null =
 		currentPage?.location.game ?? capture.search?.game ?? null;
@@ -205,6 +278,10 @@ export function Panel({
 			librarySource.update((lib) => deleteFolder(lib, id, now())),
 		onSetIcon: (id, icon) =>
 			librarySource.update((lib) => setFolderIcon(lib, id, icon, now())),
+		onShareFolder: async (id) => {
+			const text = encodeShare(await librarySource.load(), id);
+			if (text) await copyText(text);
+		},
 		onPlace: (item, target) =>
 			librarySource.update((lib) =>
 				applyPlace(lib, { ...item, ...target }, now()),
@@ -256,8 +333,32 @@ export function Panel({
 			{open ? (
 				<div
 					id="exile-ledger-panel"
-					class={`flex h-full w-[19rem] flex-col border-ledger-line/70 bg-ledger-panel ${classes.panel} ${PANEL_SHADOW}`}
+					class={`relative flex h-full flex-col border-ledger-line/70 bg-ledger-panel ${classes.panel} ${PANEL_SHADOW} ${resize.resizing ? "select-none" : ""}`}
+					style={{ width: `${resize.width}px` }}
 				>
+					{/* biome-ignore lint/a11y/useSemanticElements: a focusable window splitter needs role=separator with a value; <hr> cannot take focus. */}
+					<div
+						role="separator"
+						aria-orientation="vertical"
+						aria-label="Resize panel"
+						aria-valuemin={PANEL_WIDTH.min}
+						aria-valuemax={PANEL_WIDTH.max}
+						aria-valuenow={resize.width}
+						tabIndex={0}
+						class={`group/handle absolute top-0 z-10 h-full w-2 cursor-col-resize ${classes.handle}`}
+						onPointerDown={resize.onPointerDown}
+						onKeyDown={(e) => {
+							const step = e.shiftKey ? 40 : 10;
+							const grow = side === "left" ? "ArrowRight" : "ArrowLeft";
+							const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
+							if (e.key !== grow && e.key !== shrink) return;
+							e.preventDefault();
+							const delta = e.key === grow ? step : -step;
+							settings.save({ panelWidth: clampWidth(resize.width + delta) });
+						}}
+					>
+						<span class="mx-auto block h-full w-px bg-transparent transition-colors group-hover/handle:bg-ledger-gold/60 group-focus-visible/handle:bg-ledger-gold" />
+					</div>
 					<header class="flex h-12 shrink-0 items-center gap-2.5 border-b border-ledger-line/60 bg-[linear-gradient(180deg,#1f1912,#14110d)] px-3.5">
 						<Mark class="size-5 text-ledger-gold" />
 						<h1 class="font-display text-[17px] tracking-[0.04em] text-ledger-gold-bright">

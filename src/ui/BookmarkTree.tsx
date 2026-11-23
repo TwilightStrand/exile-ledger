@@ -12,11 +12,13 @@ import { FOLDER_ICON_COMPONENTS, FOLDER_ICON_LABELS } from "./folderIcons";
 import {
 	Archive,
 	Bolt,
+	Check,
 	ChevronRight,
 	FolderPlus,
 	Pencil,
 	Plus,
 	Restore,
+	Share,
 	Trash,
 } from "./icons";
 import { EmptyState, GameTag } from "./parts";
@@ -49,6 +51,8 @@ export interface TreeActions {
 	onArchiveFolder: (id: string, archived: boolean) => void;
 	onDeleteFolder: (id: string) => void;
 	onSetIcon: (id: string, icon: FolderIcon) => void;
+	/** Resolves once the folder's share string is on the clipboard. */
+	onShareFolder: (id: string) => Promise<void>;
 	onPlace: (item: DragItem, target: PlaceTarget) => void;
 	isCollapsed: (id: string) => boolean;
 	onToggleFolder: (id: string, collapsed: boolean) => void;
@@ -427,6 +431,7 @@ function FolderRow({
 	actions: TreeActions | undefined;
 }) {
 	const [mode, setMode] = useState<FolderMode>("view");
+	const [copied, setCopied] = useState(false);
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
 	const count = countBookmarks(folder.children);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
@@ -485,6 +490,24 @@ function FolderRow({
 						onClick={() => setMode("rename")}
 					>
 						<Pencil class="size-3.5" />
+					</button>
+					<button
+						type="button"
+						class={`${ICON_BUTTON} ${copied ? "text-ledger-live" : ""}`}
+						aria-label={
+							copied
+								? "Share string copied"
+								: `Copy share string for ${folder.name}`
+						}
+						title={copied ? "Copied" : "Copy share string"}
+						onClick={() =>
+							actions.onShareFolder(folder.id).then(() => {
+								setCopied(true);
+								setTimeout(() => setCopied(false), 1500);
+							})
+						}
+					>
+						{copied ? <Check class="size-3.5" /> : <Share class="size-3.5" />}
 					</button>
 					<button
 						type="button"

@@ -286,7 +286,10 @@ describe("Panel folders", () => {
 	});
 
 	it("remembers collapsed folders in the UI state", async () => {
-		const uiState = createMemorySource<UiState>({ collapsed: [] });
+		const uiState = createMemorySource<UiState>({
+			collapsed: [],
+			panelOpen: true,
+		});
 		const library = createMemoryLibrary();
 		const root = await mount({ feed: capturedFeed(), library, uiState });
 		await act(async () => button(root, "Save search")?.click());
@@ -410,6 +413,53 @@ describe("Panel history", () => {
 		await act(async () => button(root, "Clear history")?.click());
 		expect((await history.load()).map((h) => h.game)).toEqual(["poe1"]);
 		expect(treeText(root)).toContain("No history yet");
+	});
+});
+
+describe("Panel layout and sharing", () => {
+	it("copies a folder's share string", async () => {
+		const copies: string[] = [];
+		const root = await mount({
+			feed: capturedFeed(),
+			copyText: async (text) => {
+				copies.push(text);
+			},
+		});
+		await act(async () => button(root, "Save search")?.click());
+		await act(async () =>
+			button(root, `Copy share string for ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		expect(copies[0]).toMatch(/^EL1:/);
+	});
+
+	it("reserves page space only in push mode while open", async () => {
+		const reserves: { side: string; px: number }[] = [];
+		const settings = createMemorySettings({
+			panelMode: "push",
+			panelWidth: 320,
+		});
+		const root = await mount({ settings, onReserve: (r) => reserves.push(r) });
+		expect(reserves.at(-1)).toEqual({ side: "left", px: 320 });
+		await act(async () => button(root, "Collapse Exile Ledger")?.click());
+		expect(reserves.at(-1)).toEqual({ side: "left", px: 0 });
+	});
+
+	it("resizes from the keyboard and remembers the open state", async () => {
+		const settings = createMemorySettings();
+		const uiState = createMemorySource<UiState>({
+			collapsed: [],
+			panelOpen: true,
+		});
+		const root = await mount({ settings, uiState });
+		const handle = root.querySelector("[role=separator]");
+		await act(async () => {
+			handle?.dispatchEvent(
+				new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+			);
+		});
+		expect((await settings.load()).panelWidth).toBe(314);
+		await act(async () => button(root, "Collapse Exile Ledger")?.click());
+		expect((await uiState.load()).panelOpen).toBe(false);
 	});
 });
 

@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import "../src/styles/tailwind.css";
 import { type ComponentChildren, render } from "preact";
+import { createPortal } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createMemoryLibrary, emptyLibrary } from "../src/core/library";
 import { createMemorySettings, type PanelSide } from "../src/core/settings";
@@ -9,8 +10,8 @@ import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
 import panelCss from "../src/styles/tailwind.css?inline";
 import { createCaptureFeed } from "../src/trade/captureFeed";
-import { Panel, TABS, type TabId } from "../src/ui/Panel";
-import { SettingsForm } from "../src/ui/SettingsForm";
+import { Panel, type Reserve, TABS, type TabId } from "../src/ui/Panel";
+import { SettingsPage } from "../src/ui/settings/SettingsPage";
 import fetchResponse from "../tests/fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../tests/fixtures/trade/poe2-search-request.json";
 import searchResponse from "../tests/fixtures/trade/poe2-search-response.json";
@@ -20,6 +21,7 @@ import { MOCK_HISTORY, MOCK_LIBRARY, MOCK_NOW } from "./mocks";
 // ?search=1&data=1&side=right&open=0&tab=history&game=poe1
 const params = new URLSearchParams(location.search);
 const startSide: PanelSide = params.get("side") === "right" ? "right" : "left";
+const startMode = params.get("mode") === "push" ? "push" : "overlay";
 const startTab: TabId =
 	TABS.find((t) => t === params.get("tab")) ?? "bookmarks";
 
@@ -67,10 +69,9 @@ function ShadowHost({ children }: { children: ComponentChildren }) {
 		shadow.append(style, mount);
 		setRoot(mount);
 	}, []);
-	useEffect(() => {
-		if (root) render(children, root);
-	});
-	return <div ref={host} />;
+	// A portal keeps the panel in this tree; a second render() root updated from
+	// an effect trips Preact's hook bookkeeping when the two trees talk.
+	return <div ref={host}>{root && createPortal(children, root)}</div>;
 }
 
 function FakeTradePage() {
@@ -131,18 +132,40 @@ function Controls({
 				/>
 				Bookmarks and history
 			</label>
-			<SettingsForm settings={settings} />
+			<button
+				type="button"
+				class="rounded border border-ledger-border px-2 py-0.5"
+				onClick={async () => {
+					const { panelSide } = await settings.load();
+					settings.save({ panelSide: panelSide === "left" ? "right" : "left" });
+				}}
+			>
+				Switch side
+			</button>
+			<button
+				type="button"
+				class="rounded border border-ledger-border px-2 py-0.5"
+				onClick={async () => {
+					const { panelMode } = await settings.load();
+					settings.save({
+						panelMode: panelMode === "push" ? "overlay" : "push",
+					});
+				}}
+			>
+				Toggle push
+			</button>
 		</div>
 	);
 }
 
 function Preview() {
 	const settings = useMemo(
-		() => createMemorySettings({ panelSide: startSide }),
+		() => createMemorySettings({ panelSide: startSide, panelMode: startMode }),
 		[],
 	);
 	const [withSearch, setWithSearch] = useState(params.get("search") === "1");
 	const [withData, setWithData] = useState(params.get("data") === "1");
+	const [reserve, setReserve] = useState<Reserve>({ side: "left", px: 0 });
 	const feed = useMemo(() => feedFor(withSearch), [withSearch]);
 	const history = useMemo(
 		() => createMemorySource(withData ? MOCK_HISTORY : []),
@@ -155,7 +178,15 @@ function Preview() {
 
 	return (
 		<div class="min-h-screen bg-[#000] font-sans text-ledger-text">
-			<FakeTradePage />
+			<div
+				class="transition-[margin] duration-200"
+				style={{
+					[reserve.side === "left" ? "marginLeft" : "marginRight"]:
+						`${reserve.px}px`,
+				}}
+			>
+				<FakeTradePage />
+			</div>
 			<ShadowHost>
 				<Panel
 					key={`${withSearch}-${withData}`}
@@ -167,6 +198,7 @@ function Preview() {
 					initiallyOpen={params.get("open") !== "0"}
 					initialTab={startTab}
 					now={MOCK_NOW}
+					onReserve={setReserve}
 				/>
 			</ShadowHost>
 			{params.get("controls") !== "0" && (
@@ -182,5 +214,24 @@ function Preview() {
 	);
 }
 
+function SettingsPreview() {
+	const settings = useMemo(() => createMemorySettings(), []);
+	const library = useMemo(() => createMemoryLibrary(MOCK_LIBRARY), []);
+	const history = useMemo(() => createMemorySource(MOCK_HISTORY), []);
+	return (
+		<SettingsPage
+			settings={settings}
+			library={library}
+			history={history}
+			version="0.1.0"
+			download={(name, text) => console.info("download", name, text.length)}
+		/>
+	);
+}
+
 const root = document.getElementById("app");
-if (root) render(<Preview />, root);
+if (root)
+	render(
+		params.get("page") === "settings" ? <SettingsPreview /> : <Preview />,
+		root,
+	);

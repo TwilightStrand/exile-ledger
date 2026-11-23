@@ -6,7 +6,17 @@ describe("parseSettings", () => {
 		["nothing stored", undefined, DEFAULT_SETTINGS],
 		["a non-object", "left", DEFAULT_SETTINGS],
 		["an unknown side", { panelSide: "top" }, DEFAULT_SETTINGS],
-		["a valid side", { panelSide: "right" }, { panelSide: "right" }],
+		[
+			"a valid side",
+			{ panelSide: "right" },
+			{ ...DEFAULT_SETTINGS, panelSide: "right" },
+		],
+		[
+			"an out-of-range width",
+			{ panelWidth: 9000 },
+			{ ...DEFAULT_SETTINGS, panelWidth: 560 },
+		],
+		["a non-number width", { panelWidth: "wide" }, DEFAULT_SETTINGS],
 	])("falls back to defaults for %s", (_label, raw, expected) => {
 		expect(parseSettings(raw)).toEqual(expected);
 	});
