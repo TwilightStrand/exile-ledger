@@ -3,7 +3,11 @@ import {
 	classifyApiUrl,
 	parseFetchResponse,
 	parseSearch,
+	stripMarkup,
 } from "../../src/core/tradeApi";
+import poe1FetchResponse from "../fixtures/trade/poe1-fetch-response.json";
+import poe1SearchRequest from "../fixtures/trade/poe1-search-request.json";
+import poe1SearchResponse from "../fixtures/trade/poe1-search-response.json";
 import fetchResponse from "../fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
 import searchResponse from "../fixtures/trade/poe2-search-response.json";
@@ -52,16 +56,16 @@ describe("classifyApiUrl", () => {
 });
 
 describe("parseSearch", () => {
-	it("reads the query and search result", () => {
-		const parsed = parseSearch(searchRequest, searchResponse);
-		expect(parsed).not.toBeNull();
-		expect(parsed?.searchId).toBe("Gk3pVQ7fX");
-		expect(parsed?.total).toBe(2);
-		expect(parsed?.resultIds).toEqual(["a1b2c3", "d4e5f6"]);
-		expect(parsed?.query.query.type).toBe("Expert Waxed Jacket");
+	it.each([
+		["poe1", poe1SearchRequest, poe1SearchResponse],
+		["poe2", searchRequest, searchResponse],
+	])("reads a real %s search", (_game, request, response) => {
+		const parsed = parseSearch(request, response);
+		expect(parsed?.searchId).toBe(response.id);
+		expect(parsed?.total).toBe(10000);
+		expect(parsed?.resultIds).toEqual(response.result);
 		expect(parsed?.query.query.stats?.[0]?.filters.map((f) => f.id)).toEqual([
 			"explicit.stat_3299347043",
-			"explicit.stat_4220027924",
 		]);
 	});
 
@@ -75,7 +79,7 @@ describe("parseSearch", () => {
 
 	it.each([
 		[{ nope: true }, searchResponse],
-		[searchRequest, { error: { code: 2, message: "Invalid query" } }],
+		[searchRequest, { error: { code: 2, message: "Unknown item base type" } }],
 		[searchRequest, { id: "x", result: "not-an-array", total: 1 }],
 		["not json", searchResponse],
 	])("returns null for invalid input %#", (request, response) => {
@@ -83,41 +87,113 @@ describe("parseSearch", () => {
 	});
 });
 
-describe("parseFetchResponse", () => {
-	const items = parseFetchResponse(fetchResponse);
-
-	it("skips null entries (delisted items)", () => {
-		expect(items?.map((i) => i.id)).toEqual(["a1b2c3", "d4e5f6"]);
+describe("stripMarkup", () => {
+	it.each([
+		["+28 to [Evasion] Rating", "+28 to Evasion Rating"],
+		[
+			"70% increased [Evasion] and [EnergyShield|Energy Shield]",
+			"70% increased Evasion and Energy Shield",
+		],
+		["+92 to maximum Life", "+92 to maximum Life"],
+	])("%s", (input, expected) => {
+		expect(stripMarkup(input)).toBe(expected);
 	});
+});
 
-	it("maps mods to the stat IDs that matched them", () => {
-		expect(items?.[0]?.mods).toEqual([
+describe("parseFetchResponse", () => {
+	it("reads a real PoE2 response with marked-up mod text", () => {
+		const items = parseFetchResponse(fetchResponse);
+		expect(items?.map((i) => i.id)).toEqual(searchResponse.result);
+		expect(items?.[0]).toMatchObject({
+			name: "Viper Wrap",
+			baseType: "Hatungo Garb",
+			ilvl: 73,
+			price: { amount: 1, currency: "exalted" },
+		});
+		expect(items?.[0]?.mods.slice(0, 3)).toEqual([
 			{
 				kind: "explicit",
-				text: "+92 to maximum Life",
-				statIds: ["explicit.stat_3299347043"],
+				text: "+28 to Evasion Rating",
+				statIds: ["explicit.stat_53045048"],
 			},
 			{
 				kind: "explicit",
-				text: "+34% to Fire Resistance",
-				statIds: ["explicit.stat_3372524247"],
+				text: "+12 to maximum Energy Shield",
+				statIds: ["explicit.stat_4052037485"],
 			},
 			{
 				kind: "explicit",
-				text: "+12% to Cold Resistance",
-				statIds: ["explicit.stat_4220027924"],
+				text: "70% increased Evasion and Energy Shield",
+				statIds: ["explicit.stat_1999113824"],
 			},
 		]);
 	});
 
-	it("reads price, base and item level", () => {
-		expect(items?.[0]).toMatchObject({
-			name: "Doom Shelter",
-			baseType: "Expert Waxed Jacket",
-			ilvl: 82,
-			price: { amount: 2, currency: "divine" },
+	it("reads a real PoE1 response with implicit and explicit mods", () => {
+		const items = parseFetchResponse(poe1FetchResponse);
+		expect(items?.[0]?.mods.slice(0, 3)).toEqual([
+			{
+				kind: "implicit",
+				text: "+12% to all Elemental Resistances",
+				statIds: ["implicit.stat_2901986750"],
+			},
+			{
+				kind: "explicit",
+				text: "+66 to maximum Life",
+				statIds: ["explicit.stat_3299347043"],
+			},
+			{
+				kind: "explicit",
+				text: "Regenerate 19.2 Life per second",
+				statIds: ["explicit.stat_3325883026"],
+			},
+		]);
+	});
+
+	it("maps plain-string mod lines to stat IDs by line position", () => {
+		const items = parseFetchResponse({
+			result: [
+				null,
+				{
+					id: "s1",
+					listing: {},
+					item: {
+						explicitMods: ["+40 to maximum Life", "+20% to Cold Resistance"],
+						extended: {
+							hashes: {
+								explicit: [
+									["explicit.stat_3299347043", [1]],
+									["explicit.stat_4220027924", [0]],
+								],
+							},
+						},
+					},
+				},
+			],
 		});
-		expect(items?.[1]?.price).toBeNull();
+		expect(items).toEqual([
+			{
+				id: "s1",
+				name: "",
+				typeLine: "",
+				baseType: "",
+				ilvl: null,
+				price: null,
+				indexed: null,
+				mods: [
+					{
+						kind: "explicit",
+						text: "+40 to maximum Life",
+						statIds: ["explicit.stat_3299347043"],
+					},
+					{
+						kind: "explicit",
+						text: "+20% to Cold Resistance",
+						statIds: ["explicit.stat_4220027924"],
+					},
+				],
+			},
+		]);
 	});
 
 	it("returns null for an error response", () => {

@@ -26,21 +26,21 @@ describe("toCaptureEvent", () => {
 		if (event?.kind !== "search") throw new Error("expected search");
 		expect(event.game).toBe("poe2");
 		expect(event.league).toBe("Standard");
-		expect(event.search.searchId).toBe("Gk3pVQ7fX");
+		expect(event.search.searchId).toBe(searchResponse.id);
 	});
 
 	it("turns a fetch exchange into a typed results event", () => {
 		const event = toCaptureEvent(
 			envelope({
-				url: "https://www.pathofexile.com/api/trade2/fetch/a1b2c3,d4e5f6?query=Gk3pVQ7fX&realm=poe2",
+				url: `https://www.pathofexile.com/api/trade2/fetch/${searchResponse.result.join(",")}?query=${searchResponse.id}&realm=poe2`,
 				method: "GET",
 				requestBody: null,
 				responseBody: JSON.stringify(fetchResponse),
 			}),
 		);
 		if (event?.kind !== "results") throw new Error("expected results");
-		expect(event.queryId).toBe("Gk3pVQ7fX");
-		expect(event.items).toHaveLength(2);
+		expect(event.queryId).toBe(searchResponse.id);
+		expect(event.items).toHaveLength(3);
 	});
 
 	it.each([

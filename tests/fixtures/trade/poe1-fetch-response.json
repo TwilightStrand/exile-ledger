@@ -1,0 +1,578 @@
+{
+	"result": [
+		{
+			"id": "ea3ae295d111183d8696d7f009faa8549cb75a0f0a00a6292fa182a9cffda4b1",
+			"listing": {
+				"method": "psapi",
+				"indexed": "2022-08-17T08:59:55Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 14,
+					"y": 4
+				},
+				"price": {
+					"type": "~b/o",
+					"amount": 1,
+					"currency": "alch"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
+			},
+			"item": {
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9Cb2R5U3RyMUMiLCJ3IjoyLCJoIjozLCJzY2FsZSI6MSwic2hhcGVyIjp0cnVlfV0/8c10dd40c1/BodyStr1C.png",
+				"league": "Standard",
+				"id": "ea3ae295d111183d8696d7f009faa8549cb75a0f0a00a6292fa182a9cffda4b1",
+				"influences": {
+					"shaper": true
+				},
+				"shaper": true,
+				"sockets": [
+					{
+						"group": 0,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 1,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 1,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 1,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 2,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 2,
+						"attr": "S",
+						"sColour": "R"
+					}
+				],
+				"name": "Eagle Sanctuary",
+				"typeLine": "Astral Plate",
+				"baseType": "Astral Plate",
+				"rarity": "Rare",
+				"ilvl": 86,
+				"identified": true,
+				"properties": [
+					{
+						"name": "Quality",
+						"values": [["+30%", 1]],
+						"displayMode": 0,
+						"type": 6
+					},
+					{
+						"name": "Armour",
+						"values": [["924", 1]],
+						"displayMode": 0,
+						"type": 16
+					}
+				],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["62", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "Str",
+						"values": [["180", 0]],
+						"displayMode": 1,
+						"type": 63
+					}
+				],
+				"implicitMods": [
+					{
+						"description": "+12% to all Elemental Resistances",
+						"domain": "implicit",
+						"hash": "stat.implicit.stat_2901986750",
+						"mods": [
+							{
+								"magnitudes": [
+									{
+										"min": "8",
+										"max": "12"
+									}
+								]
+							}
+						]
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "+66 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Rotund",
+								"tier": "P7",
+								"level": 36,
+								"magnitudes": [
+									{
+										"min": "85",
+										"max": "99"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "Regenerate 19.2 Life per second",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3325883026",
+						"mods": [
+							{
+								"name": "of Ryslatha",
+								"tier": "S5",
+								"level": 68,
+								"magnitudes": [
+									{
+										"min": "48.1",
+										"max": "64"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "Regenerate 1% of Life per second",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_836936635",
+						"mods": [
+							{
+								"name": "of the Underground",
+								"tier": "S1",
+								"magnitudes": [
+									{
+										"min": "1",
+										"max": "1"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "Reflects 50 Physical Damage to Melee Attackers",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3767873853",
+						"mods": [
+							{
+								"name": "Jagged",
+								"tier": "P1",
+								"level": 35,
+								"magnitudes": [
+									{
+										"min": "25",
+										"max": "50"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "2% additional Physical Damage Reduction",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3771516363",
+						"mods": [
+							{
+								"name": "of Dampening",
+								"tier": "S0",
+								"level": 25,
+								"magnitudes": [
+									{
+										"min": "2",
+										"max": "2"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
+				"extended": {
+					"base_defence_percentile": 0,
+					"ar": 924,
+					"hashes": {
+						"explicit": [
+							["explicit.stat_3299347043", [0]],
+							["explicit.stat_3325883026", [3]],
+							["explicit.stat_836936635", [2]],
+							["explicit.stat_3767873853", [4]],
+							["explicit.stat_3771516363", [1]]
+						],
+						"implicit": [["implicit.stat_2901986750", [0]]]
+					},
+					"text": "SXRlbSBDbGFzczogQm9keSBBcm1vdXJzDQpSYXJpdHk6IFJhcmUNCkVhZ2xlIFNhbmN0dWFyeQ0KQXN0cmFsIFBsYXRlDQotLS0tLS0tLQ0KUXVhbGl0eTogKzMwJSAoYXVnbWVudGVkKQ0KQXJtb3VyOiA5MjQgKGF1Z21lbnRlZCkNCi0tLS0tLS0tDQpSZXF1aXJlbWVudHM6DQpMZXZlbDogNjINClN0cjogMTgwDQotLS0tLS0tLQ0KU29ja2V0czogUiBSLVItUiBSLVIgDQotLS0tLS0tLQ0KSXRlbSBMZXZlbDogODYNCi0tLS0tLS0tDQorMTIlIHRvIGFsbCBFbGVtZW50YWwgUmVzaXN0YW5jZXMNCi0tLS0tLS0tDQorNjYgdG8gbWF4aW11bSBMaWZlDQpSZWdlbmVyYXRlIDE5LjIgTGlmZSBwZXIgc2Vjb25kDQpSZWdlbmVyYXRlIDElIG9mIExpZmUgcGVyIHNlY29uZA0KUmVmbGVjdHMgNTAgUGh5c2ljYWwgRGFtYWdlIHRvIE1lbGVlIEF0dGFja2Vycw0KMiUgYWRkaXRpb25hbCBQaHlzaWNhbCBEYW1hZ2UgUmVkdWN0aW9uDQotLS0tLS0tLQ0KU2hhcGVyIEl0ZW0NCg=="
+				}
+			}
+		},
+		{
+			"id": "713dd811a7f71b0cecbf6c6896f0a6dbda17cb0b4ba6a19beeb036728a3a34d8",
+			"listing": {
+				"method": "psapi",
+				"indexed": "2022-08-17T03:47:24Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 4,
+					"y": 9
+				},
+				"price": {
+					"type": "~b/o",
+					"amount": 1,
+					"currency": "alch"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
+			},
+			"item": {
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9Cb2R5U3RyM0MiLCJ3IjoyLCJoIjozLCJzY2FsZSI6MX1d/09903268a5/BodyStr3C.png",
+				"league": "Standard",
+				"id": "713dd811a7f71b0cecbf6c6896f0a6dbda17cb0b4ba6a19beeb036728a3a34d8",
+				"sockets": [
+					{
+						"group": 0,
+						"attr": "S",
+						"sColour": "R"
+					},
+					{
+						"group": 0,
+						"attr": "S",
+						"sColour": "R"
+					}
+				],
+				"name": "Horror Cloak",
+				"typeLine": "Lordly Plate",
+				"baseType": "Lordly Plate",
+				"rarity": "Rare",
+				"ilvl": 35,
+				"identified": true,
+				"properties": [
+					{
+						"name": "Armour",
+						"values": [["353", 0]],
+						"displayMode": 0,
+						"type": 16
+					}
+				],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["35", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "Str",
+						"values": [["99", 0]],
+						"displayMode": 1,
+						"type": 63
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "+57 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Robust",
+								"tier": "P8",
+								"level": 30,
+								"magnitudes": [
+									{
+										"min": "70",
+										"max": "84"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+9% to Cold Resistance",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_4220027924",
+						"mods": [
+							{
+								"name": "of the Inuit",
+								"tier": "S8",
+								"magnitudes": [
+									{
+										"min": "6",
+										"max": "11"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+21% to Lightning Resistance",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1671376347",
+						"mods": [
+							{
+								"name": "of the Storm",
+								"tier": "S6",
+								"level": 25,
+								"magnitudes": [
+									{
+										"min": "18",
+										"max": "23"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "11% increased Stun and Block Recovery",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_2511217560",
+						"mods": [
+							{
+								"name": "of Thick Skin",
+								"tier": "S6",
+								"magnitudes": [
+									{
+										"min": "11",
+										"max": "13"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
+				"extended": {
+					"base_defence_percentile": 0,
+					"ar": 424,
+					"ar_aug": true,
+					"hashes": {
+						"explicit": [
+							["explicit.stat_3299347043", [2]],
+							["explicit.stat_4220027924", [0]],
+							["explicit.stat_1671376347", [1]],
+							["explicit.stat_2511217560", [3]]
+						]
+					},
+					"text": "SXRlbSBDbGFzczogQm9keSBBcm1vdXJzDQpSYXJpdHk6IFJhcmUNCkhvcnJvciBDbG9haw0KTG9yZGx5IFBsYXRlDQotLS0tLS0tLQ0KQXJtb3VyOiAzNTMNCi0tLS0tLS0tDQpSZXF1aXJlbWVudHM6DQpMZXZlbDogMzUNClN0cjogOTkNCi0tLS0tLS0tDQpTb2NrZXRzOiBSLVIgDQotLS0tLS0tLQ0KSXRlbSBMZXZlbDogMzUNCi0tLS0tLS0tDQorNTcgdG8gbWF4aW11bSBMaWZlDQorOSUgdG8gQ29sZCBSZXNpc3RhbmNlDQorMjElIHRvIExpZ2h0bmluZyBSZXNpc3RhbmNlDQoxMSUgaW5jcmVhc2VkIFN0dW4gYW5kIEJsb2NrIFJlY292ZXJ5DQo="
+				}
+			}
+		},
+		{
+			"id": "efb992daedd920188cf3976b113cdf39bc76f1392e1c660982dd6ab7467a4f9b",
+			"listing": {
+				"method": "psapi",
+				"indexed": "2022-08-17T08:23:27Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 10,
+					"y": 9
+				},
+				"price": {
+					"type": "~b/o",
+					"amount": 1,
+					"currency": "alch"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
+			},
+			"item": {
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9Cb2R5RGV4SW50MkMiLCJ3IjoyLCJoIjozLCJzY2FsZSI6MX1d/6744d2d486/BodyDexInt2C.png",
+				"league": "Standard",
+				"id": "efb992daedd920188cf3976b113cdf39bc76f1392e1c660982dd6ab7467a4f9b",
+				"sockets": [
+					{
+						"group": 0,
+						"attr": "D",
+						"sColour": "G"
+					}
+				],
+				"name": "Corpse Sanctuary",
+				"typeLine": "Lacquered Garb",
+				"baseType": "Lacquered Garb",
+				"rarity": "Rare",
+				"ilvl": 75,
+				"identified": true,
+				"properties": [
+					{
+						"name": "Evasion Rating",
+						"values": [["518", 1]],
+						"displayMode": 0,
+						"type": 17
+					},
+					{
+						"name": "Energy Shield",
+						"values": [["107", 1]],
+						"displayMode": 0,
+						"type": 18
+					}
+				],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["58", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "Dex",
+						"values": [["76", 0]],
+						"displayMode": 1,
+						"type": 64
+					},
+					{
+						"name": "Int",
+						"values": [["76", 0]],
+						"displayMode": 1,
+						"type": 65
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "81% increased Evasion and Energy Shield",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1999113824",
+						"mods": [
+							{
+								"name": "Unreal",
+								"tier": "P3",
+								"level": 72,
+								"magnitudes": [
+									{
+										"min": "80",
+										"max": "91"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+101 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Vigorous",
+								"tier": "P3",
+								"level": 73,
+								"magnitudes": [
+									{
+										"min": "145",
+										"max": "159"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+45% to Fire Resistance",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3372524247",
+						"mods": [
+							{
+								"name": "of the Magma",
+								"tier": "S2",
+								"level": 72,
+								"magnitudes": [
+									{
+										"min": "42",
+										"max": "45"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+18% to Lightning Resistance",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1671376347",
+						"mods": [
+							{
+								"name": "of the Storm",
+								"tier": "S6",
+								"level": 25,
+								"magnitudes": [
+									{
+										"min": "18",
+										"max": "23"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+21% to Cold Resistance",
+						"flags": {
+							"crafted": true
+						},
+						"domain": "crafted",
+						"hash": "stat.crafted.stat_4220027924",
+						"mods": [
+							{
+								"name": "of the Penguin",
+								"tier": "S0",
+								"level": 20,
+								"magnitudes": [
+									{
+										"min": "21",
+										"max": "25"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
+				"extended": {
+					"base_defence_percentile": 0,
+					"ev": 621,
+					"ev_aug": true,
+					"es": 128,
+					"es_aug": true,
+					"hashes": {
+						"explicit": [
+							["explicit.stat_1999113824", [2]],
+							["explicit.stat_3299347043", [3]],
+							["explicit.stat_3372524247", [0]],
+							["explicit.stat_1671376347", [1]]
+						],
+						"crafted": [["crafted.stat_4220027924", [0]]]
+					},
+					"text": "SXRlbSBDbGFzczogQm9keSBBcm1vdXJzDQpSYXJpdHk6IFJhcmUNCkNvcnBzZSBTYW5jdHVhcnkNCkxhY3F1ZXJlZCBHYXJiDQotLS0tLS0tLQ0KRXZhc2lvbiBSYXRpbmc6IDUxOCAoYXVnbWVudGVkKQ0KRW5lcmd5IFNoaWVsZDogMTA3IChhdWdtZW50ZWQpDQotLS0tLS0tLQ0KUmVxdWlyZW1lbnRzOg0KTGV2ZWw6IDU4DQpEZXg6IDc2DQpJbnQ6IDc2DQotLS0tLS0tLQ0KU29ja2V0czogRyANCi0tLS0tLS0tDQpJdGVtIExldmVsOiA3NQ0KLS0tLS0tLS0NCjgxJSBpbmNyZWFzZWQgRXZhc2lvbiBhbmQgRW5lcmd5IFNoaWVsZA0KKzEwMSB0byBtYXhpbXVtIExpZmUNCis0NSUgdG8gRmlyZSBSZXNpc3RhbmNlDQorMTglIHRvIExpZ2h0bmluZyBSZXNpc3RhbmNlDQorMjElIHRvIENvbGQgUmVzaXN0YW5jZQ0K"
+				}
+			}
+		}
+	]
+}

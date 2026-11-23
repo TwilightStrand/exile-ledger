@@ -1,66 +1,600 @@
 {
 	"result": [
 		{
-			"id": "a1b2c3",
+			"id": "0da8321acb388f2b093092e92004e14aca1294cef903a625f5ed35e39ada9e62",
 			"listing": {
 				"method": "psapi",
-				"indexed": "2026-11-20T10:00:00Z",
-				"stash": { "name": "~price 2 divine", "x": 3, "y": 4 },
-				"whisper": "@Exile Hi, I would like to buy your Doom Shelter Expert Waxed Jacket",
-				"account": {
-					"name": "Exile#1234",
-					"online": { "league": "Standard" },
-					"lastCharacterName": "Exile"
+				"indexed": "2025-01-06T06:32:32Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 0,
+					"y": 0
 				},
-				"price": { "type": "~price", "amount": 2, "currency": "divine" }
+				"price": {
+					"type": "~price",
+					"amount": 1,
+					"currency": "exalted"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
 			},
 			"item": {
+				"realm": "poe2",
 				"verified": true,
 				"w": 2,
 				"h": 3,
-				"icon": "https://web.poecdn.com/x.png",
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9CYXNldHlwZXMvQm9keURleEludDA1IiwidyI6MiwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/9875eb2d08/BodyDexInt05.png",
 				"league": "Standard",
-				"id": "a1b2c3",
-				"name": "Doom Shelter",
-				"typeLine": "Expert Waxed Jacket",
-				"baseType": "Expert Waxed Jacket",
+				"id": "0da8321acb388f2b093092e92004e14aca1294cef903a625f5ed35e39ada9e62",
+				"name": "Viper Wrap",
+				"typeLine": "Hatungo Garb",
+				"baseType": "Hatungo Garb",
 				"rarity": "Rare",
-				"ilvl": 82,
+				"ilvl": 73,
 				"identified": true,
-				"explicitMods": [
-					"+92 to maximum Life",
-					"+34% to Fire Resistance",
-					"+12% to Cold Resistance"
+				"note": "~price 1 exalted",
+				"properties": [
+					{
+						"name": "Body Armour",
+						"values": [],
+						"displayMode": 0,
+						"type": 109
+					},
+					{
+						"name": "[Evasion|Evasion Rating]",
+						"values": [["432", 1]],
+						"displayMode": 0,
+						"type": 17
+					},
+					{
+						"name": "[EnergyShield|Energy Shield]",
+						"values": [["139", 1]],
+						"displayMode": 0,
+						"type": 18
+					}
 				],
-				"implicitMods": [],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["59", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "[Dexterity|Dex]",
+						"values": [["52", 0]],
+						"displayMode": 1,
+						"type": 64
+					},
+					{
+						"name": "[Intelligence|Int]",
+						"values": [["52", 0]],
+						"displayMode": 1,
+						"type": 65
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "+28 to [Evasion] Rating",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_53045048",
+						"mods": [
+							{
+								"name": "Rogue's",
+								"tier": "P2",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "30",
+										"max": "39"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+12 to maximum [EnergyShield|Energy Shield]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_4052037485",
+						"mods": [
+							{
+								"name": "Rogue's",
+								"tier": "P2",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "11",
+										"max": "12"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "70% increased [Evasion] and [EnergyShield|Energy Shield]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1999113824",
+						"mods": [
+							{
+								"name": "Rogue's",
+								"tier": "P2",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "33",
+										"max": "38"
+									}
+								]
+							},
+							{
+								"name": "Minstrel's",
+								"tier": "P2",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "33",
+										"max": "38"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+207 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Fecund",
+								"tier": "P4",
+								"level": 65,
+								"magnitudes": [
+									{
+										"min": "150",
+										"max": "174"
+									}
+								]
+							},
+							{
+								"name": "Minstrel's",
+								"tier": "P2",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "33",
+										"max": "41"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+27% to [Resistances|Lightning Resistance]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1671376347",
+						"mods": [
+							{
+								"name": "of the Tempest",
+								"tier": "S4",
+								"level": 49,
+								"magnitudes": [
+									{
+										"min": "26",
+										"max": "30"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "5.7 Life Regeneration per second",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3325883026",
+						"mods": [
+							{
+								"name": "of the Starfish",
+								"tier": "S8",
+								"level": 17,
+								"magnitudes": [
+									{
+										"min": "4.1",
+										"max": "6"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+22 to [StunThreshold|Stun Threshold]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_915769802",
+						"mods": [
+							{
+								"name": "of Reinforced Skin",
+								"tier": "S9",
+								"level": 8,
+								"magnitudes": [
+									{
+										"min": "12",
+										"max": "29"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
 				"extended": {
+					"ev": 518,
+					"ev_aug": true,
+					"es": 167,
+					"es_aug": true,
 					"hashes": {
 						"explicit": [
-							["explicit.stat_3299347043", [0]],
-							["explicit.stat_3372524247", [1]],
-							["explicit.stat_4220027924", [2]]
+							["explicit.stat_53045048", [0]],
+							["explicit.stat_4052037485", [0]],
+							["explicit.stat_1999113824", [0, 5]],
+							["explicit.stat_3299347043", [2, 5]],
+							["explicit.stat_1671376347", [3]],
+							["explicit.stat_3325883026", [4]],
+							["explicit.stat_915769802", [1]]
 						]
 					}
 				}
 			}
 		},
-		null,
 		{
-			"id": "d4e5f6",
+			"id": "faa8fce28bb9a6aec9284e3187038e24be739e9e02a63c53d8c6bd00370b6b3c",
 			"listing": {
-				"indexed": "2026-11-21T10:00:00Z",
-				"account": { "name": "Other#99", "lastCharacterName": "Other" }
+				"method": "psapi",
+				"indexed": "2024-12-19T07:42:36Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 4,
+					"y": 0
+				},
+				"price": {
+					"type": "~price",
+					"amount": 1,
+					"currency": "exalted"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
 			},
 			"item": {
-				"name": "",
-				"typeLine": "Expert Waxed Jacket",
-				"baseType": "Expert Waxed Jacket",
-				"ilvl": 79,
-				"explicitMods": ["+81 to maximum Life"],
+				"realm": "poe2",
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9CYXNldHlwZXMvQm9keVN0cjA4IiwidyI6MiwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/017f2527d7/BodyStr08.png",
+				"league": "Standard",
+				"id": "faa8fce28bb9a6aec9284e3187038e24be739e9e02a63c53d8c6bd00370b6b3c",
+				"name": "Soul Guardian",
+				"typeLine": "Stone Cuirass",
+				"baseType": "Stone Cuirass",
+				"rarity": "Rare",
+				"ilvl": 63,
+				"identified": true,
+				"note": "~price 1 exalted",
+				"properties": [
+					{
+						"name": "Body Armour",
+						"values": [],
+						"displayMode": 0,
+						"type": 109
+					},
+					{
+						"name": "[Armour]",
+						"values": [["536", 1]],
+						"displayMode": 0,
+						"type": 16
+					}
+				],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["62", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "[Strength|Str]",
+						"values": [["98", 0]],
+						"displayMode": 1,
+						"type": 63
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "13% increased [Armour|Armour]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1062208444",
+						"mods": [
+							{
+								"name": "Oyster's",
+								"tier": "P6",
+								"level": 8,
+								"magnitudes": [
+									{
+										"min": "6",
+										"max": "13"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+91 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Oyster's",
+								"tier": "P6",
+								"level": 8,
+								"magnitudes": [
+									{
+										"min": "7",
+										"max": "10"
+									}
+								]
+							},
+							{
+								"name": "Robust",
+								"tier": "P8",
+								"level": 38,
+								"magnitudes": [
+									{
+										"min": "70",
+										"max": "84"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+6% to [Resistances|Lightning Resistance]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_1671376347",
+						"mods": [
+							{
+								"name": "of the Cloud",
+								"tier": "S8",
+								"magnitudes": [
+									{
+										"min": "6",
+										"max": "10"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+17 to [StunThreshold|Stun Threshold]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_915769802",
+						"mods": [
+							{
+								"name": "of Reinforced Skin",
+								"tier": "S9",
+								"level": 8,
+								"magnitudes": [
+									{
+										"min": "12",
+										"max": "29"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
 				"extended": {
-					"hashes": { "explicit": [["explicit.stat_3299347043", [0]]] }
+					"ar": 643,
+					"ar_aug": true,
+					"hashes": {
+						"explicit": [
+							["explicit.stat_1062208444", [1]],
+							["explicit.stat_3299347043", [1, 3]],
+							["explicit.stat_1671376347", [0]],
+							["explicit.stat_915769802", [2]]
+						]
+					}
+				}
+			}
+		},
+		{
+			"id": "30669aa3f0625821ebb8c1b3c79bf398fae770076501ea4aacc3df45410d6657",
+			"listing": {
+				"method": "psapi",
+				"indexed": "2024-12-21T21:38:52Z",
+				"stash": {
+					"name": "~price 1 exalted",
+					"x": 4,
+					"y": 12
 				},
-				"someNewField": { "x": 1 }
+				"price": {
+					"type": "~price",
+					"amount": 1,
+					"currency": "exalted"
+				},
+				"account": {
+					"name": "SellerAccount#0000",
+					"online": null,
+					"lastCharacterName": "SellerCharacter"
+				}
+			},
+			"item": {
+				"realm": "poe2",
+				"verified": true,
+				"w": 2,
+				"h": 3,
+				"icon": "https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQXJtb3Vycy9Cb2R5QXJtb3Vycy9CYXNldHlwZXMvQm9keVN0ckRleDA1IiwidyI6MiwiaCI6Mywic2NhbGUiOjEsInJlYWxtIjoicG9lMiJ9XQ/dfce2be64c/BodyStrDex05.png",
+				"league": "Standard",
+				"id": "30669aa3f0625821ebb8c1b3c79bf398fae770076501ea4aacc3df45410d6657",
+				"name": "Entropy Skin",
+				"typeLine": "Trailblazer Armour",
+				"baseType": "Trailblazer Armour",
+				"rarity": "Rare",
+				"ilvl": 78,
+				"identified": true,
+				"properties": [
+					{
+						"name": "Body Armour",
+						"values": [],
+						"displayMode": 0,
+						"type": 109
+					},
+					{
+						"name": "[Armour]",
+						"values": [["291", 1]],
+						"displayMode": 0,
+						"type": 16
+					},
+					{
+						"name": "[Evasion|Evasion Rating]",
+						"values": [["271", 1]],
+						"displayMode": 0,
+						"type": 17
+					}
+				],
+				"requirements": [
+					{
+						"name": "Level",
+						"values": [["59", 0]],
+						"displayMode": 0,
+						"type": 62
+					},
+					{
+						"name": "[Strength|Str]",
+						"values": [["52", 0]],
+						"displayMode": 1,
+						"type": 63
+					},
+					{
+						"name": "[Dexterity|Dex]",
+						"values": [["52", 0]],
+						"displayMode": 1,
+						"type": 64
+					}
+				],
+				"explicitMods": [
+					{
+						"description": "+42 to [Armour|Armour]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3484657501",
+						"mods": [
+							{
+								"name": "Flexible",
+								"tier": "P6",
+								"level": 33,
+								"magnitudes": [
+									{
+										"min": "47",
+										"max": "71"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+45 to [Evasion] Rating",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_53045048",
+						"mods": [
+							{
+								"name": "Flexible",
+								"tier": "P6",
+								"level": 33,
+								"magnitudes": [
+									{
+										"min": "42",
+										"max": "64"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+155 to maximum Life",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3299347043",
+						"mods": [
+							{
+								"name": "Fecund",
+								"tier": "P4",
+								"level": 65,
+								"magnitudes": [
+									{
+										"min": "150",
+										"max": "174"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+22 to [Strength|Strength]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_4080418644",
+						"mods": [
+							{
+								"name": "of the Gorilla",
+								"tier": "S4",
+								"level": 44,
+								"magnitudes": [
+									{
+										"min": "21",
+										"max": "24"
+									}
+								]
+							}
+						]
+					},
+					{
+						"description": "+33% to [Resistances|Fire Resistance]",
+						"domain": "explicit",
+						"hash": "stat.explicit.stat_3372524247",
+						"mods": [
+							{
+								"name": "of the Volcano",
+								"tier": "S3",
+								"level": 60,
+								"magnitudes": [
+									{
+										"min": "31",
+										"max": "35"
+									}
+								]
+							}
+						]
+					}
+				],
+				"frameType": 2,
+				"frameTypeId": "Rare",
+				"extended": {
+					"ev": 325,
+					"ev_aug": true,
+					"ar": 349,
+					"ar_aug": true,
+					"hashes": {
+						"explicit": [
+							["explicit.stat_3484657501", [1]],
+							["explicit.stat_53045048", [1]],
+							["explicit.stat_3299347043", [0]],
+							["explicit.stat_4080418644", [2]],
+							["explicit.stat_3372524247", [3]]
+						]
+					}
+				}
 			}
 		}
 	]

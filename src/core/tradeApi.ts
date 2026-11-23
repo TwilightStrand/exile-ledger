@@ -79,7 +79,11 @@ const MOD_KINDS = [
 ] as const;
 export type ModKind = (typeof MOD_KINDS)[number];
 
-const ModLines = v.optional(v.array(v.string()));
+const ModLine = v.union([
+	v.string(),
+	v.looseObject({ description: v.string(), hash: v.optional(v.string()) }),
+]);
+const ModLines = v.nullish(v.array(ModLine));
 const HashEntry = v.tuple([v.string(), v.nullish(v.array(v.number()))]);
 
 const ItemSchema = v.looseObject({
@@ -133,8 +137,9 @@ export interface ResultItem {
 }
 
 type Item = v.InferOutput<typeof ItemSchema>;
+type ModLineData = v.InferOutput<typeof ModLine>;
 
-function linesFor(item: Item, kind: ModKind): string[] {
+function linesFor(item: Item, kind: ModKind): ModLineData[] {
 	switch (kind) {
 		case "enchant":
 			return item.enchantMods ?? [];
@@ -151,16 +156,28 @@ function linesFor(item: Item, kind: ModKind): string[] {
 	}
 }
 
+/** PoE2 marks keywords as `[Tag]` or `[Tag|Shown text]`; the player sees only the shown text. */
+export function stripMarkup(text: string): string {
+	return text.replace(/\[(?:[^\]|]*\|)?([^\]]*)\]/g, "$1");
+}
+
 function modsOf(item: Item): ResultMod[] {
 	const hashes = item.extended?.hashes ?? {};
 	return MOD_KINDS.flatMap((kind) =>
-		linesFor(item, kind).map((text, index) => ({
-			kind,
-			text,
-			statIds: (hashes[kind] ?? [])
-				.filter(([, lines]) => lines?.includes(index))
-				.map(([statId]) => statId),
-		})),
+		linesFor(item, kind).map((line, index) => {
+			// `hashes[kind]` lists one [statId, affixIndices] per line, in line order.
+			const positional = hashes[kind]?.[index]?.[0];
+			const own =
+				typeof line === "string"
+					? undefined
+					: line.hash?.replace(/^stat\./, "");
+			const statId = own ?? positional;
+			return {
+				kind,
+				text: stripMarkup(typeof line === "string" ? line : line.description),
+				statIds: statId ? [statId] : [],
+			};
+		}),
 	);
 }
 
