@@ -32,7 +32,7 @@ export function CurrentSearch({
 						<Chip>{formatCount(event.search.total)} results</Chip>
 					</div>
 					{onSave && saved && (
-						<p class="mt-3 flex items-center justify-center gap-1.5 rounded border border-ledger-border py-1.5 text-[12px] text-ledger-muted">
+						<p class="mt-3 flex animate-pop-in items-center justify-center gap-1.5 rounded border border-ledger-border py-1.5 text-[12px] text-ledger-muted">
 							<Check class="size-3.5 text-ledger-live" />
 							Saved to bookmarks
 						</p>

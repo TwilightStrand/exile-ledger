@@ -183,6 +183,19 @@ describe("Panel bookmarks", () => {
 		expect(treeText(root)).toContain("Chest upgrades");
 	});
 
+	it("collapses a folder and keeps its rows out of the tab order", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ feed: capturedFeed(), library });
+		await act(async () => button(root, "Save search")?.click());
+
+		const folder = root.querySelector<HTMLButtonElement>(
+			"nav button[aria-expanded]",
+		);
+		await act(async () => folder?.click());
+		expect(folder?.getAttribute("aria-expanded")).toBe("false");
+		expect(folder?.nextElementSibling?.hasAttribute("inert")).toBe(true);
+	});
+
 	it("deletes a bookmark after confirming", async () => {
 		const library = createMemoryLibrary();
 		const root = await mount({ feed: capturedFeed(), library });

@@ -18,6 +18,44 @@
 	--color-ledger-poe2: #7fb0d8;
 	--color-ledger-live: #7cc47f;
 
+	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+	--animate-panel-in-left: panel-in-left 220ms var(--ease-out-soft);
+	--animate-panel-in-right: panel-in-right 220ms var(--ease-out-soft);
+	--animate-fade-in: fade-in 160ms ease-out;
+	--animate-pop-in: pop-in 200ms var(--ease-out-soft);
+	--animate-glow: glow 1400ms ease-out;
+
+	@keyframes panel-in-left {
+		from {
+			opacity: 0;
+			transform: translateX(-14px);
+		}
+	}
+	@keyframes panel-in-right {
+		from {
+			opacity: 0;
+			transform: translateX(14px);
+		}
+	}
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes pop-in {
+		from {
+			opacity: 0;
+			transform: scale(0.96);
+		}
+	}
+	/* A just-saved bookmark lights up so the eye finds where it landed. */
+	@keyframes glow {
+		0%,
+		35% {
+			background-color: rgb(214 173 98 / 0.22);
+		}
+	}
+
 	/* The trade site ships Fontin SmallCaps; inside its pages the panel picks it up. */
 	--font-display:
 		"FontinSmallCaps", "Fontin SmallCaps", "Palatino Linotype", "Book Antiqua",
@@ -35,5 +73,16 @@
 	::before,
 	::after {
 		--tw-border-style: solid;
+	}
+}
+
+/* Unlayered, so it outranks the layered utilities without !important. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 1ms;
+		animation-iteration-count: 1;
+		transition-duration: 1ms;
 	}
 }

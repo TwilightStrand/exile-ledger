@@ -11,6 +11,8 @@ import {
 export interface BookmarkActions {
 	onRename: (id: string, name: string) => void;
 	onDelete: (id: string) => void;
+	/** The bookmark saved last, flashed once so the eye finds it. */
+	highlightId?: string | null;
 }
 
 const ROW =
@@ -67,7 +69,7 @@ function BookmarkRow({
 
 	if (mode === "rename" && actions) {
 		return (
-			<div class="px-1 py-0.5">
+			<div class="animate-fade-in px-1 py-0.5">
 				<RenameField
 					initial={bookmark.title}
 					onDone={(name) => {
@@ -83,7 +85,7 @@ function BookmarkRow({
 
 	if (mode === "confirm-delete" && actions) {
 		return (
-			<div class="flex h-8 items-center gap-2 rounded bg-red-950/40 px-2 text-[12px]">
+			<div class="flex h-8 animate-fade-in items-center gap-2 rounded bg-red-950/40 px-2 text-[12px]">
 				<span class="min-w-0 flex-1 truncate text-ledger-text">
 					Delete “{bookmark.title}”?
 				</span>
@@ -108,7 +110,7 @@ function BookmarkRow({
 	return (
 		<div class="group relative">
 			<a
-				class={`${ROW} text-ledger-text no-underline`}
+				class={`${ROW} text-ledger-text no-underline ${actions?.highlightId === bookmark.id ? "animate-glow" : ""}`}
 				href={bookmark.href}
 				title={`${bookmark.title} · ${bookmark.league}`}
 			>
@@ -122,7 +124,7 @@ function BookmarkRow({
 				<GameTag game={bookmark.game} />
 			</a>
 			{actions && (
-				<div class="absolute inset-y-0 right-1 hidden items-center gap-0.5 rounded bg-ledger-raised pl-1 group-focus-within:flex group-hover:flex">
+				<div class="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-0.5 rounded bg-ledger-raised pl-1 opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
 					<button
 						type="button"
 						class={ICON_BUTTON}
@@ -169,8 +171,17 @@ function FolderRow({
 				<span class="min-w-0 flex-1 truncate font-medium">{folder.name}</span>
 				<span class="text-[11px] text-ledger-faint tabular-nums">{count}</span>
 			</button>
-			{open && folder.children.length > 0 && (
-				<TreeLevel nodes={folder.children} actions={actions} nested />
+			{folder.children.length > 0 && (
+				// Grid rows animate between 0fr and 1fr, which gives a height
+				// transition without measuring content.
+				<div
+					class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+					inert={!open}
+				>
+					<div class="min-h-0 overflow-hidden">
+						<TreeLevel nodes={folder.children} actions={actions} nested />
+					</div>
+				</div>
 			)}
 		</li>
 	);

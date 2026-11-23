@@ -80,12 +80,12 @@ const TAB_LABELS: Record<TabId, string> = {
 const SIDE_CLASSES = {
 	left: {
 		aside: "left-0",
-		panel: "border-r",
+		panel: "border-r animate-panel-in-left",
 		tab: "left-0 rounded-r-md border-l-0",
 	},
 	right: {
 		aside: "right-0",
-		panel: "border-l",
+		panel: "border-l animate-panel-in-right",
 		tab: "right-0 rounded-l-md border-r-0",
 	},
 } as const;
@@ -122,6 +122,7 @@ export function Panel({
 }: PanelProps) {
 	const [open, setOpen] = useState(initiallyOpen);
 	const [tab, setTab] = useState<TabId>(initialTab);
+	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
 	const side = usePanelSide(settings);
 	const library = useLibrary(librarySource);
@@ -139,23 +140,25 @@ export function Panel({
 		const event = capture.search;
 		if (!event) return;
 		const query = event.search.query;
-		librarySource.update(
-			(lib) =>
-				saveSearch(
-					lib,
-					{
-						game: event.game,
-						league: event.league,
-						name: titleOfQuery(query),
-						query,
-						searchId: event.search.searchId,
-						live: currentPage?.location.live ?? false,
-					},
-					clock(),
-				).library,
-		);
+		librarySource.update((lib) => {
+			const saved = saveSearch(
+				lib,
+				{
+					game: event.game,
+					league: event.league,
+					name: titleOfQuery(query),
+					query,
+					searchId: event.search.searchId,
+					live: currentPage?.location.live ?? false,
+				},
+				clock(),
+			);
+			setLastSavedId(saved.bookmark.id);
+			return saved.library;
+		});
 	};
 	const actions = {
+		highlightId: lastSavedId,
 		onRename: (id: string, name: string) =>
 			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
 		onDelete: (id: string) =>
@@ -203,8 +206,13 @@ export function Panel({
 					<div
 						role="tablist"
 						aria-label="Panel sections"
-						class="mt-3 flex shrink-0 border-b border-ledger-border px-3"
+						class="relative mt-3 flex shrink-0 border-b border-ledger-border px-3"
 					>
+						<span
+							aria-hidden="true"
+							class="absolute bottom-[-1px] left-3 h-0.5 w-[calc((100%-1.5rem)/3)] rounded-full bg-ledger-gold transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]"
+							style={{ transform: `translateX(${TABS.indexOf(tab) * 100}%)` }}
+						/>
 						{TABS.map((id) => {
 							const label = TAB_LABELS[id];
 							const selected = tab === id;
@@ -216,10 +224,10 @@ export function Panel({
 									id={`exile-ledger-tab-${id}`}
 									aria-selected={selected}
 									aria-controls="exile-ledger-tabpanel"
-									class={`-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2 font-display text-[14px] tracking-[0.03em] transition-colors focus-visible:outline-2 focus-visible:outline-ledger-gold ${
+									class={`flex flex-1 items-center justify-center gap-1.5 py-2 font-display text-[14px] tracking-[0.03em] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ledger-gold ${
 										selected
-											? "border-ledger-gold text-ledger-gold-bright"
-											: "border-transparent text-ledger-muted hover:text-ledger-text"
+											? "text-ledger-gold-bright"
+											: "text-ledger-muted hover:text-ledger-text"
 									}`}
 									onClick={() => setTab(id)}
 								>
@@ -240,21 +248,25 @@ export function Panel({
 						aria-labelledby={`exile-ledger-tab-${tab}`}
 						class="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#4a3b27_transparent] [scrollbar-width:thin]"
 					>
-						{tab === "bookmarks" && (
-							<BookmarkTree nodes={bookmarks} actions={actions} />
-						)}
-						{tab === "history" && <HistoryList entries={history} now={now()} />}
-						{tab === "pinned" && (
-							<EmptyState icon={Pin} title="Nothing pinned">
-								Pin result rows to compare them while you keep searching.
-							</EmptyState>
-						)}
+						<div key={tab} class="animate-fade-in">
+							{tab === "bookmarks" && (
+								<BookmarkTree nodes={bookmarks} actions={actions} />
+							)}
+							{tab === "history" && (
+								<HistoryList entries={history} now={now()} />
+							)}
+							{tab === "pinned" && (
+								<EmptyState icon={Pin} title="Nothing pinned">
+									Pin result rows to compare them while you keep searching.
+								</EmptyState>
+							)}
+						</div>
 					</div>
 				</div>
 			) : (
 				<button
 					type="button"
-					class={`absolute top-24 flex h-32 w-8 flex-col items-center justify-center gap-2 border border-ledger-line/70 bg-ledger-panel text-ledger-gold transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold ${classes.tab} ${PANEL_SHADOW}`}
+					class={`absolute top-24 flex h-32 w-8 animate-fade-in flex-col items-center justify-center gap-2 border border-ledger-line/70 bg-ledger-panel text-ledger-gold transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold ${classes.tab} ${PANEL_SHADOW}`}
 					aria-expanded={false}
 					aria-controls="exile-ledger-panel"
 					aria-label="Expand Exile Ledger"
