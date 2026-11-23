@@ -42,6 +42,8 @@ export const BookmarkSchema = v.object({
 	// Optional because legacy imports may only carry a search ID.
 	query: v.optional(TradeQuerySchema),
 	searchId: v.optional(v.string()),
+	// Bulk exchange bookmarks come from Better Trading imports; saving here is search only.
+	tradeType: v.optional(v.picklist(["search", "exchange"])),
 	live: v.boolean(),
 	order: v.number(),
 	createdAt: v.number(),

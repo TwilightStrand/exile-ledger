@@ -14,7 +14,7 @@ import {
 /** The parts of a bookmark or history entry needed to open it. */
 export type OpenableSearch = Pick<
 	Bookmark,
-	"game" | "league" | "query" | "searchId" | "live"
+	"game" | "league" | "query" | "searchId" | "live" | "tradeType"
 >;
 
 export function bookmarkHref(
@@ -27,7 +27,7 @@ export function bookmarkHref(
 	const league = sameGame ? location.league : bookmark.league;
 	const target: TradeLocation = {
 		game: bookmark.game,
-		type: "search",
+		type: bookmark.tradeType ?? "search",
 		realm: sameGame ? location.realm : bookmark.game === "poe2" ? "poe2" : null,
 		league,
 		searchId: bookmark.searchId ?? null,

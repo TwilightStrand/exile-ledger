@@ -2,13 +2,13 @@ import { useEffect, useState } from "preact/hooks";
 import {
 	type Backup,
 	createBackup,
-	decodeShare,
 	importPayload,
 	type Parsed,
 	type Payload,
 	parseBackup,
 } from "../../core/exchange";
 import type { HistoryEntry } from "../../core/history";
+import { decodeImport, type ImportSource } from "../../core/importers";
 import type { Clock, LibrarySource } from "../../core/library";
 import {
 	DEFAULT_SETTINGS,
@@ -69,8 +69,13 @@ function useSettingsValue(source: SettingsSource): Settings {
 
 type Pending =
 	| { kind: "backup"; backup: Backup }
-	| { kind: "share"; payload: Payload }
+	| { kind: "share"; source: ImportSource; payload: Payload }
 	| null;
+
+const SOURCE_LABELS: Record<ImportSource, string> = {
+	"exile-ledger": "Shared folder",
+	"better-trading": "Better Trading export",
+};
 
 function countText(folders: number, bookmarks: number): string {
 	return `${folders} folder${folders === 1 ? "" : "s"} and ${bookmarks} bookmark${bookmarks === 1 ? "" : "s"}`;
@@ -136,10 +141,17 @@ function BackupSection({
 	};
 
 	const readShare = () => {
-		const parsed = decodeShare(shareText);
+		const parsed = decodeImport(shareText, clock().now);
 		stage(
 			parsed.ok
-				? { ok: true, value: { kind: "share", payload: parsed.value } }
+				? {
+						ok: true,
+						value: {
+							kind: "share",
+							source: parsed.value.source,
+							payload: parsed.value.payload,
+						},
+					}
 				: parsed,
 		);
 	};
@@ -232,7 +244,7 @@ function BackupSection({
 					<p class="text-[14px] text-ledger-text">
 						{pending.kind === "backup"
 							? `Backup from ${new Date(pending.backup.exportedAt).toLocaleString("en")}: ${summary(pending.backup.library)}.`
-							: `Shared folder: ${summary(pending.payload)}.`}
+							: `${SOURCE_LABELS[pending.source]}: ${summary(pending.payload)}.`}
 					</p>
 					{pending.kind === "backup" && pending.backup.settings && (
 						<label class="mt-3 flex items-center gap-2 text-[13px] text-ledger-muted">

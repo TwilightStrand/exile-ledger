@@ -105,13 +105,13 @@ describe("SettingsPage", () => {
 		const area = root.querySelector<HTMLTextAreaElement>("textarea");
 		if (!area) throw new Error("no textarea");
 
-		area.value = "3:not-ours";
+		area.value = "garbage that is not an export";
 		await act(async () => {
 			area.dispatchEvent(new Event("input"));
 		});
 		await act(async () => button(root, "Read")?.click());
 		expect(root.querySelector("[role=alert]")?.textContent).toContain(
-			"not an Exile Ledger share string",
+			"not an Exile Ledger share string or a Better Trading export",
 		);
 		expect((await library.load()).folders).toHaveLength(1);
 
