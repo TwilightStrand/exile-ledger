@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+	--color-ledger-bg: #0f0d0b;
+	--color-ledger-panel: #1a1612;
+	--color-ledger-border: #3a2f24;
+	--color-ledger-text: #e6dcc8;
+	--color-ledger-muted: #9a8b74;
+	--color-ledger-accent: #c8a35a;
+}
