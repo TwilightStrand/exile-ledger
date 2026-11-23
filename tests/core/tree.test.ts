@@ -10,6 +10,7 @@ import {
 	moveFolder,
 	renameFolder,
 	setArchived,
+	setFolderIcon,
 	subtreeStats,
 } from "../../src/core/tree";
 
@@ -232,5 +233,20 @@ describe("renameFolder", () => {
 
 	it("leaves an empty library alone", () => {
 		expect(renameFolder(emptyLibrary(), "a", "x", 1)).toEqual(emptyLibrary());
+	});
+});
+
+describe("setFolderIcon", () => {
+	it("sets an icon, and unknown stored icons read as the plain folder", () => {
+		expect(setFolderIcon(chain(), "a", "ring", 3).folders[0]).toMatchObject({
+			icon: "ring",
+			updatedAt: 3,
+		});
+		const parsed = parseLibrary({
+			folders: [{ ...folder("z", null), icon: "dragon" }],
+			bookmarks: [],
+			tombstones: [],
+		});
+		expect(parsed.folders[0]?.icon).toBe("folder");
 	});
 });

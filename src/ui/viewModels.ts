@@ -1,3 +1,4 @@
+import type { FolderIcon } from "../core/model";
 import type { Game } from "../core/tradeUrl";
 
 /** What the panel shows; the stores in later tasks map their records onto these. */
@@ -17,6 +18,7 @@ export interface FolderView {
 	name: string;
 	/** 1 at the root; new subfolders are offered only below MAX_DEPTH. */
 	depth: number;
+	icon: FolderIcon;
 	children: TreeNodeView[];
 }
 

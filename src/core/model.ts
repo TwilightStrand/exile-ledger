@@ -3,6 +3,22 @@ import { TradeQuerySchema } from "./query";
 
 const GameSchema = v.picklist(["poe1", "poe2"]);
 
+export const FOLDER_ICONS = [
+	"folder",
+	"sword",
+	"bow",
+	"shield",
+	"helmet",
+	"ring",
+	"amulet",
+	"gem",
+	"flask",
+	"map",
+	"coin",
+	"star",
+] as const;
+export type FolderIcon = (typeof FOLDER_ICONS)[number];
+
 export const FolderSchema = v.object({
 	id: v.string(),
 	parentId: v.nullable(v.string()),
@@ -11,6 +27,8 @@ export const FolderSchema = v.object({
 	game: GameSchema,
 	order: v.number(),
 	archived: v.boolean(),
+	// Unknown icons from a newer build fall back to the plain folder.
+	icon: v.optional(v.fallback(v.picklist(FOLDER_ICONS), "folder")),
 	updatedAt: v.number(),
 });
 export type Folder = v.InferOutput<typeof FolderSchema>;

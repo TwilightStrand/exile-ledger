@@ -1,5 +1,5 @@
 import type { Clock } from "./library";
-import type { Folder, Library, Tombstone } from "./model";
+import type { Folder, FolderIcon, Library, Tombstone } from "./model";
 import type { Game } from "./tradeUrl";
 
 /** Five levels keeps the side panel readable; see the spec's open questions. */
@@ -208,4 +208,18 @@ export function archivedRoots(library: Library, game: Game): Folder[] {
 		const parent = f.parentId ? index.get(f.parentId) : undefined;
 		return !parent?.archived;
 	});
+}
+
+export function setFolderIcon(
+	library: Library,
+	id: string,
+	icon: FolderIcon,
+	now: number,
+): Library {
+	return {
+		...library,
+		folders: library.folders.map((f) =>
+			f.id === id ? { ...f, icon, updatedAt: now } : f,
+		),
+	};
 }

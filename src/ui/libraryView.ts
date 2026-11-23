@@ -16,6 +16,7 @@ export function libraryView(
 		id: node.folder.id,
 		name: node.folder.name,
 		depth,
+		icon: node.folder.icon ?? "folder",
 		children: [
 			...node.folders.map((child) => toView(child, depth + 1)),
 			...node.bookmarks.map(

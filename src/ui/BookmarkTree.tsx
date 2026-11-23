@@ -1,10 +1,18 @@
-import { useLayoutEffect, useRef, useState } from "preact/hooks";
+import { createContext } from "preact";
+import {
+	useContext,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "preact/hooks";
+import { FOLDER_ICONS, type FolderIcon } from "../core/model";
 import { MAX_DEPTH } from "../core/tree";
+import { FOLDER_ICON_COMPONENTS, FOLDER_ICON_LABELS } from "./folderIcons";
 import {
 	Archive,
 	Bolt,
 	ChevronRight,
-	Folder,
 	FolderPlus,
 	Pencil,
 	Plus,
@@ -20,6 +28,17 @@ import {
 	type TreeNodeView,
 } from "./viewModels";
 
+export interface DragItem {
+	kind: "bookmark" | "folder";
+	id: string;
+}
+
+/** Where to put an item: under `parentId`, before the sibling `beforeId` (null for the end). */
+export interface PlaceTarget {
+	parentId: string | null;
+	beforeId: string | null;
+}
+
 export interface TreeActions {
 	/** The bookmark saved last, flashed once so the eye finds it. */
 	highlightId?: string | null;
@@ -29,9 +48,36 @@ export interface TreeActions {
 	onRenameFolder: (id: string, name: string) => void;
 	onArchiveFolder: (id: string, archived: boolean) => void;
 	onDeleteFolder: (id: string) => void;
+	onSetIcon: (id: string, icon: FolderIcon) => void;
+	onPlace: (item: DragItem, target: PlaceTarget) => void;
 	isCollapsed: (id: string) => boolean;
 	onToggleFolder: (id: string, collapsed: boolean) => void;
 }
+
+/** A row's neighbours, for drop targets and keyboard moves. */
+interface RowPlace {
+	parentId: string | null;
+	grandParentId: string | null;
+	prevId: string | null;
+	nextId: string | null;
+	nextNextId: string | null;
+}
+
+type DropWhere = "before" | "after" | "into";
+
+interface DragState {
+	dragging: DragItem | null;
+	hint: { id: string; where: DropWhere } | null;
+	setDragging: (item: DragItem | null) => void;
+	setHint: (hint: { id: string; where: DropWhere } | null) => void;
+}
+
+const DragContext = createContext<DragState>({
+	dragging: null,
+	hint: null,
+	setDragging: () => {},
+	setHint: () => {},
+});
 
 const ROW =
 	"flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold";
@@ -41,6 +87,131 @@ const ICON_BUTTON =
 
 const HOVER_ACTIONS =
 	"pointer-events-none absolute inset-y-0 right-1 flex items-center gap-0.5 rounded bg-ledger-raised pl-1 opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
+
+// Box shadows written out: Tailwind's shadow utilities need @property, which shadow roots ignore.
+const HINT_CLASSES: Record<DropWhere, string> = {
+	before: "[box-shadow:inset_0_2px_0_#d6ad62]",
+	after: "[box-shadow:inset_0_-2px_0_#d6ad62]",
+	into: "bg-ledger-gold/15 [box-shadow:inset_0_0_0_1px_rgb(214_173_98/0.6)]",
+};
+
+const KEY_HINT = "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight";
+
+function dropWhere(
+	e: DragEvent,
+	item: DragItem,
+	rowKind: DragItem["kind"],
+): DropWhere | null {
+	const target = e.currentTarget;
+	if (!(target instanceof HTMLElement)) return null;
+	const rect = target.getBoundingClientRect();
+	const y = (e.clientY - rect.top) / Math.max(rect.height, 1);
+	if (rowKind === "bookmark") {
+		if (item.kind !== "bookmark") return null;
+		return y < 0.5 ? "before" : "after";
+	}
+	if (item.kind === "bookmark") return "into";
+	if (y < 0.25) return "before";
+	if (y > 0.75) return "after";
+	return "into";
+}
+
+/** Drag source and drop target wiring shared by bookmark and folder rows. */
+function useDragRow(
+	self: DragItem,
+	place: RowPlace,
+	actions: TreeActions | undefined,
+) {
+	const drag = useContext(DragContext);
+	const hint = drag.hint?.id === self.id ? drag.hint.where : null;
+	const isDragged = drag.dragging?.id === self.id;
+
+	const targetFor = (where: DropWhere): PlaceTarget =>
+		where === "into"
+			? { parentId: self.id, beforeId: null }
+			: {
+					parentId: place.parentId,
+					beforeId: where === "before" ? self.id : place.nextId,
+				};
+
+	const onKeyDown = (e: KeyboardEvent) => {
+		if (!actions || !e.altKey) return;
+		const moves: Record<string, PlaceTarget | null> = {
+			ArrowUp: place.prevId
+				? { parentId: place.parentId, beforeId: place.prevId }
+				: null,
+			ArrowDown: place.nextId
+				? { parentId: place.parentId, beforeId: place.nextNextId }
+				: null,
+			// Bookmarks cannot sit at the root, so they only move out when there is a level above.
+			ArrowLeft:
+				place.parentId !== null &&
+				(self.kind === "folder" || place.grandParentId !== null)
+					? { parentId: place.grandParentId, beforeId: null }
+					: null,
+			ArrowRight:
+				self.kind === "folder" && place.prevId
+					? { parentId: place.prevId, beforeId: null }
+					: null,
+		};
+		const target = moves[e.key];
+		if (target === undefined) return;
+		e.preventDefault();
+		if (target) actions.onPlace(self, target);
+	};
+
+	const props = actions
+		? {
+				draggable: true,
+				onDragStart: (e: DragEvent) => {
+					e.stopPropagation();
+					// Firefox starts a drag only when some data is set.
+					e.dataTransfer?.setData("text/plain", self.id);
+					if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+					drag.setDragging(self);
+				},
+				onDragEnd: () => {
+					drag.setDragging(null);
+					drag.setHint(null);
+				},
+				onDragOver: (e: DragEvent) => {
+					const item = drag.dragging;
+					if (!item || item.id === self.id) return;
+					const where = dropWhere(e, item, self.kind);
+					if (!where) return;
+					e.preventDefault();
+					e.stopPropagation();
+					if (drag.hint?.id !== self.id || drag.hint.where !== where) {
+						drag.setHint({ id: self.id, where });
+					}
+				},
+				onDragLeave: (e: DragEvent) => {
+					const next = e.relatedTarget;
+					if (
+						next instanceof Node &&
+						e.currentTarget instanceof Node &&
+						e.currentTarget.contains(next)
+					) {
+						return;
+					}
+					if (drag.hint?.id === self.id) drag.setHint(null);
+				},
+				onDrop: (e: DragEvent) => {
+					const item = drag.dragging;
+					const where = item ? dropWhere(e, item, self.kind) : null;
+					drag.setDragging(null);
+					drag.setHint(null);
+					if (!item || !where || item.id === self.id) return;
+					e.preventDefault();
+					e.stopPropagation();
+					actions.onPlace(item, targetFor(where));
+				},
+			}
+		: {};
+
+	const stateClass = `${hint ? HINT_CLASSES[hint] : ""} ${isDragged ? "opacity-40" : ""}`;
+	return { props, onKeyDown, stateClass };
+}
 
 function NameField({
 	initial,
@@ -114,19 +285,66 @@ function ConfirmRow({
 	);
 }
 
+function IconPicker({
+	current,
+	onPick,
+}: {
+	current: FolderIcon;
+	onPick: (icon: FolderIcon | null) => void;
+}) {
+	return (
+		<fieldset
+			aria-label="Folder icon"
+			class="ml-[15px] grid animate-fade-in grid-cols-6 gap-1 border-0 border-l border-ledger-border py-1 pl-2"
+			onKeyDown={(e) => {
+				if (e.key === "Escape") onPick(null);
+			}}
+		>
+			{FOLDER_ICONS.map((icon) => {
+				const Icon = FOLDER_ICON_COMPONENTS[icon];
+				const selected = icon === current;
+				return (
+					<button
+						key={icon}
+						type="button"
+						aria-pressed={selected}
+						aria-label={FOLDER_ICON_LABELS[icon]}
+						title={FOLDER_ICON_LABELS[icon]}
+						class={`grid h-7 place-items-center rounded border transition-colors focus-visible:outline-2 focus-visible:outline-ledger-gold ${
+							selected
+								? "border-ledger-gold/60 bg-ledger-gold/15 text-ledger-gold-bright"
+								: "border-transparent text-ledger-muted hover:bg-ledger-raised hover:text-ledger-gold"
+						}`}
+						onClick={() => onPick(icon)}
+					>
+						<Icon class="size-4" />
+					</button>
+				);
+			})}
+		</fieldset>
+	);
+}
+
 function plural(n: number, word: string): string {
 	return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 function BookmarkRow({
 	bookmark,
+	place,
 	actions,
 }: {
 	bookmark: BookmarkView;
+	place: RowPlace;
 	actions: TreeActions | undefined;
 }) {
 	const [mode, setMode] = useState<"view" | "rename" | "confirm-delete">(
 		"view",
+	);
+	const { props, onKeyDown, stateClass } = useDragRow(
+		{ kind: "bookmark", id: bookmark.id },
+		place,
+		actions,
 	);
 
 	if (mode === "rename" && actions) {
@@ -155,11 +373,14 @@ function BookmarkRow({
 	}
 
 	return (
-		<div class="group relative">
+		<div class={`group relative rounded ${stateClass}`} {...props}>
 			<a
 				class={`${ROW} text-ledger-text no-underline ${actions?.highlightId === bookmark.id ? "animate-glow" : ""}`}
 				href={bookmark.href}
 				title={`${bookmark.title} · ${bookmark.league}`}
+				draggable={false}
+				aria-keyshortcuts={actions ? KEY_HINT : undefined}
+				onKeyDown={onKeyDown}
 			>
 				<span class="min-w-0 flex-1 truncate">{bookmark.title}</span>
 				{bookmark.live && (
@@ -194,13 +415,15 @@ function BookmarkRow({
 	);
 }
 
-type FolderMode = "view" | "rename" | "new-child" | "confirm-delete";
+type FolderMode = "view" | "rename" | "new-child" | "confirm-delete" | "icon";
 
 function FolderRow({
 	folder,
+	place,
 	actions,
 }: {
 	folder: FolderView;
+	place: RowPlace;
 	actions: TreeActions | undefined;
 }) {
 	const [mode, setMode] = useState<FolderMode>("view");
@@ -208,19 +431,27 @@ function FolderRow({
 	const count = countBookmarks(folder.children);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
 	const canNest = folder.depth < MAX_DEPTH;
+	const Icon = FOLDER_ICON_COMPONENTS[folder.icon];
+	const { props, onKeyDown, stateClass } = useDragRow(
+		{ kind: "folder", id: folder.id },
+		place,
+		actions,
+	);
 
 	let row = (
-		<div class="group relative">
+		<div class={`group relative rounded ${stateClass}`} {...props}>
 			<button
 				type="button"
 				class={`${ROW} text-ledger-text`}
 				aria-expanded={open}
+				aria-keyshortcuts={actions ? KEY_HINT : undefined}
 				onClick={() => actions?.onToggleFolder(folder.id, open)}
+				onKeyDown={onKeyDown}
 			>
 				<ChevronRight
 					class={`size-3.5 shrink-0 text-ledger-faint transition-transform duration-200 ${open ? "rotate-90" : ""}`}
 				/>
-				<Folder class="size-4 shrink-0 text-ledger-gold/75" />
+				<Icon class="size-4 shrink-0 text-ledger-gold/75" />
 				<span class="min-w-0 flex-1 truncate font-medium">{folder.name}</span>
 				<span class="text-[11px] text-ledger-faint tabular-nums">{count}</span>
 			</button>
@@ -239,6 +470,14 @@ function FolderRow({
 							<FolderPlus class="size-3.5" />
 						</button>
 					)}
+					<button
+						type="button"
+						class={ICON_BUTTON}
+						aria-label={`Change icon of ${folder.name}`}
+						onClick={() => setMode(mode === "icon" ? "view" : "icon")}
+					>
+						<Icon class="size-3.5" />
+					</button>
 					<button
 						type="button"
 						class={ICON_BUTTON}
@@ -299,6 +538,15 @@ function FolderRow({
 	return (
 		<li>
 			{row}
+			{mode === "icon" && actions && (
+				<IconPicker
+					current={folder.icon}
+					onPick={(icon) => {
+						if (icon) actions.onSetIcon(folder.id, icon);
+						setMode("view");
+					}}
+				/>
+			)}
 			{mode === "new-child" && actions && (
 				<div class="ml-[15px] border-l border-ledger-border pl-1.5">
 					<NameField
@@ -320,7 +568,13 @@ function FolderRow({
 					inert={!open}
 				>
 					<div class="min-h-0 overflow-hidden">
-						<TreeLevel nodes={folder.children} actions={actions} nested />
+						<TreeLevel
+							nodes={folder.children}
+							parentId={folder.id}
+							grandParentId={place.parentId}
+							actions={actions}
+							nested
+						/>
 					</div>
 				</div>
 			)}
@@ -328,15 +582,50 @@ function FolderRow({
 	);
 }
 
+/** Neighbours among siblings of the same kind; folders and bookmarks order separately. */
+function placesFor(
+	nodes: TreeNodeView[],
+	parentId: string | null,
+	grandParentId: string | null,
+): Map<string, RowPlace> {
+	const places = new Map<string, RowPlace>();
+	const kinds: DragItem["kind"][] = ["folder", "bookmark"];
+	for (const kind of kinds) {
+		const ids = nodes.filter((n) => n.kind === kind).map((n) => n.id);
+		ids.forEach((id, i) => {
+			places.set(id, {
+				parentId,
+				grandParentId,
+				prevId: ids[i - 1] ?? null,
+				nextId: ids[i + 1] ?? null,
+				nextNextId: ids[i + 2] ?? null,
+			});
+		});
+	}
+	return places;
+}
+
 function TreeLevel({
 	nodes,
+	parentId,
+	grandParentId,
 	actions,
 	nested = false,
 }: {
 	nodes: TreeNodeView[];
+	parentId: string | null;
+	grandParentId: string | null;
 	actions: TreeActions | undefined;
 	nested?: boolean;
 }) {
+	const places = placesFor(nodes, parentId, grandParentId);
+	const fallback: RowPlace = {
+		parentId,
+		grandParentId,
+		prevId: null,
+		nextId: null,
+		nextNextId: null,
+	};
 	return (
 		<ul
 			class={
@@ -345,10 +634,19 @@ function TreeLevel({
 		>
 			{nodes.map((node) =>
 				node.kind === "folder" ? (
-					<FolderRow key={node.id} folder={node} actions={actions} />
+					<FolderRow
+						key={node.id}
+						folder={node}
+						place={places.get(node.id) ?? fallback}
+						actions={actions}
+					/>
 				) : (
 					<li key={node.id}>
-						<BookmarkRow bookmark={node} actions={actions} />
+						<BookmarkRow
+							bookmark={node}
+							place={places.get(node.id) ?? fallback}
+							actions={actions}
+						/>
 					</li>
 				),
 			)}
@@ -417,44 +715,57 @@ export function BookmarkTree({
 	actions?: TreeActions;
 }) {
 	const [creating, setCreating] = useState(false);
+	const [dragging, setDragging] = useState<DragItem | null>(null);
+	const [hint, setHint] = useState<DragState["hint"]>(null);
+	const drag = useMemo(
+		() => ({ dragging, hint, setDragging, setHint }),
+		[dragging, hint],
+	);
 
 	return (
-		<div class="py-2">
-			{actions && (
-				<div class="flex justify-end px-3 pb-1">
-					<button
-						type="button"
-						class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold"
-						onClick={() => setCreating(true)}
-					>
-						<FolderPlus class="size-3.5" />
-						New folder
-					</button>
-				</div>
-			)}
-			{creating && actions && (
-				<div class="px-2">
-					<NameField
-						initial=""
-						label="New folder name"
-						placeholder="Folder name"
-						onDone={(name) => {
-							if (name?.trim()) actions.onCreateFolder(null, name);
-							setCreating(false);
-						}}
-					/>
-				</div>
-			)}
-			{nodes.length === 0 && !creating ? (
-				<EmptyState icon={Plus} title="No bookmarks yet">
-					Save a search to keep it here. Folders sync to your other browsers.
-				</EmptyState>
-			) : (
-				<nav aria-label="Bookmarks" class="px-2">
-					<TreeLevel nodes={nodes} actions={actions} />
-				</nav>
-			)}
-			<ArchivedSection folders={archived} actions={actions} />
-		</div>
+		<DragContext.Provider value={drag}>
+			<div class="py-2">
+				{actions && (
+					<div class="flex justify-end px-3 pb-1">
+						<button
+							type="button"
+							class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold"
+							onClick={() => setCreating(true)}
+						>
+							<FolderPlus class="size-3.5" />
+							New folder
+						</button>
+					</div>
+				)}
+				{creating && actions && (
+					<div class="px-2">
+						<NameField
+							initial=""
+							label="New folder name"
+							placeholder="Folder name"
+							onDone={(name) => {
+								if (name?.trim()) actions.onCreateFolder(null, name);
+								setCreating(false);
+							}}
+						/>
+					</div>
+				)}
+				{nodes.length === 0 && !creating ? (
+					<EmptyState icon={Plus} title="No bookmarks yet">
+						Save a search to keep it here. Folders sync to your other browsers.
+					</EmptyState>
+				) : (
+					<nav aria-label="Bookmarks" class="px-2">
+						<TreeLevel
+							nodes={nodes}
+							parentId={null}
+							grandParentId={null}
+							actions={actions}
+						/>
+					</nav>
+				)}
+				<ArchivedSection folders={archived} actions={actions} />
+			</div>
+		</DragContext.Provider>
 	);
 }

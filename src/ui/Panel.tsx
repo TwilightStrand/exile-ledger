@@ -8,6 +8,7 @@ import {
 	renameBookmark,
 	saveSearch,
 } from "../core/library";
+import { applyPlace } from "../core/placement";
 import {
 	DEFAULT_SETTINGS,
 	type PanelSide,
@@ -20,6 +21,7 @@ import {
 	deleteFolder,
 	renameFolder,
 	setArchived,
+	setFolderIcon,
 } from "../core/tree";
 import { setCollapsed, type UiState } from "../core/uiState";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
@@ -193,6 +195,12 @@ export function Panel({
 			librarySource.update((lib) => setArchived(lib, id, isArchived, now())),
 		onDeleteFolder: (id) =>
 			librarySource.update((lib) => deleteFolder(lib, id, now())),
+		onSetIcon: (id, icon) =>
+			librarySource.update((lib) => setFolderIcon(lib, id, icon, now())),
+		onPlace: (item, target) =>
+			librarySource.update((lib) =>
+				applyPlace(lib, { ...item, ...target }, now()),
+			),
 		isCollapsed: (id) => ui.collapsed.includes(id),
 		onToggleFolder: (id, collapsed) =>
 			uiStateSource.update((state) => setCollapsed(state, id, collapsed)),

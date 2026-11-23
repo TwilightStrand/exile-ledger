@@ -300,6 +300,63 @@ describe("Panel folders", () => {
 	});
 });
 
+describe("Panel ordering and icons", () => {
+	function twoBookmarks() {
+		let lib = emptyLibrary();
+		for (const name of ["First", "Second"]) {
+			lib = saveSearch(
+				lib,
+				{
+					game: "poe2",
+					league: "Standard",
+					name,
+					query: { query: { term: name } },
+					searchId: name,
+					live: false,
+				},
+				{ now: 1, newId: () => `k${++n}` },
+			).library;
+		}
+		return createMemoryLibrary(lib);
+	}
+
+	it("moves a bookmark down with Alt+ArrowDown", async () => {
+		const library = twoBookmarks();
+		const root = await mount({ library });
+		const first = [...root.querySelectorAll("nav a")].find((a) =>
+			a.textContent?.startsWith("First"),
+		);
+		await act(async () => {
+			first?.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					key: "ArrowDown",
+					altKey: true,
+					bubbles: true,
+				}),
+			);
+		});
+		const names = [...root.querySelectorAll("nav a")].map((a) =>
+			a.textContent?.replace("PoE2", ""),
+		);
+		expect(names).toEqual(["Second", "First"]);
+		const stored = (await library.load()).bookmarks.sort(
+			(a, b) => a.order - b.order,
+		);
+		expect(stored.map((b) => b.name)).toEqual(["Second", "First"]);
+	});
+
+	it("sets a folder icon", async () => {
+		const library = twoBookmarks();
+		const root = await mount({ library });
+		await act(async () =>
+			button(root, `Change icon of ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		await act(async () => button(root, "Ring")?.click());
+		expect((await library.load()).folders[0]?.icon).toBe("ring");
+		expect(root.querySelector("fieldset")).toBeNull();
+	});
+});
+
 describe("Panel tabs and collapse", () => {
 	const tab = (root: HTMLElement, name: string) =>
 		[...root.querySelectorAll<HTMLButtonElement>("[role=tab]")].find((t) =>
