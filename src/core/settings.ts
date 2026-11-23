@@ -21,6 +21,12 @@ export interface Settings {
 	highlightMods: boolean;
 	/** Off until the user grants access to poe.ninja. */
 	equivalentPricing: boolean;
+	/** Bookmark name or item and league in the browser tab title. */
+	tabTitles: boolean;
+	/** Prefix "~" (fuzzy match) in the site's search boxes. */
+	tildePrefix: boolean;
+	/** Browser Back and Forward move between searches. */
+	backForward: boolean;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -32,6 +38,9 @@ export const DEFAULT_SETTINGS: Settings = {
 	syncEnabled: true,
 	highlightMods: true,
 	equivalentPricing: false,
+	tabTitles: true,
+	tildePrefix: true,
+	backForward: true,
 };
 
 export function clampWidth(width: number): number {
@@ -53,6 +62,9 @@ export const SettingsSchema = v.fallback(
 		historyEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.historyEnabled),
 		syncEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.syncEnabled),
 		highlightMods: v.fallback(v.boolean(), DEFAULT_SETTINGS.highlightMods),
+		tabTitles: v.fallback(v.boolean(), DEFAULT_SETTINGS.tabTitles),
+		tildePrefix: v.fallback(v.boolean(), DEFAULT_SETTINGS.tildePrefix),
+		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		equivalentPricing: v.fallback(
 			v.boolean(),
 			DEFAULT_SETTINGS.equivalentPricing,

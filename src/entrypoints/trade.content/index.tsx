@@ -2,6 +2,7 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { titleOfQuery } from "../../core/describe";
 import { recordSearch } from "../../core/history";
 import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
@@ -16,11 +17,14 @@ import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
 import { highlightMods, installPageStyles } from "../../trade/enhanceResults";
 import { annotatePrices } from "../../trade/equivalentPrices";
+import { BACK_FORWARD_FLAG } from "../../trade/historyPatch";
 import { observeResults } from "../../trade/observeResults";
 import { jumpToResult, syncPinButtons } from "../../trade/pinButtons";
 import { createRatesClient } from "../../trade/ratesClient";
 import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
+import { installTildePrefix } from "../../trade/tildePrefix";
+import { createTitleKeeper } from "../../trade/titleKeeper";
 import { Panel } from "../../ui/Panel";
 
 export default defineContentScript({
@@ -55,10 +59,57 @@ export default defineContentScript({
 			if (item) pins.update((current) => togglePin(current, item, Date.now()));
 		};
 		const rates = createRatesClient(() => enhance());
+		let library = await browserLibrary.load();
+		const title = createTitleKeeper(document);
+		ctx.onInvalidated(() => title.stop());
+		const updateTitle = () => {
+			const search = feed.get().search;
+			const page = parseTradeUrl(new URL(location.href));
+			if (!prefs.tabTitles || !search) {
+				title.set({ segment: null, live: false });
+				return;
+			}
+			const bookmark = library.bookmarks.find(
+				(b) => b.searchId === search.search.searchId,
+			);
+			title.set({
+				segment:
+					bookmark?.name ??
+					`${titleOfQuery(search.search.query)} (${search.league})`,
+				live: page?.location.live ?? false,
+			});
+		};
+		const setBackForwardFlag = () => {
+			document.documentElement.dataset[BACK_FORWARD_FLAG] = prefs.backForward
+				? "on"
+				: "off";
+		};
+		setBackForwardFlag();
+		ctx.onInvalidated(installTildePrefix(document, () => prefs.tildePrefix));
+		ctx.onInvalidated(
+			browserLibrary.watch((next) => {
+				library = next;
+				updateTitle();
+			}),
+		);
+		// If the site does not re-run the search Back returned to, load that URL so it does.
+		const onPopState = () => {
+			if (!prefs.backForward) return;
+			const target = parseTradeUrl(new URL(location.href))?.location.searchId;
+			if (!target) return;
+			setTimeout(() => {
+				const shown = feed.get().search?.search.searchId;
+				if (shown !== target && location.href.includes(target))
+					location.reload();
+			}, 1500);
+		};
+		window.addEventListener("popstate", onPopState);
+		ctx.onInvalidated(() => window.removeEventListener("popstate", onPopState));
 		const enhance = () => {
 			const capture = feed.get();
 			const search = capture.search;
 			highlightMods(document, capture, prefs.highlightMods);
+			updateTitle();
 			pins
 				.load()
 				.then((current) => syncPinButtons(document, current, togglePinned));
@@ -76,6 +127,7 @@ export default defineContentScript({
 				// Turning pricing on after a denied or missing permission should retry.
 				if (next.equivalentPricing && !prefs.equivalentPricing) rates.reset();
 				prefs = next;
+				setBackForwardFlag();
 				enhance();
 			}),
 		);

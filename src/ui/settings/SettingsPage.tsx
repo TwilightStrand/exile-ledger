@@ -459,6 +459,39 @@ export function SettingsPage({
 					)}
 				</Section>
 
+				<Section title="Trade site">
+					<Field
+						label="Tab titles"
+						hint="Puts the bookmark name, or the item and league, in the browser tab, with ⚡ for live searches."
+					>
+						<Toggle
+							label="Tab titles"
+							checked={prefs.tabTitles}
+							onChange={(tabTitles) => settings.save({ tabTitles })}
+						/>
+					</Field>
+					<Field
+						label="Fuzzy search by default"
+						hint="Adds ~ when you start typing in a search box. Start with a space to search exactly."
+					>
+						<Toggle
+							label="Fuzzy search by default"
+							checked={prefs.tildePrefix}
+							onChange={(tildePrefix) => settings.save({ tildePrefix })}
+						/>
+					</Field>
+					<Field
+						label="Back and Forward between searches"
+						hint="The browser's Back button returns to your previous search instead of leaving the site."
+					>
+						<Toggle
+							label="Back and Forward between searches"
+							checked={prefs.backForward}
+							onChange={(backForward) => settings.save({ backForward })}
+						/>
+					</Field>
+				</Section>
+
 				<Section title="History">
 					<Field
 						label="Record searches"

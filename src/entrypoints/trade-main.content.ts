@@ -1,5 +1,6 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { TRADE_MATCHES } from "../core/sites";
+import { installHistoryPatch } from "../trade/historyPatch";
 import { installInterceptor, MESSAGE_SOURCE } from "../trade/interceptor";
 
 export default defineContentScript({
@@ -9,10 +10,8 @@ export default defineContentScript({
 	runAt: "document_start",
 	main() {
 		installInterceptor(window, (payload) => {
-			window.postMessage(
-				{ source: MESSAGE_SOURCE, payload },
-				window.location.origin,
-			);
+			window.postMessage({ source: MESSAGE_SOURCE, payload }, location.origin);
 		});
+		installHistoryPatch(window);
 	},
 });
