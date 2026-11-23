@@ -1,14 +1,16 @@
 import { formatCount, titleOfQuery } from "../core/describe";
 import type { CaptureState } from "../trade/captureFeed";
-import { Bookmark, Search } from "./icons";
+import { Bookmark, Check, Search } from "./icons";
 import { Chip, Eyebrow, GameTag } from "./parts";
 
 export function CurrentSearch({
 	capture,
+	saved = false,
 	onSave,
 }: {
 	capture: CaptureState;
-	/** Omitted until saving is wired up, so the button never shows without doing anything. */
+	/** True when this exact search is already bookmarked. */
+	saved?: boolean;
 	onSave?: (() => void) | undefined;
 }) {
 	const event = capture.search;
@@ -29,7 +31,13 @@ export function CurrentSearch({
 						<Chip>{event.league}</Chip>
 						<Chip>{formatCount(event.search.total)} results</Chip>
 					</div>
-					{onSave && (
+					{onSave && saved && (
+						<p class="mt-3 flex items-center justify-center gap-1.5 rounded border border-ledger-border py-1.5 text-[12px] text-ledger-muted">
+							<Check class="size-3.5 text-ledger-live" />
+							Saved to bookmarks
+						</p>
+					)}
+					{onSave && !saved && (
 						<button
 							type="button"
 							class="mt-3 flex w-full items-center justify-center gap-1.5 rounded border border-ledger-gold/45 bg-ledger-gold/10 py-1.5 text-[12px] font-semibold text-ledger-gold transition-colors hover:bg-ledger-gold/20 hover:text-ledger-gold-bright focus-visible:outline-2 focus-visible:outline-ledger-gold"

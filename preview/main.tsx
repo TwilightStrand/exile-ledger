@@ -2,8 +2,10 @@
 import "../src/styles/tailwind.css";
 import { type ComponentChildren, render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { createMemoryLibrary, emptyLibrary } from "../src/core/library";
 import { createMemorySettings, type PanelSide } from "../src/core/settings";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
+import { parseTradeUrl } from "../src/core/tradeUrl";
 import panelCss from "../src/styles/tailwind.css?inline";
 import { createCaptureFeed } from "../src/trade/captureFeed";
 import { Panel, TABS, type TabId } from "../src/ui/Panel";
@@ -11,14 +13,21 @@ import { SettingsForm } from "../src/ui/SettingsForm";
 import fetchResponse from "../tests/fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../tests/fixtures/trade/poe2-search-request.json";
 import searchResponse from "../tests/fixtures/trade/poe2-search-response.json";
-import { MOCK_BOOKMARKS, MOCK_HISTORY, MOCK_NOW } from "./mocks";
+import { MOCK_HISTORY, MOCK_LIBRARY, MOCK_NOW } from "./mocks";
 
 // URL parameters pick the starting state, so each state is one link away:
-// ?search=1&data=1&side=right&open=0&tab=history
+// ?search=1&data=1&side=right&open=0&tab=history&game=poe1
 const params = new URLSearchParams(location.search);
 const startSide: PanelSide = params.get("side") === "right" ? "right" : "left";
 const startTab: TabId =
 	TABS.find((t) => t === params.get("tab")) ?? "bookmarks";
+
+const pageUrl = new URL(
+	params.get("game") === "poe1"
+		? "https://www.pathofexile.com/trade/search/Standard"
+		: "https://www.pathofexile.com/trade2/search/poe2/Standard",
+);
+const page = () => parseTradeUrl(pageUrl);
 
 const search = parseSearch(searchRequest, searchResponse);
 const items = parseFetchResponse(fetchResponse) ?? [];
@@ -134,18 +143,22 @@ function Preview() {
 	const [withSearch, setWithSearch] = useState(params.get("search") === "1");
 	const [withData, setWithData] = useState(params.get("data") === "1");
 	const feed = useMemo(() => feedFor(withSearch), [withSearch]);
+	const library = useMemo(
+		() => createMemoryLibrary(withData ? MOCK_LIBRARY : emptyLibrary()),
+		[withData],
+	);
 
 	return (
 		<div class="min-h-screen bg-[#000] font-sans text-ledger-text">
 			<FakeTradePage />
 			<ShadowHost>
 				<Panel
-					key={`${withSearch}`}
+					key={`${withSearch}-${withData}`}
 					feed={feed}
 					settings={settings}
-					bookmarks={withData ? MOCK_BOOKMARKS : []}
+					library={library}
+					page={page}
 					history={withData ? MOCK_HISTORY : []}
-					onSaveSearch={() => {}}
 					initiallyOpen={params.get("open") !== "0"}
 					initialTab={startTab}
 					now={MOCK_NOW}

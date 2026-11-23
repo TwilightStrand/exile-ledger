@@ -1,5 +1,9 @@
 import { storage } from "wxt/utils/storage";
-import { parseSettings, type Settings, type SettingsSource } from "./settings";
+import {
+	parseSettings,
+	type Settings,
+	type SettingsSource,
+} from "../core/settings";
 
 // Kept apart from settings.ts because wxt storage needs the extension APIs at
 // import time, and previews and tests import settings.ts without them.

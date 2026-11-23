@@ -1,20 +1,28 @@
 import { useEffect, useState } from "preact/hooks";
+import { titleOfQuery } from "../core/describe";
+import {
+	type Clock,
+	deleteBookmark,
+	emptyLibrary,
+	type LibrarySource,
+	renameBookmark,
+	saveSearch,
+} from "../core/library";
+import type { Library } from "../core/model";
 import {
 	DEFAULT_SETTINGS,
 	type PanelSide,
 	type SettingsSource,
 } from "../core/settings";
+import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
 import { HistoryList } from "./HistoryList";
 import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
+import { libraryView } from "./libraryView";
 import { EmptyState } from "./parts";
-import {
-	countBookmarks,
-	type HistoryEntryView,
-	type TreeNodeView,
-} from "./viewModels";
+import { countBookmarks, type HistoryEntryView } from "./viewModels";
 
 function useCapture(feed: CaptureFeed): CaptureState {
 	const [state, setState] = useState(feed.get);
@@ -25,6 +33,22 @@ function useCapture(feed: CaptureFeed): CaptureState {
 		};
 	}, [feed]);
 	return state;
+}
+
+function useLibrary(source: LibrarySource): Library {
+	const [library, setLibrary] = useState<Library>(emptyLibrary);
+	useEffect(() => {
+		let active = true;
+		source.load().then((l) => {
+			if (active) setLibrary(l);
+		});
+		const stop = source.watch(setLibrary);
+		return () => {
+			active = false;
+			stop();
+		};
+	}, [source]);
+	return library;
 }
 
 function usePanelSide(settings: SettingsSource): PanelSide {
@@ -74,29 +98,69 @@ const PANEL_SHADOW =
 export interface PanelProps {
 	feed: CaptureFeed;
 	settings: SettingsSource;
-	bookmarks?: TreeNodeView[];
+	library: LibrarySource;
+	/** Read on each render: the trade site changes its URL without reloading. */
+	page: () => ParsedTradeUrl | null;
 	history?: HistoryEntryView[];
-	onSaveSearch?: () => void;
 	/** Previews pass these to show a given state. */
 	initiallyOpen?: boolean;
 	initialTab?: TabId;
 	now?: () => number;
+	newId?: () => string;
 }
 
 export function Panel({
 	feed,
 	settings,
-	bookmarks = [],
+	library: librarySource,
+	page,
 	history = [],
-	onSaveSearch,
 	initiallyOpen = true,
 	initialTab = "bookmarks",
 	now = Date.now,
+	newId = () => crypto.randomUUID(),
 }: PanelProps) {
 	const [open, setOpen] = useState(initiallyOpen);
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const capture = useCapture(feed);
 	const side = usePanelSide(settings);
+	const library = useLibrary(librarySource);
+	const currentPage = page();
+	const game: Game | null =
+		currentPage?.location.game ?? capture.search?.game ?? null;
+	const bookmarks = game ? libraryView(library, game, currentPage) : [];
+	const searchId = capture.search?.search.searchId;
+	const saved =
+		searchId !== undefined &&
+		library.bookmarks.some((b) => b.searchId === searchId);
+	const clock = (): Clock => ({ now: now(), newId });
+
+	const saveCurrent = () => {
+		const event = capture.search;
+		if (!event) return;
+		const query = event.search.query;
+		librarySource.update(
+			(lib) =>
+				saveSearch(
+					lib,
+					{
+						game: event.game,
+						league: event.league,
+						name: titleOfQuery(query),
+						query,
+						searchId: event.search.searchId,
+						live: currentPage?.location.live ?? false,
+					},
+					clock(),
+				).library,
+		);
+	};
+	const actions = {
+		onRename: (id: string, name: string) =>
+			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
+		onDelete: (id: string) =>
+			librarySource.update((lib) => deleteBookmark(lib, id, now())),
+	};
 	const classes = SIDE_CLASSES[side];
 	const CollapseIcon = side === "left" ? ChevronLeft : ChevronRight;
 	const ExpandIcon = side === "left" ? ChevronRight : ChevronLeft;
@@ -134,7 +198,7 @@ export function Panel({
 						</button>
 					</header>
 
-					<CurrentSearch capture={capture} onSave={onSaveSearch} />
+					<CurrentSearch capture={capture} saved={saved} onSave={saveCurrent} />
 
 					<div
 						role="tablist"
@@ -176,7 +240,9 @@ export function Panel({
 						aria-labelledby={`exile-ledger-tab-${tab}`}
 						class="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#4a3b27_transparent] [scrollbar-width:thin]"
 					>
-						{tab === "bookmarks" && <BookmarkTree nodes={bookmarks} />}
+						{tab === "bookmarks" && (
+							<BookmarkTree nodes={bookmarks} actions={actions} />
+						)}
 						{tab === "history" && <HistoryList entries={history} now={now()} />}
 						{tab === "pinned" && (
 							<EmptyState icon={Pin} title="Nothing pinned">

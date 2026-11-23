@@ -1,7 +1,7 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
-import { browserSettings } from "../../core/settingsStore";
+import { browserSettings } from "../../storage/settingsStore";
 import { SettingsForm } from "../../ui/SettingsForm";
 
 function Popup() {

@@ -2,8 +2,10 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { browserSettings } from "../../core/settingsStore";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
+import { parseTradeUrl } from "../../core/tradeUrl";
+import { browserLibrary } from "../../storage/libraryStore";
+import { browserSettings } from "../../storage/settingsStore";
 import { listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
 import { Panel } from "../../ui/Panel";
@@ -22,7 +24,15 @@ export default defineContentScript({
 			position: "overlay",
 			anchor: "body",
 			onMount(container) {
-				render(<Panel feed={feed} settings={browserSettings} />, container);
+				render(
+					<Panel
+						feed={feed}
+						settings={browserSettings}
+						library={browserLibrary}
+						page={() => parseTradeUrl(new URL(location.href))}
+					/>,
+					container,
+				);
 				return container;
 			},
 			onRemove(container) {

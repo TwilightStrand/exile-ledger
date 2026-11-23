@@ -103,3 +103,24 @@ export const Mark = ({ class: className = "size-5" }: IconProps) => (
 		/>
 	</svg>
 );
+
+export const Pencil = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z" />
+		<path d="m14.5 7.5 3 3" />
+	</Svg>
+);
+
+export const Trash = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M4.5 7h15M10 11v6M14 11v6" />
+		<path d="M6 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5L18 7" />
+		<path d="M9 7V4.5h6V7" />
+	</Svg>
+);
+
+export const Check = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="m5 12.5 4.5 4.5L19 7.5" />
+	</Svg>
+);
