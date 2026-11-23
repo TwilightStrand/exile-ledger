@@ -10,6 +10,7 @@ import {
 	renameBookmark,
 	saveSearch,
 } from "../core/library";
+import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
 import {
 	clampWidth,
@@ -34,9 +35,9 @@ import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
 import { type HistoryActions, HistoryList } from "./HistoryList";
-import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
+import { ChevronLeft, ChevronRight, Mark } from "./icons";
 import { archivedView, historyView, libraryView } from "./libraryView";
-import { EmptyState } from "./parts";
+import { PinnedList } from "./PinnedList";
 import { SYNC_DOT, syncStatusText } from "./syncStatusText";
 import { countBookmarks } from "./viewModels";
 
@@ -166,6 +167,10 @@ export interface PanelProps {
 	uiState?: Source<UiState>;
 	/** Read on each render: the trade site changes its URL without reloading. */
 	page: () => ParsedTradeUrl | null;
+	/** Results pinned in this tab; shared with the page's Pin buttons. */
+	pins?: Source<PinnedItem[]>;
+	/** Scrolls the page to a result; false when it is no longer there. */
+	onJumpToPin?: (id: string) => boolean;
 	/** Written by the background sync; shown as a dot in the header. */
 	syncStatus?: Source<SyncStatus>;
 	/** Searches the page ran; recorded by the content script, read here. */
@@ -189,6 +194,8 @@ export function Panel({
 	page,
 	history: historySource,
 	syncStatus: syncStatusSource,
+	pins: pinsSource,
+	onJumpToPin = () => false,
 	onReserve,
 	copyText = (text) => navigator.clipboard.writeText(text),
 	initiallyOpen = true,
@@ -209,6 +216,9 @@ export function Panel({
 		}),
 	);
 	const uiStateSource = uiState ?? ownUiState;
+	const [ownPins] = useState(() => createMemorySource<PinnedItem[]>([]));
+	const pinStore = pinsSource ?? ownPins;
+	const pinned = useSource(pinStore, (): PinnedItem[] => []);
 	const [ownSyncStatus] = useState(() => createMemorySource(OFF_STATUS));
 	const sync = useSource(syncStatusSource ?? ownSyncStatus, () => OFF_STATUS);
 	const [ownHistory] = useState(() => createMemorySource<HistoryEntry[]>([]));
@@ -328,7 +338,7 @@ export function Panel({
 	const counts: Record<TabId, number> = {
 		bookmarks: countBookmarks(bookmarks),
 		history: history.length,
-		pinned: 0,
+		pinned: pinned.length,
 	};
 
 	return (
@@ -452,9 +462,11 @@ export function Panel({
 								/>
 							)}
 							{tab === "pinned" && (
-								<EmptyState icon={Pin} title="Nothing pinned">
-									Pin result rows to compare them while you keep searching.
-								</EmptyState>
+								<PinnedList
+									pins={pinned}
+									onJump={onJumpToPin}
+									onUnpin={(id) => pinStore.update((p) => unpin(p, id))}
+								/>
 							)}
 						</div>
 					</div>

@@ -3,7 +3,9 @@ import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { recordSearch } from "../../core/history";
+import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
+import { createMemorySource } from "../../core/source";
 import { parseTradeUrl } from "../../core/tradeUrl";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
@@ -15,6 +17,7 @@ import { createCaptureFeed } from "../../trade/captureFeed";
 import { highlightMods, installPageStyles } from "../../trade/enhanceResults";
 import { annotatePrices } from "../../trade/equivalentPrices";
 import { observeResults } from "../../trade/observeResults";
+import { jumpToResult, syncPinButtons } from "../../trade/pinButtons";
 import { createRatesClient } from "../../trade/ratesClient";
 import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
@@ -46,11 +49,19 @@ export default defineContentScript({
 
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
+		const pins = createMemorySource<PinnedItem[]>([]);
+		const togglePinned = (id: string) => {
+			const item = feed.get().results.find((r) => r.id === id);
+			if (item) pins.update((current) => togglePin(current, item, Date.now()));
+		};
 		const rates = createRatesClient(() => enhance());
 		const enhance = () => {
 			const capture = feed.get();
 			const search = capture.search;
 			highlightMods(document, capture, prefs.highlightMods);
+			pins
+				.load()
+				.then((current) => syncPinButtons(document, current, togglePinned));
 			annotatePrices(
 				document,
 				capture,
@@ -69,6 +80,7 @@ export default defineContentScript({
 			}),
 		);
 		ctx.onInvalidated(feed.subscribe(enhance));
+		ctx.onInvalidated(pins.watch(enhance));
 		ctx.onInvalidated(observeResults(document, enhance));
 
 		const ui = await createShadowRootUi(ctx, {
@@ -84,6 +96,8 @@ export default defineContentScript({
 						uiState={browserUiState}
 						history={browserHistory}
 						syncStatus={browserSyncStatus}
+						pins={pins}
+						onJumpToPin={(id) => jumpToResult(document, id)}
 						onReserve={(reserve) => applyReserve(document, reserve)}
 						page={() => parseTradeUrl(new URL(location.href))}
 					/>,

@@ -9,6 +9,7 @@ import {
 	type LibrarySource,
 	saveSearch,
 } from "../../src/core/library";
+import type { PinnedItem } from "../../src/core/pins";
 import {
 	createMemorySettings,
 	type SettingsSource,
@@ -460,6 +461,42 @@ describe("Panel layout and sharing", () => {
 		expect((await settings.load()).panelWidth).toBe(314);
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
 		expect((await uiState.load()).panelOpen).toBe(false);
+	});
+});
+
+describe("Panel pins", () => {
+	it("lists pins, jumps to them and unpins", async () => {
+		const pins = createMemorySource<PinnedItem[]>([
+			{
+				id: "r1",
+				name: "Viper Wrap",
+				baseType: "Hatungo Garb",
+				price: { amount: 2, currency: "divine" },
+				pinnedAt: 1,
+			},
+		]);
+		const jumps: string[] = [];
+		const root = await mount({
+			pins,
+			onJumpToPin: (id) => {
+				jumps.push(id);
+				return false;
+			},
+		});
+		const pinnedTab = [
+			...root.querySelectorAll<HTMLButtonElement>("[role=tab]"),
+		].find((t) => t.textContent?.startsWith("Pinned"));
+		expect(pinnedTab?.textContent).toBe("Pinned1");
+		await act(async () => pinnedTab?.click());
+
+		await act(async () =>
+			button(root, "Viper Wrap Hatungo Garb2 divine")?.click(),
+		);
+		expect(jumps).toEqual(["r1"]);
+		expect(treeText(root)).toContain("Not on this page any more");
+
+		await act(async () => button(root, "Unpin Viper Wrap")?.click());
+		expect(await pins.load()).toEqual([]);
 	});
 });
 

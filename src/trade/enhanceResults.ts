@@ -20,6 +20,10 @@ export function installPageStyles(doc: Document): void {
 	style.textContent = [
 		`[${HIGHLIGHT_ATTR}] { background: rgb(214 173 98 / 0.16); box-shadow: inset 3px 0 0 #d6ad62; border-radius: 2px; }`,
 		"[data-exile-ledger-price] { display: block; margin-top: 2px; font-size: 11px; color: #d6ad62; opacity: 0.9; }",
+		"[data-exile-ledger-pinned] { box-shadow: inset 3px 0 0 #d6ad62; }",
+		"@keyframes exile-ledger-flash { 0%, 40% { background: rgb(214 173 98 / 0.25); } }",
+		"[data-exile-ledger-flash] { animation: exile-ledger-flash 1.5s ease-out; }",
+		"@media (prefers-reduced-motion: reduce) { [data-exile-ledger-flash] { animation: none; outline: 2px solid #d6ad62; } }",
 	].join("\n");
 	doc.head.append(style);
 }
