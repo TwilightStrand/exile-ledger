@@ -18,7 +18,7 @@ export const TRADE_MATCHES: string[] = TRADE_HOSTS.flatMap(
 			: [`https://${domain}/trade*`],
 );
 
-function isTradeHost(hostname: string): boolean {
+export function isTradeHost(hostname: string): boolean {
 	return TRADE_HOSTS.some(
 		({ domain, subdomains }) =>
 			hostname === domain || (subdomains && hostname.endsWith(`.${domain}`)),
