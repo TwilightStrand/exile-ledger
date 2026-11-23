@@ -20,6 +20,7 @@ import {
 	type SettingsSource,
 } from "../core/settings";
 import { createMemorySource, type Source } from "../core/source";
+import { OFF_STATUS, type SyncStatus } from "../core/syncEngine";
 import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
 import {
 	createFolder,
@@ -36,6 +37,7 @@ import { type HistoryActions, HistoryList } from "./HistoryList";
 import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
 import { archivedView, historyView, libraryView } from "./libraryView";
 import { EmptyState } from "./parts";
+import { SYNC_DOT, syncStatusText } from "./syncStatusText";
 import { countBookmarks } from "./viewModels";
 
 function useCapture(feed: CaptureFeed): CaptureState {
@@ -164,6 +166,8 @@ export interface PanelProps {
 	uiState?: Source<UiState>;
 	/** Read on each render: the trade site changes its URL without reloading. */
 	page: () => ParsedTradeUrl | null;
+	/** Written by the background sync; shown as a dot in the header. */
+	syncStatus?: Source<SyncStatus>;
 	/** Searches the page ran; recorded by the content script, read here. */
 	history?: Source<HistoryEntry[]>;
 	/** Clipboard write; injectable because tests and previews have no clipboard. */
@@ -184,6 +188,7 @@ export function Panel({
 	uiState,
 	page,
 	history: historySource,
+	syncStatus: syncStatusSource,
 	onReserve,
 	copyText = (text) => navigator.clipboard.writeText(text),
 	initiallyOpen = true,
@@ -204,6 +209,8 @@ export function Panel({
 		}),
 	);
 	const uiStateSource = uiState ?? ownUiState;
+	const [ownSyncStatus] = useState(() => createMemorySource(OFF_STATUS));
+	const sync = useSource(syncStatusSource ?? ownSyncStatus, () => OFF_STATUS);
 	const [ownHistory] = useState(() => createMemorySource<HistoryEntry[]>([]));
 	const historyStore = historySource ?? ownHistory;
 	const historyEntries = useSource(historyStore, (): HistoryEntry[] => []);
@@ -364,9 +371,15 @@ export function Panel({
 						<h1 class="font-display text-[17px] tracking-[0.04em] text-ledger-gold-bright">
 							Exile Ledger
 						</h1>
+						<span
+							class={`ml-auto size-2 rounded-full ${SYNC_DOT[sync.state]}`}
+							title={syncStatusText(sync, now())}
+						>
+							<span class="sr-only">{syncStatusText(sync, now())}</span>
+						</span>
 						<button
 							type="button"
-							class="ml-auto grid size-7 place-items-center rounded text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold focus-visible:outline-2 focus-visible:outline-ledger-gold"
+							class="grid size-7 place-items-center rounded text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold focus-visible:outline-2 focus-visible:outline-ledger-gold"
 							aria-expanded={true}
 							aria-controls="exile-ledger-panel"
 							aria-label="Collapse Exile Ledger"

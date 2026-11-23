@@ -4,6 +4,7 @@ import { browser } from "wxt/browser";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
+import { browserSyncStatus } from "../../storage/syncPorts";
 import { SettingsPage } from "../../ui/settings/SettingsPage";
 
 function download(filename: string, text: string) {
@@ -25,6 +26,7 @@ if (root) {
 			settings={browserSettings}
 			library={browserLibrary}
 			history={browserHistory}
+			syncStatus={browserSyncStatus}
 			version={browser.runtime.getManifest().version}
 			download={download}
 		/>,

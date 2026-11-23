@@ -15,6 +15,8 @@ export interface Settings {
 	panelMode: PanelMode;
 	panelWidth: number;
 	historyEnabled: boolean;
+	/** Bookmarks through storage.sync; settings themselves always sync. */
+	syncEnabled: boolean;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	panelMode: "overlay",
 	panelWidth: PANEL_WIDTH.default,
 	historyEnabled: true,
+	syncEnabled: true,
 };
 
 export function clampWidth(width: number): number {
@@ -42,6 +45,7 @@ export const SettingsSchema = v.fallback(
 			DEFAULT_SETTINGS.panelWidth,
 		),
 		historyEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.historyEnabled),
+		syncEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.syncEnabled),
 	}),
 	DEFAULT_SETTINGS,
 );

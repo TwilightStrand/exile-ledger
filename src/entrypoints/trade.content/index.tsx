@@ -8,6 +8,7 @@ import { parseTradeUrl } from "../../core/tradeUrl";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
+import { browserSyncStatus } from "../../storage/syncPorts";
 import { browserUiState } from "../../storage/uiStateStore";
 import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
@@ -51,6 +52,7 @@ export default defineContentScript({
 						library={browserLibrary}
 						uiState={browserUiState}
 						history={browserHistory}
+						syncStatus={browserSyncStatus}
 						onReserve={(reserve) => applyReserve(document, reserve)}
 						page={() => parseTradeUrl(new URL(location.href))}
 					/>,

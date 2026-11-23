@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createMemoryLibrary, emptyLibrary } from "../src/core/library";
 import { createMemorySettings, type PanelSide } from "../src/core/settings";
 import { createMemorySource } from "../src/core/source";
+import { OFF_STATUS, type SyncStatus } from "../src/core/syncEngine";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
 import panelCss from "../src/styles/tailwind.css?inline";
@@ -223,6 +224,12 @@ function SettingsPreview() {
 			settings={settings}
 			library={library}
 			history={history}
+			syncStatus={createMemorySource<SyncStatus>({
+				...OFF_STATUS,
+				state: "on",
+				usedBytes: 23_500,
+				lastSyncAt: Date.now() - 90_000,
+			})}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}
 		/>

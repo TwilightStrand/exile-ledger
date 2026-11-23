@@ -10,6 +10,7 @@ import {
 } from "../../src/core/library";
 import { createMemorySettings } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
+import { OFF_STATUS, type SyncStatus } from "../../src/core/syncEngine";
 import { SettingsPage } from "../../src/ui/settings/SettingsPage";
 
 function seededLibrary() {
@@ -43,6 +44,12 @@ async function mount() {
 				settings={settings}
 				library={library}
 				history={history}
+				syncStatus={createMemorySource<SyncStatus>({
+					...OFF_STATUS,
+					state: "on",
+					usedBytes: 20480,
+					lastSyncAt: Date.UTC(2026, 10, 24) - 120_000,
+				})}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
 				now={() => Date.UTC(2026, 10, 24)}
@@ -64,11 +71,20 @@ describe("SettingsPage", () => {
 		document.body.innerHTML = "";
 	});
 
+	it("shows sync state and quota", async () => {
+		const { root } = await mount();
+		expect(root.textContent).toContain(
+			"Synced 2m ago · 20% of sync space used",
+		);
+	});
+
 	it("changes panel settings", async () => {
 		const { root, settings } = await mount();
 		const push = root.querySelector<HTMLInputElement>("input[value=push]");
 		await act(async () => push?.click());
-		const toggle = root.querySelector<HTMLButtonElement>("[role=switch]");
+		const toggle = root.querySelector<HTMLButtonElement>(
+			"[role=switch][aria-label='Record searches']",
+		);
 		await act(async () => toggle?.click());
 		expect(await settings.load()).toMatchObject({
 			panelMode: "push",

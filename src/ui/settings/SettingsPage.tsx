@@ -19,7 +19,9 @@ import {
 	type SettingsSource,
 } from "../../core/settings";
 import type { Source } from "../../core/source";
+import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
 import { Mark } from "../icons";
+import { quotaPercent, syncStatusText } from "../syncStatusText";
 import {
 	BUTTON,
 	Field,
@@ -34,6 +36,7 @@ export interface SettingsPageProps {
 	settings: SettingsSource;
 	library: LibrarySource;
 	history: Source<HistoryEntry[]>;
+	syncStatus: Source<SyncStatus>;
 	version: string;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
@@ -50,6 +53,22 @@ const MODES: readonly { value: PanelMode; label: string }[] = [
 	{ value: "overlay", label: "Float over" },
 	{ value: "push", label: "Push aside" },
 ];
+
+function useSourceValue<T>(source: Source<T>, initial: T): T {
+	const [value, setValue] = useState<T>(initial);
+	useEffect(() => {
+		let active = true;
+		source.load().then((v) => {
+			if (active) setValue(() => v);
+		});
+		const stop = source.watch((v) => setValue(() => v));
+		return () => {
+			active = false;
+			stop();
+		};
+	}, [source]);
+	return value;
+}
 
 function useSettingsValue(source: SettingsSource): Settings {
 	const [value, setValue] = useState<Settings>(DEFAULT_SETTINGS);
@@ -298,6 +317,7 @@ export function SettingsPage({
 	settings,
 	library,
 	history,
+	syncStatus,
 	version,
 	download,
 	now = Date.now,
@@ -305,6 +325,7 @@ export function SettingsPage({
 }: SettingsPageProps) {
 	const prefs = useSettingsValue(settings);
 	const [historyCleared, setHistoryCleared] = useState(false);
+	const sync = useSourceValue(syncStatus, OFF_STATUS);
 	const clock = (): Clock => ({ now: now(), newId });
 
 	return (
@@ -364,6 +385,36 @@ export function SettingsPage({
 							</span>
 						</div>
 					</Field>
+				</Section>
+
+				<Section
+					title="Sync"
+					description="Bookmarks and folders follow you through your browser account. History stays on each machine."
+				>
+					<Field label="Sync bookmarks" hint={syncStatusText(sync, now())}>
+						<Toggle
+							label="Sync bookmarks"
+							checked={prefs.syncEnabled}
+							onChange={(syncEnabled) => settings.save({ syncEnabled })}
+						/>
+					</Field>
+					{sync.state !== "off" && (
+						<div>
+							<div class="flex justify-between text-[12px] text-ledger-muted">
+								<span>Sync space</span>
+								<span class="tabular-nums">{quotaPercent(sync)}%</span>
+							</div>
+							<div class="mt-1 h-1.5 overflow-hidden rounded-full bg-ledger-bg">
+								<div
+									class={`h-full rounded-full transition-[width] duration-500 ${quotaPercent(sync) > 85 ? "bg-red-400" : "bg-ledger-gold"}`}
+									style={{ width: `${quotaPercent(sync)}%` }}
+								/>
+							</div>
+						</div>
+					)}
+					{(sync.state === "error" || sync.state === "quota") && (
+						<Notice tone="error">{syncStatusText(sync, now())}</Notice>
+					)}
 				</Section>
 
 				<Section title="History">
