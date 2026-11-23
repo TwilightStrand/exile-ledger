@@ -11,7 +11,16 @@ import {
  * only work in the league they were made in, so they are used for live
  * searches still in that league and for imports that have no query.
  */
-export function bookmarkHref(bookmark: Bookmark, page: ParsedTradeUrl): string {
+/** The parts of a bookmark or history entry needed to open it. */
+export type OpenableSearch = Pick<
+	Bookmark,
+	"game" | "league" | "query" | "searchId" | "live"
+>;
+
+export function bookmarkHref(
+	bookmark: OpenableSearch,
+	page: ParsedTradeUrl,
+): string {
 	const { origin, location } = page;
 	// The panel only lists the open game's bookmarks; this covers links built elsewhere.
 	const sameGame = location.game === bookmark.game;

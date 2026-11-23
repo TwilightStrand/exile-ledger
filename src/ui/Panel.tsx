@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { titleOfQuery } from "../core/describe";
+import { clearHistory, type HistoryEntry } from "../core/history";
 import {
 	type Clock,
 	deleteBookmark,
@@ -27,11 +28,11 @@ import { setCollapsed, type UiState } from "../core/uiState";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
-import { HistoryList } from "./HistoryList";
+import { type HistoryActions, HistoryList } from "./HistoryList";
 import { ChevronLeft, ChevronRight, Mark, Pin } from "./icons";
-import { archivedView, libraryView } from "./libraryView";
+import { archivedView, historyView, libraryView } from "./libraryView";
 import { EmptyState } from "./parts";
-import { countBookmarks, type HistoryEntryView } from "./viewModels";
+import { countBookmarks } from "./viewModels";
 
 function useCapture(feed: CaptureFeed): CaptureState {
 	const [state, setState] = useState(feed.get);
@@ -113,7 +114,8 @@ export interface PanelProps {
 	uiState?: Source<UiState>;
 	/** Read on each render: the trade site changes its URL without reloading. */
 	page: () => ParsedTradeUrl | null;
-	history?: HistoryEntryView[];
+	/** Searches the page ran; recorded by the content script, read here. */
+	history?: Source<HistoryEntry[]>;
 	/** Previews pass these to show a given state. */
 	initiallyOpen?: boolean;
 	initialTab?: TabId;
@@ -127,7 +129,7 @@ export function Panel({
 	library: librarySource,
 	uiState,
 	page,
-	history = [],
+	history: historySource,
 	initiallyOpen = true,
 	initialTab = "bookmarks",
 	now = Date.now,
@@ -143,12 +145,18 @@ export function Panel({
 		createMemorySource<UiState>({ collapsed: [] }),
 	);
 	const uiStateSource = uiState ?? ownUiState;
+	const [ownHistory] = useState(() => createMemorySource<HistoryEntry[]>([]));
+	const historyStore = historySource ?? ownHistory;
+	const historyEntries = useSource(historyStore, (): HistoryEntry[] => []);
 	const ui = useSource(uiStateSource, () => ({ collapsed: [] }));
 	const currentPage = page();
 	const game: Game | null =
 		currentPage?.location.game ?? capture.search?.game ?? null;
 	const bookmarks = game ? libraryView(library, game, currentPage) : [];
 	const archived = game ? archivedView(library, game) : [];
+	const history = game
+		? historyView(historyEntries, library, game, currentPage)
+		: [];
 	const searchId = capture.search?.search.searchId;
 	const saved =
 		searchId !== undefined &&
@@ -208,6 +216,31 @@ export function Panel({
 	const classes = SIDE_CLASSES[side];
 	const CollapseIcon = side === "left" ? ChevronLeft : ChevronRight;
 	const ExpandIcon = side === "left" ? ChevronRight : ChevronLeft;
+	const historyActions: HistoryActions = {
+		onSave: (id) => {
+			const entry = historyEntries.find((h) => h.id === id);
+			if (!entry) return;
+			librarySource.update((lib) => {
+				const saved = saveSearch(
+					lib,
+					{
+						game: entry.game,
+						league: entry.league,
+						name: titleOfQuery(entry.query),
+						query: entry.query,
+						searchId: entry.searchId,
+						live: false,
+					},
+					clock(),
+				);
+				setLastSavedId(saved.bookmark.id);
+				return saved.library;
+			});
+		},
+		onClear: () => {
+			if (game) historyStore.update((h) => clearHistory(h, game));
+		},
+	};
 	const counts: Record<TabId, number> = {
 		bookmarks: countBookmarks(bookmarks),
 		history: history.length,
@@ -298,7 +331,11 @@ export function Panel({
 								/>
 							)}
 							{tab === "history" && (
-								<HistoryList entries={history} now={now()} />
+								<HistoryList
+									entries={history}
+									now={now()}
+									actions={historyActions}
+								/>
 							)}
 							{tab === "pinned" && (
 								<EmptyState icon={Pin} title="Nothing pinned">

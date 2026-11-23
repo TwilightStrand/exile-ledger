@@ -1,7 +1,5 @@
+import type { HistoryEntry } from "../src/core/history";
 import type { Bookmark, Folder, Library } from "../src/core/model";
-import type { HistoryEntryView } from "../src/ui/viewModels";
-
-const href = "#";
 
 function folder(
 	id: string,
@@ -79,45 +77,29 @@ export const MOCK_LIBRARY: Library = {
 const NOW = Date.UTC(2026, 10, 23, 18, 0);
 export const MOCK_NOW = () => NOW;
 
-export const MOCK_HISTORY: HistoryEntryView[] = [
-	{
-		id: "h1",
-		title: "Body Armour",
-		game: "poe2",
-		league: "Standard",
-		at: NOW - 2 * 60_000,
-		href,
-	},
-	{
-		id: "h2",
-		title: "Viper Wrap Hatungo Garb",
-		game: "poe2",
-		league: "Standard",
-		at: NOW - 40 * 60_000,
-		href,
-	},
-	{
-		id: "h3",
-		title: "Mageblood Heavy Belt",
-		game: "poe1",
-		league: "Mercenaries",
-		at: NOW - 5 * 3_600_000,
-		href,
-	},
-	{
-		id: "h4",
-		title: "Any Jewel",
-		game: "poe1",
-		league: "Mercenaries",
-		at: NOW - 28 * 3_600_000,
-		href,
-	},
-	{
-		id: "h5",
-		title: "Headhunter Leather Belt",
-		game: "poe1",
-		league: "Standard",
-		at: NOW - 9 * 86_400_000,
-		href,
-	},
+function entry(
+	id: string,
+	term: string,
+	game: HistoryEntry["game"],
+	league: string,
+	minutesAgo: number,
+	total: number,
+): HistoryEntry {
+	return {
+		id,
+		game,
+		league,
+		query: { query: { term } },
+		searchId: `hist-${id}`,
+		total,
+		at: NOW - minutesAgo * 60_000,
+	};
+}
+
+export const MOCK_HISTORY: HistoryEntry[] = [
+	entry("h1", "Body Armour", "poe2", "Standard", 2, 10000),
+	entry("h2", "Viper Wrap Hatungo Garb", "poe2", "Standard", 40, 12),
+	entry("h3", "Time-Lost Diamond", "poe2", "Standard", 60 * 26, 348),
+	entry("h4", "Mageblood Heavy Belt", "poe1", "Mercenaries", 5 * 60, 31),
+	entry("h5", "Headhunter Leather Belt", "poe1", "Standard", 9 * 24 * 60, 7),
 ];

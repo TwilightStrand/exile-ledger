@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { HistoryEntry } from "../../src/core/history";
 import {
 	createMemoryLibrary,
 	DEFAULT_FOLDER_NAME,
@@ -354,6 +355,61 @@ describe("Panel ordering and icons", () => {
 		await act(async () => button(root, "Ring")?.click());
 		expect((await library.load()).folders[0]?.icon).toBe("ring");
 		expect(root.querySelector("fieldset")).toBeNull();
+	});
+});
+
+describe("Panel history", () => {
+	const tabButton = (root: HTMLElement, name: string) =>
+		[...root.querySelectorAll<HTMLButtonElement>("[role=tab]")].find((t) =>
+			t.textContent?.startsWith(name),
+		);
+
+	function historySource() {
+		const entry = (
+			id: string,
+			game: HistoryEntry["game"],
+			term: string,
+			at: number,
+		): HistoryEntry => ({
+			id,
+			game,
+			league: "Standard",
+			query: { query: { term } },
+			searchId: `s-${id}`,
+			total: 42,
+			at,
+		});
+		return createMemorySource<HistoryEntry[]>([
+			entry("a", "poe2", "Hatungo Garb", 900),
+			entry("b", "poe1", "Tabula Rasa", 950),
+		]);
+	}
+
+	it("lists the open game's searches and saves one as a bookmark", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ library, history: historySource() });
+		await act(async () => tabButton(root, "History")?.click());
+
+		expect(treeText(root)).toContain("Hatungo Garb");
+		expect(treeText(root)).toContain("42 results");
+		expect(treeText(root)).not.toContain("Tabula Rasa");
+
+		await act(async () =>
+			button(root, "Save Hatungo Garb as bookmark")?.click(),
+		);
+		expect((await library.load()).bookmarks.map((b) => b.searchId)).toEqual([
+			"s-a",
+		]);
+		expect(button(root, "Save Hatungo Garb as bookmark")).toBeUndefined();
+	});
+
+	it("clears only the open game's history", async () => {
+		const history = historySource();
+		const root = await mount({ history });
+		await act(async () => tabButton(root, "History")?.click());
+		await act(async () => button(root, "Clear history")?.click());
+		expect((await history.load()).map((h) => h.game)).toEqual(["poe1"]);
+		expect(treeText(root)).toContain("No history yet");
 	});
 });
 

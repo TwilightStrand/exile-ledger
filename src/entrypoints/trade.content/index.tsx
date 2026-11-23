@@ -2,13 +2,16 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { recordSearch } from "../../core/history";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
 import { parseTradeUrl } from "../../core/tradeUrl";
+import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
 import { browserUiState } from "../../storage/uiStateStore";
 import { listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
+import { historyEntryFrom } from "../../trade/recordHistory";
 import { Panel } from "../../ui/Panel";
 
 export default defineContentScript({
@@ -18,7 +21,19 @@ export default defineContentScript({
 		if (!isTradePage(new URL(location.href))) return;
 
 		const feed = createCaptureFeed();
-		ctx.onInvalidated(listenForCaptures(window, feed.push));
+		ctx.onInvalidated(
+			listenForCaptures(window, (event) => {
+				feed.push(event);
+				if (event.kind === "search") {
+					const entry = historyEntryFrom(
+						event,
+						Date.now(),
+						crypto.randomUUID(),
+					);
+					browserHistory.update((history) => recordSearch(history, entry));
+				}
+			}),
+		);
 
 		const ui = await createShadowRootUi(ctx, {
 			name: "exile-ledger",
@@ -31,6 +46,7 @@ export default defineContentScript({
 						settings={browserSettings}
 						library={browserLibrary}
 						uiState={browserUiState}
+						history={browserHistory}
 						page={() => parseTradeUrl(new URL(location.href))}
 					/>,
 					container,

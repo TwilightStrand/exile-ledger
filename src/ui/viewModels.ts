@@ -37,6 +37,9 @@ export interface HistoryEntryView {
 	league: string;
 	at: number;
 	href: string;
+	total: number | null;
+	/** Already bookmarked, so the save action is not offered. */
+	saved: boolean;
 }
 
 export function countBookmarks(nodes: TreeNodeView[]): number {

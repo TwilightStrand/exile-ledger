@@ -1,9 +1,15 @@
+import { titleOfQuery } from "../core/describe";
+import { type HistoryEntry, historyFor } from "../core/history";
 import { bookmarkTree, type FolderNode } from "../core/library";
 import type { Library } from "../core/model";
 import { bookmarkHref } from "../core/openUrl";
 import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
 import { archivedRoots, subtreeStats } from "../core/tree";
-import type { ArchivedFolderView, TreeNodeView } from "./viewModels";
+import type {
+	ArchivedFolderView,
+	HistoryEntryView,
+	TreeNodeView,
+} from "./viewModels";
 
 /** The game's folders and bookmarks as panel rows, with links for the open page. */
 export function libraryView(
@@ -43,5 +49,24 @@ export function archivedView(
 		id: folder.id,
 		name: folder.name,
 		bookmarks: subtreeStats(library, folder.id).bookmarks,
+	}));
+}
+
+export function historyView(
+	history: HistoryEntry[],
+	library: Library,
+	game: Game,
+	page: ParsedTradeUrl | null,
+): HistoryEntryView[] {
+	const savedIds = new Set(library.bookmarks.map((b) => b.searchId));
+	return historyFor(history, game).map((h) => ({
+		id: h.id,
+		title: titleOfQuery(h.query),
+		game: h.game,
+		league: h.league,
+		at: h.at,
+		total: h.total,
+		saved: savedIds.has(h.searchId),
+		href: page ? bookmarkHref({ ...h, live: false }, page) : "#",
 	}));
 }

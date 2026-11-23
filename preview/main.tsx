@@ -4,6 +4,7 @@ import { type ComponentChildren, render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createMemoryLibrary, emptyLibrary } from "../src/core/library";
 import { createMemorySettings, type PanelSide } from "../src/core/settings";
+import { createMemorySource } from "../src/core/source";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
 import panelCss from "../src/styles/tailwind.css?inline";
@@ -143,6 +144,10 @@ function Preview() {
 	const [withSearch, setWithSearch] = useState(params.get("search") === "1");
 	const [withData, setWithData] = useState(params.get("data") === "1");
 	const feed = useMemo(() => feedFor(withSearch), [withSearch]);
+	const history = useMemo(
+		() => createMemorySource(withData ? MOCK_HISTORY : []),
+		[withData],
+	);
 	const library = useMemo(
 		() => createMemoryLibrary(withData ? MOCK_LIBRARY : emptyLibrary()),
 		[withData],
@@ -158,7 +163,7 @@ function Preview() {
 					settings={settings}
 					library={library}
 					page={page}
-					history={withData ? MOCK_HISTORY : []}
+					history={history}
 					initiallyOpen={params.get("open") !== "0"}
 					initialTab={startTab}
 					now={MOCK_NOW}
