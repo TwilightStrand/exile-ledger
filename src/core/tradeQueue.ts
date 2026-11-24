@@ -1,0 +1,66 @@
+import type { HeaderSource, RateLimiter, RequestKind } from "./rateLimit";
+
+export interface QueueResponse {
+	status: number;
+	headers: HeaderSource;
+	json(): Promise<unknown>;
+}
+
+export interface QueuePorts {
+	fetch(url: string, init: RequestInit): Promise<QueueResponse>;
+	now(): number;
+	sleep(ms: number): Promise<void>;
+}
+
+export type QueueResult =
+	| { ok: true; status: number; body: unknown }
+	| { ok: false; status: number; reason: "rate-limited" | "http" | "network" };
+
+/**
+ * Runs the extension's own trade requests one at a time, each after the rate
+ * limiter allows it. Serial on purpose: watchers are background work, and a
+ * burst would only spend budget the user needs for searching by hand.
+ */
+export function createTradeQueue(limiter: RateLimiter, ports: QueuePorts) {
+	let tail: Promise<unknown> = Promise.resolve();
+
+	const run = async (
+		kind: RequestKind,
+		url: string,
+		init: RequestInit,
+	): Promise<QueueResult> => {
+		const wait = limiter.delayFor(kind, ports.now());
+		if (wait > 0) await ports.sleep(wait);
+		limiter.record(kind, ports.now());
+		let response: QueueResponse;
+		try {
+			response = await ports.fetch(url, init);
+		} catch {
+			return { ok: false, status: 0, reason: "network" };
+		}
+		limiter.observe(kind, response.status, response.headers, ports.now());
+		if (response.status === 429)
+			return { ok: false, status: 429, reason: "rate-limited" };
+		if (response.status < 200 || response.status >= 300)
+			return { ok: false, status: response.status, reason: "http" };
+		try {
+			return { ok: true, status: response.status, body: await response.json() };
+		} catch {
+			return { ok: false, status: response.status, reason: "http" };
+		}
+	};
+
+	return {
+		enqueue(
+			kind: RequestKind,
+			url: string,
+			init: RequestInit = {},
+		): Promise<QueueResult> {
+			const result = tail.then(() => run(kind, url, init));
+			tail = result.catch(() => {});
+			return result;
+		},
+	};
+}
+
+export type TradeQueue = ReturnType<typeof createTradeQueue>;
