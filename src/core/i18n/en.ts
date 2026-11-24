@@ -293,7 +293,7 @@ export const en = {
 		chooseFile: "Choose file",
 		shareLabel: "Import a shared folder",
 		shareHint:
-			"Paste a string copied with “Copy share string” on a folder in the panel.",
+			"Paste a string copied with “Copy share string” on a folder in the panel, or an export from Better Trading, Poe Trade Plus or TFT.",
 		shareInput: "Share string",
 		sharePlaceholder: "EL1:…",
 		read: "Read",
@@ -311,6 +311,7 @@ export const en = {
 			"exile-ledger": "Shared folder",
 			"better-trading": "Better Trading export",
 			"poe-trade-plus": "Poe Trade Plus export",
+			tft: "TFT Trade Extension export",
 		} satisfies Record<ImportSource, string>,
 		errors: {
 			"not-share": "This is not an Exile Ledger share string.",

@@ -19,6 +19,15 @@ Published on addons.mozilla.org under the MIT License (version 2.1.1 read).
 Used for: its folder string (v4, v5), bookmark document and extension backup
 formats, read by the importer.
 
+## TFT Trade Extension
+
+Published on addons.mozilla.org and the Chrome Web Store by The Forbidden
+Trove under the MIT License (version 3.0.62 read).
+
+Used for: its folder export codes (current and legacy) read by the importer,
+and the trade-site search form selectors in `src/trade/selectors.ts` used by
+the keyboard shortcuts.
+
 ## Awakened PoE Trade
 
 https://github.com/SnosMe/awakened-poe-trade, MIT License,

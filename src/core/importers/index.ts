@@ -6,8 +6,13 @@ import {
 } from "../exchange";
 import { parseBetterTrading } from "./betterTrading";
 import { parsePoeTradePlus } from "./poeTradePlus";
+import { parseTft } from "./tft";
 
-export type ImportSource = "exile-ledger" | "better-trading" | "poe-trade-plus";
+export type ImportSource =
+	| "exile-ledger"
+	| "better-trading"
+	| "poe-trade-plus"
+	| "tft";
 
 /** Recognises any pasted export we can read and says which tool it came from. */
 export function decodeImport(
@@ -27,6 +32,10 @@ export function decodeImport(
 			ok: true,
 			value: { source: "poe-trade-plus", payload: poeTradePlus },
 		};
+	// TFT codes are plain base64 JSON; checked before Better Trading, whose
+	// version 1 strings are base64 JSON too but with other fields.
+	const tft = parseTft(trimmed, now);
+	if (tft) return { ok: true, value: { source: "tft", payload: tft } };
 	const betterTrading = parseBetterTrading(trimmed, now);
 	if (betterTrading)
 		return {
