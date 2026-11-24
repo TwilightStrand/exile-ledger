@@ -25,6 +25,8 @@ const listing = (id: string, itemId: string): ListingWatcher => ({
 	intervalMin: 5,
 	createdAt: 0,
 	lastCheckedAt: null,
+	failures: 0,
+	retryAt: null,
 	searchId: "s1",
 	itemId,
 	name: "Item",
@@ -45,6 +47,8 @@ const search: SearchWatcher = {
 	intervalMin: 5,
 	createdAt: 0,
 	lastCheckedAt: 0,
+	failures: 0,
+	retryAt: null,
 	bookmarkId: null,
 	name: "Armour",
 	query: { query: {} },
@@ -58,9 +62,12 @@ function fakeApi(overrides: Partial<WatcherApi> = {}) {
 	const api: WatcherApi = {
 		fetchListings: async ({ ids }) => {
 			fetchCalls.push(ids);
-			return fixture;
+			return { kind: "ok", value: fixture };
 		},
-		runSearch: async () => ({ ids: ["b", "a"], total: 2 }),
+		runSearch: async () => ({
+			kind: "ok",
+			value: { ids: ["b", "a"], total: 2 },
+		}),
 		...overrides,
 	};
 	return { api, fetchCalls };
@@ -95,10 +102,54 @@ describe("runDueWatchers", () => {
 		expect(fetchCalls.map((c) => c.length)).toEqual([10, 10, 3]);
 	});
 
+	it("backs off a watcher the server refused, doubling per failure", async () => {
+		let calls = 0;
+		const { api } = fakeApi({
+			runSearch: async () => {
+				calls++;
+				return { kind: "refused" };
+			},
+		});
+		let clock = 10 ** 9;
+		let current = [{ ...search, intervalMin: 30 }];
+		// Ten minutes of one-minute alarms: a refusal must not retry every minute.
+		for (let minute = 0; minute < 10; minute++) {
+			current = (
+				await runDueWatchers(current, api, () => clock)
+			).watchers.filter((w) => w.kind === "search");
+			clock += 60_000;
+		}
+		expect(calls).toBe(1);
+		expect(current[0]).toMatchObject({ failures: 1 });
+		expect(current[0]?.retryAt).toBe(10 ** 9 + 30 * 60_000);
+	});
+
+	it("starts no request after the deadline", async () => {
+		const { api, fetchCalls } = fakeApi();
+		let clock = 0;
+		const many = Array.from({ length: 30 }, (_, i) =>
+			listing(`w${i}`, `i${i}`),
+		);
+		const { watchers } = await runDueWatchers(
+			many,
+			{
+				...api,
+				fetchListings: async (group) => {
+					clock += 15_000;
+					return api.fetchListings(group);
+				},
+			},
+			() => clock,
+			20_000,
+		);
+		expect(fetchCalls).toHaveLength(2);
+		expect(watchers.filter((w) => w.lastCheckedAt === null)).toHaveLength(10);
+	});
+
 	it("leaves a watcher due when its request did not go out", async () => {
 		const { api } = fakeApi({
-			fetchListings: async () => null,
-			runSearch: async () => null,
+			fetchListings: async () => ({ kind: "skipped" }),
+			runSearch: async () => ({ kind: "skipped" }),
 		});
 		const before = [listing("w1", "x"), search];
 		const { watchers, events } = await runDueWatchers(

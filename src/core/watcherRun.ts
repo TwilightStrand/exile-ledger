@@ -2,6 +2,7 @@ import type { TradeQuery } from "./query";
 import { parseFetchResponse, type ResultItem } from "./tradeApi";
 import { FETCH_BATCH } from "./tradeApiUrls";
 import {
+	applyFailure,
 	applyListingCheck,
 	applySearchCheck,
 	isDue,
@@ -10,21 +11,29 @@ import {
 	type Watcher,
 } from "./watchers";
 
+/**
+ * How a request went. `skipped` means it never reached the server (held back
+ * by the rate limiter, offline) and costs nothing to retry; `refused` means the
+ * server answered with an error or a 429, so the watcher backs off.
+ */
+export type Outcome<T> =
+	| { kind: "ok"; value: T }
+	| { kind: "skipped" }
+	| { kind: "refused" };
+
 /** What the runner needs from the network; the background supplies the real one. */
 export interface WatcherApi {
-	/** Raw fetch-endpoint body for these ids, or null when the request did not happen. */
+	/** The fetch endpoint's body for these ids. */
 	fetchListings(group: {
 		origin: string;
 		game: Watcher["game"];
 		realm: string | null;
 		searchId: string;
 		ids: string[];
-	}): Promise<unknown | null>;
-	/** Search-endpoint result, or null when the request did not happen. */
-	runSearch(watcher: SearchWatcher): Promise<{
-		ids: string[];
-		total: number;
-	} | null>;
+	}): Promise<Outcome<unknown>>;
+	runSearch(
+		watcher: SearchWatcher,
+	): Promise<Outcome<{ ids: string[]; total: number }>>;
 }
 
 /** Changes worth telling the user about, for notifications and the panel badge. */
@@ -58,14 +67,16 @@ function listingEvent(
 }
 
 /**
- * Checks every due watcher once. A watcher whose request did not go out
- * (rate limited, deferred, offline) is left as it was, so it stays due and the
- * next run picks it up.
+ * Checks every due watcher once. A watcher whose request was skipped is left
+ * as it was and stays due; one the server refused backs off. No new request
+ * starts after `deadline`, so a run always finishes before the browser stops
+ * an idle background.
  */
 export async function runDueWatchers(
 	watchers: readonly Watcher[],
 	api: WatcherApi,
 	now: () => number,
+	deadline = Number.POSITIVE_INFINITY,
 ): Promise<{ watchers: Watcher[]; events: WatcherEvent[] }> {
 	const updated = new Map<string, Watcher>();
 	const events: WatcherEvent[] = [];
@@ -80,17 +91,21 @@ export async function runDueWatchers(
 	for (const group of listingGroups.values()) {
 		for (const batch of chunks(group, FETCH_BATCH)) {
 			const first = batch[0];
-			if (!first) continue;
-			const body = await api.fetchListings({
+			if (!first || now() >= deadline) continue;
+			const outcome = await api.fetchListings({
 				origin: first.origin,
 				game: first.game,
 				realm: first.realm,
 				searchId: first.searchId,
 				ids: batch.map((w) => w.itemId),
 			});
-			if (body === null) continue;
-			const items = parseFetchResponse(body);
-			if (items === null) continue;
+			if (outcome.kind === "skipped") continue;
+			const items =
+				outcome.kind === "ok" ? parseFetchResponse(outcome.value) : null;
+			if (items === null) {
+				for (const w of batch) updated.set(w.id, applyFailure(w, now()));
+				continue;
+			}
 			const byId = new Map<string, ResultItem>(items.map((i) => [i.id, i]));
 			for (const w of batch) {
 				const item = byId.get(w.itemId);
@@ -107,10 +122,14 @@ export async function runDueWatchers(
 	}
 
 	for (const w of due) {
-		if (w.kind !== "search") continue;
-		const result = await api.runSearch(w);
-		if (result === null) continue;
-		const next = applySearchCheck(w, result, now());
+		if (w.kind !== "search" || now() >= deadline) continue;
+		const outcome = await api.runSearch(w);
+		if (outcome.kind === "skipped") continue;
+		if (outcome.kind === "refused") {
+			updated.set(w.id, applyFailure(w, now()));
+			continue;
+		}
+		const next = applySearchCheck(w, outcome.value, now());
 		updated.set(w.id, next);
 		const count = next.newIds.length - w.newIds.length;
 		if (count > 0) events.push({ kind: "new-results", watcher: next, count });

@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import { TradeQuerySchema } from "./query";
+import { isTradeHost } from "./sites";
 
 /** Default and floor for how often a watcher checks, in minutes. */
 export const WATCH_INTERVAL: { min: number; default: number } = {
@@ -16,16 +17,47 @@ export const SEEN_CAP = 500;
 const GameSchema = v.picklist(["poe1", "poe2"]);
 const PriceSchema = v.object({ amount: v.number(), currency: v.string() });
 
+/**
+ * An official trade site's origin, exactly as `URL.origin` writes it. The
+ * background sends credentialed requests to it, so anything else is refused
+ * rather than trusted from storage or an import.
+ */
+const OriginSchema = v.pipe(
+	v.string(),
+	v.check((value) => {
+		try {
+			const url = new URL(value);
+			return (
+				url.protocol === "https:" &&
+				url.origin === value &&
+				isTradeHost(url.hostname)
+			);
+		} catch {
+			return false;
+		}
+	}),
+);
+
+/** Longest a failing watcher waits between tries. */
+export const MAX_BACKOFF_MS = 6 * 60 * 60_000;
+
 const Common = {
 	id: v.string(),
 	/** The trade site the watcher was made on; regional sites have their own API host. */
-	origin: v.string(),
+	origin: OriginSchema,
 	game: GameSchema,
 	realm: v.nullable(v.string()),
 	league: v.string(),
 	intervalMin: v.pipe(v.number(), v.integer(), v.minValue(WATCH_INTERVAL.min)),
 	createdAt: v.number(),
 	lastCheckedAt: v.nullable(v.number()),
+	/**
+	 * Refused checks in a row (error status, rate limited). GGG restricts
+	 * clients that keep sending invalid requests, so each failure doubles the
+	 * wait instead of retrying on the next alarm.
+	 */
+	failures: v.pipe(v.number(), v.integer(), v.minValue(0)),
+	retryAt: v.nullable(v.number()),
 };
 
 export const ListingWatcherSchema = v.object({
@@ -72,11 +104,16 @@ export function parseWatchers(raw: unknown): Watcher[] {
 	});
 }
 
+function dueAt(watcher: Watcher): number {
+	const scheduled =
+		watcher.lastCheckedAt === null
+			? 0
+			: watcher.lastCheckedAt + watcher.intervalMin * 60_000;
+	return Math.max(scheduled, watcher.retryAt ?? 0);
+}
+
 export function isDue(watcher: Watcher, now: number): boolean {
-	return (
-		watcher.lastCheckedAt === null ||
-		now >= watcher.lastCheckedAt + watcher.intervalMin * 60_000
-	);
+	return now >= dueAt(watcher);
 }
 
 /** Minutes until the soonest watcher is due, for the next alarm. */
@@ -84,14 +121,19 @@ export function nextDueInMinutes(
 	watchers: readonly Watcher[],
 	now: number,
 ): number | null {
-	let soonest: number | null = null;
-	for (const w of watchers) {
-		const due =
-			w.lastCheckedAt === null ? now : w.lastCheckedAt + w.intervalMin * 60_000;
-		soonest = soonest === null ? due : Math.min(soonest, due);
-	}
-	if (soonest === null) return null;
+	if (watchers.length === 0) return null;
+	const soonest = Math.min(...watchers.map(dueAt));
 	return Math.max(WATCH_INTERVAL.min, (soonest - now) / 60_000);
+}
+
+/** A check the server refused: wait the interval, doubled per failure in a row. */
+export function applyFailure<W extends Watcher>(watcher: W, now: number): W {
+	const failures = watcher.failures + 1;
+	const wait = Math.min(
+		MAX_BACKOFF_MS,
+		watcher.intervalMin * 60_000 * 2 ** (failures - 1),
+	);
+	return { ...watcher, failures, retryAt: now + wait };
 }
 
 const samePrice = (a: Price | null, b: Price | null) =>
@@ -110,6 +152,8 @@ export function applyListingCheck(
 	if (!check.listed) {
 		return {
 			...watcher,
+			failures: 0,
+			retryAt: null,
 			lastCheckedAt: now,
 			status: "gone",
 			changedAt: watcher.status === "gone" ? watcher.changedAt : now,
@@ -119,6 +163,8 @@ export function applyListingCheck(
 	const repriced = !samePrice(watcher.price, check.price);
 	return {
 		...watcher,
+		failures: 0,
+		retryAt: null,
 		lastCheckedAt: now,
 		status: back ? "back" : watcher.status,
 		price: check.price,
@@ -145,6 +191,8 @@ export function applySearchCheck(
 	const known = new Set(watcher.newIds);
 	return {
 		...watcher,
+		failures: 0,
+		retryAt: null,
 		lastCheckedAt: now,
 		total: result.total,
 		newIds: [...watcher.newIds, ...fresh.filter((id) => !known.has(id))],

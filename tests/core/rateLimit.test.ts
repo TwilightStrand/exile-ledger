@@ -170,4 +170,13 @@ describe("trade queue with the rate limiter", () => {
 		).toEqual({ ok: false, status: 0, reason: "deferred" });
 		expect(fetched).toBe(false);
 	});
+
+	it("carries a running penalty into a restarted limiter", () => {
+		const before = createRateLimiter();
+		before.observe("fetch", 429, headers({ "Retry-After": "600" }), 0);
+		const after = createRateLimiter();
+		after.restore(before.snapshot());
+		expect(after.delayFor("fetch", 60_000)).toBe(540_000);
+		expect(after.delayFor("search", 60_000)).toBe(0);
+	});
 });

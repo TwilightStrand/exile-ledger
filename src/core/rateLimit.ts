@@ -13,6 +13,7 @@
  */
 
 export type RequestKind = "search" | "fetch";
+export const REQUEST_KINDS: readonly RequestKind[] = ["search", "fetch"];
 
 export interface HeaderSource {
 	get(name: string): string | null;
@@ -95,6 +96,29 @@ export function createRateLimiter() {
 			const state = stateOf(kind);
 			const longest = Math.max(0, ...state.rules.map((r) => r.rule.periodMs));
 			state.sent = [...state.sent.filter((t) => t > now - longest), now];
+		},
+
+		/**
+		 * Penalties still running, to keep across a background restart: the
+		 * browser stops an idle background, and a fresh limiter that forgot a
+		 * 429 would send straight into it.
+		 */
+		snapshot(): Partial<Record<RequestKind, number>> {
+			const out: Partial<Record<RequestKind, number>> = {};
+			for (const [kind, state] of kinds)
+				if (state.blockedUntil > 0) out[kind] = state.blockedUntil;
+			return out;
+		},
+
+		restore(saved: Partial<Record<RequestKind, number>>): void {
+			for (const kind of REQUEST_KINDS) {
+				const until = saved[kind];
+				if (until !== undefined)
+					stateOf(kind).blockedUntil = Math.max(
+						stateOf(kind).blockedUntil,
+						until,
+					);
+			}
 		},
 
 		observe(

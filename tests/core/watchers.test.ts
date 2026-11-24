@@ -21,6 +21,8 @@ const listing: ListingWatcher = {
 	intervalMin: 5,
 	createdAt: 0,
 	lastCheckedAt: null,
+	failures: 0,
+	retryAt: null,
 	searchId: "s1",
 	itemId: "item1",
 	name: "Eagle Sanctuary",
@@ -41,6 +43,8 @@ const search: SearchWatcher = {
 	intervalMin: 5,
 	createdAt: 0,
 	lastCheckedAt: null,
+	failures: 0,
+	retryAt: null,
 	bookmarkId: "b1",
 	name: "Bows",
 	query: { query: { type: "Bow" } },
@@ -137,6 +141,21 @@ describe("scheduling", () => {
 });
 
 describe("parseWatchers", () => {
+	it("refuses watchers that point anywhere but an official trade site", () => {
+		for (const origin of [
+			"http://www.pathofexile.com",
+			"https://evil.example",
+			"https://www.pathofexile.com/",
+			"https://pathofexile.com.evil.example",
+			"not a url",
+		]) {
+			expect(parseWatchers([{ ...listing, origin }])).toEqual([]);
+		}
+		expect(
+			parseWatchers([{ ...listing, origin: "https://poe.kakaogames.com" }]),
+		).toHaveLength(1);
+	});
+
 	it("keeps valid watchers and drops broken ones", () => {
 		expect(
 			parseWatchers([listing, { ...search, intervalMin: 0 }, "junk", search]),
