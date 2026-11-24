@@ -27,3 +27,19 @@ describe("settings storage", () => {
 		stop();
 	});
 });
+
+describe("settings from a newer version", () => {
+	beforeEach(() => fakeBrowser.reset());
+
+	it("survive a save from this version", async () => {
+		await fakeBrowser.storage.sync.set({
+			settings: { panelSide: "left", fromTheFuture: { on: true } },
+		});
+		await browserSettings.save({ panelSide: "right" });
+		const { settings } = await fakeBrowser.storage.sync.get("settings");
+		expect(settings).toMatchObject({
+			panelSide: "right",
+			fromTheFuture: { on: true },
+		});
+	});
+});

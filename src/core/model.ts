@@ -19,7 +19,9 @@ export const FOLDER_ICONS = [
 ] as const;
 export type FolderIcon = (typeof FOLDER_ICONS)[number];
 
-export const FolderSchema = v.object({
+// Loose: fields from a newer version survive this one's reads and writes, so
+// syncing through an older install does not strip them.
+export const FolderSchema = v.looseObject({
 	id: v.string(),
 	parentId: v.nullable(v.string()),
 	name: v.string(),
@@ -39,7 +41,7 @@ export const FolderSchema = v.object({
 });
 export type Folder = v.InferOutput<typeof FolderSchema>;
 
-export const BookmarkSchema = v.object({
+export const BookmarkSchema = v.looseObject({
 	id: v.string(),
 	folderId: v.string(),
 	name: v.string(),

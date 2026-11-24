@@ -127,3 +127,27 @@ describe("mergeLibraries", () => {
 		expect(mergeLibraries(once, once, NOW)).toEqual(once);
 	});
 });
+
+describe("copies written by an older version", () => {
+	it("lose a same-time tie to the copy with the newer fields, on both sides", () => {
+		const rich: Bookmark = { ...bookmark("b", "f"), done: true };
+		const { done: _d, ...stripped } = rich;
+		const a: Library = {
+			folders: [folder("f", null)],
+			bookmarks: [rich],
+			tombstones: [],
+		};
+		const b: Library = { ...a, bookmarks: [stripped] };
+		expect(mergeLibraries(a, b, 2).bookmarks[0]?.done).toBe(true);
+		expect(mergeLibraries(b, a, 2).bookmarks[0]?.done).toBe(true);
+	});
+
+	it("keep fields this version does not know through a parse", () => {
+		const raw = {
+			folders: [{ ...folder("f", null), colour: "teal" }],
+			bookmarks: [],
+			tombstones: [],
+		};
+		expect(parseLibrary(raw).folders[0]).toMatchObject({ colour: "teal" });
+	});
+});

@@ -15,12 +15,17 @@ function newest<T extends { id: string; updatedAt: number }>(
 	const byId = new Map<string, T>();
 	for (const item of items) {
 		const current = byId.get(item.id);
-		// Ties go to the larger JSON so every machine picks the same winner.
+		// Ties go first to the copy with more fields (one an older version
+		// wrote may lack newer ones), then to the larger JSON, so every machine
+		// picks the same winner.
+		const fields = (x: T) => Object.keys(x).length;
 		if (
 			!current ||
 			item.updatedAt > current.updatedAt ||
 			(item.updatedAt === current.updatedAt &&
-				JSON.stringify(item) > JSON.stringify(current))
+				(fields(item) > fields(current) ||
+					(fields(item) === fields(current) &&
+						JSON.stringify(item) > JSON.stringify(current))))
 		) {
 			byId.set(item.id, item);
 		}
