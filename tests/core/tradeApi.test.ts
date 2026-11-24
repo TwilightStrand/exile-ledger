@@ -180,6 +180,8 @@ describe("parseFetchResponse", () => {
 				ilvl: null,
 				price: null,
 				indexed: null,
+				rarity: null,
+				text: null,
 				mods: [
 					{
 						kind: "explicit",
@@ -200,5 +202,22 @@ describe("parseFetchResponse", () => {
 		expect(
 			parseFetchResponse({ error: { code: 3, message: "Rate limited" } }),
 		).toBeNull();
+	});
+});
+
+describe("parseFetchResponse item details", () => {
+	it("decodes PoE1's game text and reads rarity from frameType", () => {
+		const items = parseFetchResponse(poe1FetchResponse) ?? [];
+		expect(items[1]?.rarity).toBe("Rare");
+		expect(items[1]?.ilvl).toBe(35);
+		expect(items[1]?.text).toMatch(
+			/^Item Class: Body Armours\r?\nRarity: Rare/,
+		);
+	});
+
+	it("has no game text for PoE2", () => {
+		const items = parseFetchResponse(fetchResponse) ?? [];
+		expect(items[0]?.text).toBe(null);
+		expect(items[0]?.rarity).toBe("Rare");
 	});
 });

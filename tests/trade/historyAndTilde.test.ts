@@ -92,3 +92,35 @@ describe("installTildePrefix", () => {
 		stop();
 	});
 });
+
+describe("installTildePrefix per box", () => {
+	it("asks separately for the item box and the stat filter boxes", () => {
+		document.body.innerHTML =
+			'<div class="search-left"><input id="item" class="multiselect__input"></div>' +
+			'<div class="filter"><input id="stat" class="multiselect__input"></div>';
+		const asked: string[] = [];
+		const stop = installTildePrefix(document, (box) => {
+			asked.push(box);
+			return box === "item";
+		});
+		for (const id of ["item", "stat"]) {
+			const input = document.getElementById(id);
+			if (!(input instanceof HTMLInputElement)) throw new Error("fixture");
+			input.value = "l";
+			input.dispatchEvent(
+				new InputEvent("input", {
+					data: "l",
+					inputType: "insertText",
+					bubbles: true,
+				}),
+			);
+		}
+		expect(asked).toEqual(["item", "filter"]);
+		const values = ["item", "stat"].map((id) => {
+			const input = document.getElementById(id);
+			return input instanceof HTMLInputElement ? input.value : null;
+		});
+		expect(values).toEqual(["~l", "l"]);
+		stop();
+	});
+});

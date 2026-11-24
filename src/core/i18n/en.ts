@@ -172,6 +172,11 @@ export const en = {
 			divine: "div",
 			exalted: "ex",
 		} satisfies Record<string, string>,
+		/** Exact listing time, in the browser's own locale and time zone. */
+		listedAt: (at: number) =>
+			`Listed ${new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+		socketShortfall: (itemLevel: number, max: number) =>
+			`Item level ${itemLevel}: at most ${max} sockets`,
 		/** The tab title segment for an unsaved search. */
 		titleSegment: (item: string, league: string) => `${item} (${league})`,
 	},
@@ -313,6 +318,12 @@ export const en = {
 				"Shows each price in chaos and divine (PoE1) or exalted and divine (PoE2), using poe.ninja rates refreshed every 30 minutes. Turning this on asks permission to read poe.ninja.",
 			pricesMissingAccess:
 				"Equivalent prices are on in another browser, but this one has not been allowed to read poe.ninja. Turn the switch on to allow it.",
+			listingTime: "Exact listing time",
+			listingTimeHint:
+				'Shows the date and time each item was listed, next to the site\'s "2 hours ago".',
+			socketWarning: "Socket warning (PoE1)",
+			socketWarningHint:
+				"Notes items whose item level keeps them below the base's socket count, so a 6-socket base that can never have 6.",
 			pricesDenied:
 				"Equivalent prices need access to poe.ninja. Nothing was changed.",
 		},
@@ -321,9 +332,11 @@ export const en = {
 			tabTitles: "Tab titles",
 			tabTitlesHint:
 				"Puts the bookmark name, or the item and league, in the browser tab, with ⚡ for live searches.",
-			fuzzy: "Fuzzy search by default",
+			fuzzy: "Fuzzy item search",
 			fuzzyHint:
-				"Adds ~ when you start typing in a search box. Start with a space to search exactly.",
+				"Adds ~ when you start typing in the item search box. Start with a space to search exactly.",
+			fuzzyFilters: "Fuzzy stat filter search",
+			fuzzyFiltersHint: "The same for the boxes where you pick a stat filter.",
 			backForward: "Back and Forward between searches",
 			backForwardHint:
 				"The browser's Back button returns to your previous search instead of leaving the site.",

@@ -7,13 +7,21 @@ import { THEMES, type ThemeId } from "../core/themes";
 import type { CaptureState } from "./captureFeed";
 import { PRICE_ATTR } from "./equivalentPrices";
 import { FLASH_ATTR, PINNED_ROW_ATTR } from "./pinButtons";
+import { LISTED_ATTR, SOCKETS_ATTR } from "./resultHelpers";
 import { SELECTORS } from "./selectors";
 
 export const HIGHLIGHT_ATTR = "data-exile-ledger-match";
 const STYLE_ID = "exile-ledger-page-styles";
 const THEME_STYLE_ID = "exile-ledger-page-theme";
 const ACCENT = "--exile-ledger-accent";
-const MARKED = [HIGHLIGHT_ATTR, PRICE_ATTR, PINNED_ROW_ATTR, FLASH_ATTR]
+const MARKED = [
+	HIGHLIGHT_ATTR,
+	PRICE_ATTR,
+	PINNED_ROW_ATTR,
+	FLASH_ATTR,
+	LISTED_ATTR,
+	SOCKETS_ATTR,
+]
 	.map((attr) => `[${attr}]`)
 	.join(", ");
 
@@ -31,6 +39,8 @@ export function installPageStyles(doc: Document): void {
 	style.textContent = [
 		`[${HIGHLIGHT_ATTR}] { background: ${tint(16)}; box-shadow: inset 3px 0 0 var(${ACCENT}); border-radius: 2px; }`,
 		`[${PRICE_ATTR}] { display: block; margin-top: 2px; font-size: 11px; color: var(${ACCENT}); opacity: 0.9; }`,
+		`[${LISTED_ATTR}] { font-size: 11px; opacity: 0.75; }`,
+		`[${SOCKETS_ATTR}] { font-size: 11px; color: var(${ACCENT}); }`,
 		`[${PINNED_ROW_ATTR}] { box-shadow: inset 3px 0 0 var(${ACCENT}); }`,
 		`@keyframes exile-ledger-flash { 0%, 40% { background: ${tint(25)}; } }`,
 		`[${FLASH_ATTR}] { animation: exile-ledger-flash 1.5s ease-out; }`,

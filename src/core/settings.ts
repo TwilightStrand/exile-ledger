@@ -36,8 +36,14 @@ export interface Settings {
 	equivalentPricing: boolean;
 	/** Bookmark name or item and league in the browser tab title. */
 	tabTitles: boolean;
-	/** Prefix "~" (fuzzy match) in the site's search boxes. */
+	/** Prefix "~" (fuzzy match) in the item search box. */
 	tildePrefix: boolean;
+	/** The same in the stat filter pickers, where exact matches matter more often. */
+	tildePrefixFilters: boolean;
+	/** Exact date and time under each result. */
+	listingTime: boolean;
+	/** PoE1 note when item level caps sockets below the base's maximum. */
+	socketWarning: boolean;
 	/** Browser Back and Forward move between searches. */
 	backForward: boolean;
 	/** Colours for the panel, the settings page and the marks on the trade site. */
@@ -59,6 +65,9 @@ export const DEFAULT_SETTINGS: Settings = {
 	equivalentPricing: false,
 	tabTitles: true,
 	tildePrefix: true,
+	tildePrefixFilters: true,
+	listingTime: true,
+	socketWarning: false,
 	backForward: true,
 	theme: DEFAULT_THEME,
 	compact: false,
@@ -89,6 +98,12 @@ export const SettingsSchema = v.fallback(
 		highlightMods: v.fallback(v.boolean(), DEFAULT_SETTINGS.highlightMods),
 		tabTitles: v.fallback(v.boolean(), DEFAULT_SETTINGS.tabTitles),
 		tildePrefix: v.fallback(v.boolean(), DEFAULT_SETTINGS.tildePrefix),
+		tildePrefixFilters: v.fallback(
+			v.boolean(),
+			DEFAULT_SETTINGS.tildePrefixFilters,
+		),
+		listingTime: v.fallback(v.boolean(), DEFAULT_SETTINGS.listingTime),
+		socketWarning: v.fallback(v.boolean(), DEFAULT_SETTINGS.socketWarning),
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),

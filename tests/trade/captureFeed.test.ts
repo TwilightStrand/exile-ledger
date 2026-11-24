@@ -24,6 +24,8 @@ const results = (queryId: string, id: string): CaptureEvent => ({
 			mods: [],
 			price: null,
 			indexed: null,
+			rarity: null,
+			text: null,
 		},
 	],
 });

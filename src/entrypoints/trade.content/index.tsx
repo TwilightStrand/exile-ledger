@@ -31,6 +31,7 @@ import { jumpToResult, syncPinButtons } from "../../trade/pinButtons";
 import { createRatesClient } from "../../trade/ratesClient";
 import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
+import { annotateResults } from "../../trade/resultHelpers";
 import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
 import { MessagesProvider } from "../../ui/i18n";
@@ -112,7 +113,11 @@ export default defineContentScript({
 				: "off";
 		};
 		setBackForwardFlag();
-		ctx.onInvalidated(installTildePrefix(document, () => prefs.tildePrefix));
+		ctx.onInvalidated(
+			installTildePrefix(document, (box) =>
+				box === "item" ? prefs.tildePrefix : prefs.tildePrefixFilters,
+			),
+		);
 		ctx.onInvalidated(
 			browserLibrary.watch((next) => {
 				library = next;
@@ -136,6 +141,7 @@ export default defineContentScript({
 			const capture = feed.get();
 			const search = capture.search;
 			highlightMods(document, capture, prefs.highlightMods);
+			annotateResults(document, capture, prefs, t);
 			updateTitle();
 			pins
 				.load()

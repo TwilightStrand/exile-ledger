@@ -67,6 +67,8 @@ describe("togglePin", () => {
 			mods: [],
 			price: null,
 			indexed: null,
+			rarity: null,
+			text: null,
 		};
 		const pinned = togglePin([], item, 5);
 		expect(pinned.map((p) => p.id)).toEqual(["x"]);

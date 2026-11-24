@@ -10,6 +10,8 @@ export const SELECTORS = {
 		".enchantMod, .implicitMod, .fracturedMod, .explicitMod, .craftedMod, .runeMod, .pseudoMod",
 	price: '.price, [data-field="price"]',
 	actions: ".details .btns",
+	details: ".details",
+	buttons: ".btns",
 	// The search form; these match what TFT targets on both games' sites.
 	itemSearch: ".search-left input",
 	statPane: ".search-advanced-pane.brown",

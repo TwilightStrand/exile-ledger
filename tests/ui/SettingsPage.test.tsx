@@ -289,3 +289,27 @@ describe("keyboard shortcuts", () => {
 		expect((await settings.load()).hotkeys.clearSearch).not.toBe(null);
 	});
 });
+
+describe("result helper switches", () => {
+	const cases: [
+		string,
+		"listingTime" | "socketWarning" | "tildePrefixFilters",
+		boolean,
+	][] = [
+		["Exact listing time", "listingTime", true],
+		["Socket warning (PoE1)", "socketWarning", false],
+		["Fuzzy stat filter search", "tildePrefixFilters", true],
+	];
+	it.each(cases)(
+		"%s starts as the default and saves",
+		async (label, key, initial) => {
+			const { root, settings } = await mount();
+			const toggle = root.querySelector<HTMLButtonElement>(
+				`button[role=switch][aria-label="${label}"]`,
+			);
+			expect(toggle?.getAttribute("aria-checked")).toBe(String(initial));
+			await act(() => toggle?.click());
+			expect((await settings.load())[key]).toBe(!initial);
+		},
+	);
+});

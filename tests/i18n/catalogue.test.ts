@@ -23,6 +23,8 @@ const CALLS: Record<string, (t: Messages) => string> = {
 		t.bookmarks.confirmDeleteFolder("Maps", 3, 1),
 	"history.saveAs": (t) => t.history.saveAs("Garb"),
 	"pins.unpin": (t) => t.pins.unpin("Garb"),
+	"trade.listedAt": (t) => t.trade.listedAt(Date.UTC(2026, 10, 24, 12)),
+	"trade.socketShortfall": (t) => t.trade.socketShortfall(35, 5),
 	"trade.priceEquivalents": (t) =>
 		t.trade.priceEquivalents(["74.1 c", "0.088 div"]),
 	"trade.titleSegment": (t) => t.trade.titleSegment("Body Armour", "Standard"),

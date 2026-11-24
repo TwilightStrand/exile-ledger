@@ -31,6 +31,8 @@ function page(rows: number) {
 			baseType: "Hatungo Garb",
 			ilvl: 80,
 			indexed: null,
+			rarity: null,
+			text: null,
 			price: { amount: 1 + (i % 5), currency: i % 2 ? "exalted" : "divine" },
 			mods: MODS.map((text, k) => ({
 				kind: "explicit",

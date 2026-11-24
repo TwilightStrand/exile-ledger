@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { itemTextFromBase64 } from "./items/itemText";
 import { type TradeQuery, TradeQuerySchema } from "./query";
 import { isTradeHost } from "./sites";
 import { decodePath, type Game, REALMS } from "./tradeUrl";
@@ -91,6 +92,7 @@ const ItemSchema = v.looseObject({
 	typeLine: v.optional(v.string()),
 	baseType: v.optional(v.string()),
 	ilvl: v.optional(v.number()),
+	frameType: v.optional(v.number()),
 	enchantMods: ModLines,
 	implicitMods: ModLines,
 	fracturedMods: ModLines,
@@ -100,6 +102,8 @@ const ItemSchema = v.looseObject({
 	extended: v.optional(
 		v.looseObject({
 			hashes: v.optional(v.record(v.string(), v.array(HashEntry))),
+			// PoE1 only: the in-game Ctrl+C text, base64 encoded.
+			text: v.optional(v.string()),
 		}),
 	),
 });
@@ -134,7 +138,14 @@ export interface ResultItem {
 	mods: ResultMod[];
 	price: { amount: number; currency: string } | null;
 	indexed: string | null;
+	/** "Unique" etc., from frameType; null for currency, gems and anything else. */
+	rarity: Rarity | null;
+	/** PoE1's in-game item text, decoded; PoE2 responses do not carry it. */
+	text: string | null;
 }
+
+export type Rarity = "Normal" | "Magic" | "Rare" | "Unique";
+const RARITIES: readonly Rarity[] = ["Normal", "Magic", "Rare", "Unique"];
 
 type Item = v.InferOutput<typeof ItemSchema>;
 type ModLineData = v.InferOutput<typeof ModLine>;
@@ -200,5 +211,9 @@ export function parseFetchResponse(response: unknown): ResultItem[] | null {
 					}
 				: null,
 			indexed: entry.listing.indexed ?? null,
+			rarity: RARITIES[entry.item.frameType ?? -1] ?? null,
+			text: entry.item.extended?.text
+				? itemTextFromBase64(entry.item.extended.text)
+				: null,
 		}));
 }

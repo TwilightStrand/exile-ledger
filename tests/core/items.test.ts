@@ -90,3 +90,37 @@ describe("affix count", () => {
 		expect(countAffixes([{}, {}])).toBeNull();
 	});
 });
+
+describe("socket caps by item level", () => {
+	it.each([
+		[1, 2],
+		[2, 3],
+		[24, 3],
+		[25, 4],
+		[34, 4],
+		[35, 5],
+		[49, 5],
+		[50, 6],
+		[86, 6],
+	])("item level %i allows %i sockets", (level, max) => {
+		expect(socketsForItemLevel(level)).toBe(max);
+	});
+
+	it.each([
+		["Body Armours", 30, "Rare", 4],
+		["Body Armours", 50, "Rare", null],
+		["Helmets", 30, "Rare", null],
+		["Helmets", 20, "Magic", 3],
+		["Wands", 1, "Normal", 2],
+		["Wands", 10, "Normal", null],
+		["Body Armours", 10, "Unique", null],
+		["Rings", 10, "Rare", null],
+	])(
+		"%s at item level %i (%s) is capped at %s",
+		(itemClass, level, rarity, cap) => {
+			expect(socketShortfall({ itemClass, itemLevel: level, rarity })).toBe(
+				cap,
+			);
+		},
+	);
+});

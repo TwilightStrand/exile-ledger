@@ -465,6 +465,23 @@ export function SettingsPage({
 							onChange={(highlightMods) => settings.save({ highlightMods })}
 						/>
 					</Field>
+					<Field label={s.results.listingTime} hint={s.results.listingTimeHint}>
+						<Toggle
+							label={s.results.listingTime}
+							checked={prefs.listingTime}
+							onChange={(listingTime) => settings.save({ listingTime })}
+						/>
+					</Field>
+					<Field
+						label={s.results.socketWarning}
+						hint={s.results.socketWarningHint}
+					>
+						<Toggle
+							label={s.results.socketWarning}
+							checked={prefs.socketWarning}
+							onChange={(socketWarning) => settings.save({ socketWarning })}
+						/>
+					</Field>
 					<Field label={s.results.prices} hint={s.results.pricesHint}>
 						<Toggle
 							label={s.results.prices}
@@ -501,6 +518,15 @@ export function SettingsPage({
 							label={s.trade.fuzzy}
 							checked={prefs.tildePrefix}
 							onChange={(tildePrefix) => settings.save({ tildePrefix })}
+						/>
+					</Field>
+					<Field label={s.trade.fuzzyFilters} hint={s.trade.fuzzyFiltersHint}>
+						<Toggle
+							label={s.trade.fuzzyFilters}
+							checked={prefs.tildePrefixFilters}
+							onChange={(tildePrefixFilters) =>
+								settings.save({ tildePrefixFilters })
+							}
 						/>
 					</Field>
 					<Field label={s.trade.backForward} hint={s.trade.backForwardHint}>
