@@ -22,7 +22,7 @@ import { MOCK_HISTORY, MOCK_LIBRARY, MOCK_NOW } from "./mocks";
 // ?search=1&data=1&side=right&open=0&tab=history&game=poe1
 const params = new URLSearchParams(location.search);
 const startSide: PanelSide = params.get("side") === "right" ? "right" : "left";
-const startMode = params.get("mode") === "push" ? "push" : "overlay";
+const startMode = params.get("mode") === "overlay" ? "overlay" : "push";
 const startTab: TabId =
 	TABS.find((t) => t === params.get("tab")) ?? "bookmarks";
 

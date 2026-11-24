@@ -43,7 +43,7 @@ export interface Settings {
 // Left matches where Better Trading docks, so people switching over find it in the same place.
 export const DEFAULT_SETTINGS: Settings = {
 	panelSide: "left",
-	panelMode: "overlay",
+	panelMode: "push",
 	panelWidth: PANEL_WIDTH.default,
 	historyEnabled: true,
 	syncEnabled: true,
