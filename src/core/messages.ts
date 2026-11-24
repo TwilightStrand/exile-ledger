@@ -17,3 +17,10 @@ export const LibraryWriteSchema = v.object({
 	type: v.literal("exile-ledger:library-write"),
 	library: v.unknown(),
 });
+
+/**
+ * storage.local key the background bumps when the user grants poe.ninja
+ * access. Content scripts cannot see permission events, and a grant does not
+ * always change the synced setting, so this is how open tabs learn to retry.
+ */
+export const PRICING_ACCESS_KEY = "pricingAccessAt";

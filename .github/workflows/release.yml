@@ -105,13 +105,14 @@ jobs:
           --chrome-zip .output/*-chrome.zip
           --chrome-extension-id "$CHROME_EXTENSION_ID"
           --chrome-publisher-id "$CHROME_PUBLISHER_ID"
-          --chrome-service-account-client-email "$CHROME_SA_EMAIL"
-          --chrome-service-account-private-key "$CHROME_SA_KEY"
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
-          CHROME_SA_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
-          CHROME_SA_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
+          # Read from the environment by publish-browser-extension. As a flag
+          # the PEM key's leading dashes parse as options, and it would show
+          # in the process list.
+          CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
+          CHROME_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
 
       - name: Submit to addons.mozilla.org
         if: env.HAS_FIREFOX == 'true'
@@ -121,8 +122,7 @@ jobs:
           --firefox-sources-zip .output/*-sources.zip
           --firefox-extension-id exile-ledger@twilightstrand
           --firefox-compatibility firefox
-          --firefox-jwt-issuer "$FIREFOX_JWT_ISSUER"
-          --firefox-jwt-secret "$FIREFOX_JWT_SECRET"
+        # Credentials come from the environment, kept off the command line.
         env:
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

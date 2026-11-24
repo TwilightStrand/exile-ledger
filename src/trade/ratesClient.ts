@@ -5,11 +5,6 @@ import { type Rates, RatesSchema } from "../core/pricing";
 import type { Game } from "../core/tradeUrl";
 
 /**
- * Asks the background for rates once per game and league, and calls back when
- * they arrive so the page can be annotated. Lookups are synchronous so the
- * enhance pass never waits on the network.
- */
-/**
  * How long a league without rates waits before asking again. Private leagues
  * never get poe.ninja rates, and every results update runs a lookup, so
  * without a pause a miss would mean a request per frame while scrolling.
@@ -21,6 +16,11 @@ type Entry =
 	| { state: "ready"; rates: Rates }
 	| { state: "missing"; retryAt: number };
 
+/**
+ * Asks the background for rates once per game and league, and calls back when
+ * they arrive so the page can be annotated. Lookups are synchronous so the
+ * enhance pass never waits on the network.
+ */
 export function createRatesClient(
 	onArrive: () => void,
 	now: () => number = Date.now,
@@ -33,14 +33,19 @@ export function createRatesClient(
 			if (entry?.state === "ready") return entry.rates;
 			if (entry?.state === "pending") return null;
 			if (entry?.state === "missing" && now() < entry.retryAt) return null;
-			cache.set(key, { state: "pending" });
+			const pending: Entry = { state: "pending" };
+			cache.set(key, pending);
 			const request: RatesRequest = {
 				type: "exile-ledger:rates",
 				game,
 				league,
 			};
-			const miss = () =>
-				cache.set(key, { state: "missing", retryAt: now() + RATES_RETRY_MS });
+			// A reply that outlived a reset() must not overwrite the fresh state.
+			const current = () => cache.get(key) === pending;
+			const miss = () => {
+				if (current())
+					cache.set(key, { state: "missing", retryAt: now() + RATES_RETRY_MS });
+			};
 			browser.runtime
 				.sendMessage(request)
 				.then((reply: unknown) => {
@@ -49,6 +54,7 @@ export function createRatesClient(
 						miss();
 						return;
 					}
+					if (!current()) return;
 					cache.set(key, { state: "ready", rates: parsed.output });
 					onArrive();
 				})

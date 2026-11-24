@@ -2,8 +2,10 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { storage } from "wxt/utils/storage";
 import { titleOfQuery } from "../../core/describe";
 import { recordSearch } from "../../core/history";
+import { PRICING_ACCESS_KEY } from "../../core/messages";
 import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
 import { createMemorySource } from "../../core/source";
@@ -141,6 +143,12 @@ export default defineContentScript({
 				if (next.equivalentPricing && !prefs.equivalentPricing) rates.reset();
 				prefs = next;
 				setBackForwardFlag();
+				enhance();
+			}),
+		);
+		ctx.onInvalidated(
+			storage.defineItem<unknown>(`local:${PRICING_ACCESS_KEY}`).watch(() => {
+				rates.reset();
 				enhance();
 			}),
 		);

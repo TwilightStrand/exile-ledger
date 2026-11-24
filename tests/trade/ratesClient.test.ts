@@ -41,4 +41,14 @@ describe("createRatesClient", () => {
 		client.get("poe2", "Standard");
 		await vi.waitFor(() => expect(requests).toBe(2));
 	});
+
+	it("ignores a reply that was in flight when reset() ran", async () => {
+		const client = createRatesClient(() => {});
+		client.get("poe1", "Standard");
+		client.reset();
+		await vi.waitFor(() => expect(requests).toBe(1));
+		await new Promise((r) => setTimeout(r, 0));
+		client.get("poe1", "Standard");
+		await vi.waitFor(() => expect(requests).toBe(2));
+	});
 });

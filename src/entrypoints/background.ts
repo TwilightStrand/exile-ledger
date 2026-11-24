@@ -1,9 +1,9 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
-import { RatesRequestSchema } from "../core/messages";
+import { PRICING_ACCESS_KEY, RatesRequestSchema } from "../core/messages";
 import { OFF_STATUS, type SyncStatus, syncOnce } from "../core/syncEngine";
-import { getRates } from "../pricing/ratesService";
+import { getRates, NINJA_ORIGIN } from "../pricing/ratesService";
 import { listenForLibraryWrites } from "../storage/libraryStore";
 import { browserSettings } from "../storage/settingsStore";
 import { browserSyncPorts, browserSyncStatus } from "../storage/syncPorts";
@@ -12,8 +12,13 @@ import { browserSyncPorts, browserSyncStatus } from "../storage/syncPorts";
 const PUSH_DELAY_MS = 5000;
 const PULL_DELAY_MS = 500;
 const WAIT_RETRY_MS = 3000;
-/** Long enough for Chrome's per-minute storage.sync write limit to reset. */
-const ERROR_RETRY_MS = 60_000;
+/**
+ * Under the ~30 s after which Chrome stops an idle service worker and Firefox
+ * unloads an idle event page; a longer timer would be dropped with it. If the
+ * per-minute storage.sync write limit is still in effect, the next try waits
+ * again.
+ */
+const ERROR_RETRY_MS = 25_000;
 /** After this many half-written reads in a row the remote is treated as damaged and replaced. */
 const MAX_WAITS = 5;
 
@@ -87,6 +92,12 @@ export default defineBackground(() => {
 			return true;
 		},
 	);
+
+	browser.permissions.onAdded.addListener((granted) => {
+		if (granted.origins?.includes(NINJA_ORIGIN)) {
+			browser.storage.local.set({ [PRICING_ACCESS_KEY]: Date.now() });
+		}
+	});
 
 	schedule(0);
 });
