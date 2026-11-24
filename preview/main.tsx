@@ -23,6 +23,7 @@ import panelCss from "./preview.css?inline";
 // URL parameters pick the starting state, so each state is one link away:
 // ?search=1&data=1&side=right&open=0&tab=history&game=poe1&theme=bone
 const params = new URLSearchParams(location.search);
+const startCompact = params.get("compact") === "1";
 const startTheme: ThemeId =
 	THEME_IDS.find((id) => id === params.get("theme")) ?? DEFAULT_THEME;
 const startSide: PanelSide = params.get("side") === "right" ? "right" : "left";
@@ -221,6 +222,7 @@ function Preview() {
 				panelSide: startSide,
 				panelMode: startMode,
 				theme: startTheme,
+				compact: startCompact,
 			}),
 		[],
 	);

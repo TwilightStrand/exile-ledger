@@ -414,6 +414,13 @@ export function SettingsPage({
 							onChange={(theme) => settings.save({ theme })}
 						/>
 					</Field>
+					<Field label={s.appearance.compact} hint={s.appearance.compactHint}>
+						<Toggle
+							label={s.appearance.compact}
+							checked={prefs.compact}
+							onChange={(compact) => settings.save({ compact })}
+						/>
+					</Field>
 				</Section>
 
 				<Section title={s.sync.title} description={s.sync.description}>

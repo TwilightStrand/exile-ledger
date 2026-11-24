@@ -81,6 +81,17 @@ beforeEach(() => {
 	document.body.innerHTML = "";
 });
 
+describe("Panel density", () => {
+	it("marks the panel compact so rows shrink, and follows the setting", async () => {
+		const settings = createMemorySettings({ compact: true });
+		const root = await mount({ settings });
+		const aside = root.querySelector("aside");
+		expect(aside?.getAttribute("data-density")).toBe("compact");
+		await act(() => settings.save({ compact: false }));
+		expect(aside?.hasAttribute("data-density")).toBe(false);
+	});
+});
+
 describe("Panel side", () => {
 	it("docks left when nothing is configured", async () => {
 		expect(sideOf(await mount())).toBe("left");

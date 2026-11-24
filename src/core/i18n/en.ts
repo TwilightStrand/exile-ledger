@@ -274,6 +274,8 @@ export const en = {
 				azure: "Azure",
 				bone: "Bone",
 			} satisfies Record<ThemeId, string>,
+			compact: "Compact mode",
+			compactHint: "Shorter rows in the panel, so more bookmarks fit.",
 		},
 		sync: {
 			title: "Sync",

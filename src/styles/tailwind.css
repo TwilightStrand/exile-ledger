@@ -6,6 +6,9 @@
 @import "tailwindcss" source(none);
 @source "../";
 
+/* Rows opt in with compact:…, keyed off the panel root's density setting. */
+@custom-variant compact (&:where([data-density="compact"] *));
+
 /*
  * The default (gold) theme. src/core/themes.ts holds every theme and the UI sets
  * the chosen one's values on its root, so these only seed Tailwind's colour names.

@@ -85,7 +85,7 @@ const DragContext = createContext<DragState>({
 });
 
 const ROW =
-	"flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold";
+	"flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] compact:h-6 compact:text-[12px] transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
 const ICON_BUTTON =
 	"grid size-6 shrink-0 place-items-center rounded text-ledger-faint transition-colors hover:bg-ledger-border hover:text-ledger-text focus-visible:outline-2 focus-visible:outline-ledger-gold";
@@ -708,7 +708,7 @@ function ArchivedSection({
 					{folders.map((f) => (
 						<li
 							key={f.id}
-							class="flex h-8 items-center gap-2 rounded px-2 pl-7 text-[13px] text-ledger-muted hover:bg-ledger-raised"
+							class="flex h-8 items-center gap-2 rounded px-2 pl-7 text-[13px] text-ledger-muted compact:h-6 compact:text-[12px] hover:bg-ledger-raised"
 						>
 							<span class="min-w-0 flex-1 truncate">{f.name}</span>
 							<span class="text-[11px] tabular-nums">{f.bookmarks}</span>

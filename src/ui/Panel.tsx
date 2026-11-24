@@ -397,6 +397,7 @@ export function Panel({
 			style={themeStyle(prefs.theme)}
 			aria-label={t.app.name}
 			data-side={side}
+			data-density={prefs.compact ? "compact" : undefined}
 		>
 			{open ? (
 				<div

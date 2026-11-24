@@ -21,6 +21,7 @@ describe("parseSettings", () => {
 			{ ...DEFAULT_SETTINGS, panelWidth: 40 },
 		],
 		["a non-number width", { panelWidth: "wide" }, DEFAULT_SETTINGS],
+		["a non-boolean compact flag", { compact: "yes" }, DEFAULT_SETTINGS],
 		["an unknown theme", { theme: "neon" }, DEFAULT_SETTINGS],
 		["a non-string theme", { theme: 3 }, DEFAULT_SETTINGS],
 		[

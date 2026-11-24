@@ -35,7 +35,7 @@ export function PinnedList({
 				>
 					<button
 						type="button"
-						class="flex min-w-0 flex-1 flex-col items-start px-2 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-ledger-gold"
+						class="flex min-w-0 flex-1 flex-col items-start px-2 py-1.5 compact:py-0.5 text-left focus-visible:outline-2 focus-visible:outline-ledger-gold"
 						onClick={() => setMissing(onJump(pin.id) ? null : pin.id)}
 					>
 						<span class="w-full truncate text-[13px] text-ledger-text">

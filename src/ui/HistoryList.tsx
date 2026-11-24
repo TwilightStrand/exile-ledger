@@ -46,7 +46,7 @@ export function HistoryList({
 				{entries.map((entry) => (
 					<li key={entry.id} class="group relative">
 						<a
-							class="flex flex-col gap-0.5 rounded px-2 py-1.5 no-underline transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold"
+							class="flex flex-col gap-0.5 rounded px-2 py-1.5 compact:py-0.5 no-underline transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold"
 							href={entry.href}
 						>
 							<span class="flex items-center gap-2">

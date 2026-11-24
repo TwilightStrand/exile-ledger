@@ -41,6 +41,8 @@ export interface Settings {
 	backForward: boolean;
 	/** Colours for the panel, the settings page and the marks on the trade site. */
 	theme: ThemeId;
+	/** Shorter rows in the panel, for long bookmark lists on small screens. */
+	compact: boolean;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -56,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	tildePrefix: true,
 	backForward: true,
 	theme: DEFAULT_THEME,
+	compact: false,
 };
 
 export function clampWidth(percent: number): number {
@@ -84,6 +87,7 @@ export const SettingsSchema = v.fallback(
 		tildePrefix: v.fallback(v.boolean(), DEFAULT_SETTINGS.tildePrefix),
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
+		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),
 		equivalentPricing: v.fallback(
 			v.boolean(),
 			DEFAULT_SETTINGS.equivalentPricing,
