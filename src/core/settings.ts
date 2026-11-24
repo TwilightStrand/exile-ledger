@@ -42,6 +42,10 @@ export interface Settings {
 	tildePrefixFilters: boolean;
 	/** Exact date and time under each result. */
 	listingTime: boolean;
+	/** Prefix and suffix count from mod tiers. */
+	affixCount: boolean;
+	/** Copy-as-game-text button and wiki link on each result. */
+	itemTools: boolean;
 	/** PoE1 note when item level caps sockets below the base's maximum. */
 	socketWarning: boolean;
 	/** Browser Back and Forward move between searches. */
@@ -67,6 +71,8 @@ export const DEFAULT_SETTINGS: Settings = {
 	tildePrefix: true,
 	tildePrefixFilters: true,
 	listingTime: true,
+	affixCount: true,
+	itemTools: true,
 	socketWarning: false,
 	backForward: true,
 	theme: DEFAULT_THEME,
@@ -103,6 +109,8 @@ export const SettingsSchema = v.fallback(
 			DEFAULT_SETTINGS.tildePrefixFilters,
 		),
 		listingTime: v.fallback(v.boolean(), DEFAULT_SETTINGS.listingTime),
+		affixCount: v.fallback(v.boolean(), DEFAULT_SETTINGS.affixCount),
+		itemTools: v.fallback(v.boolean(), DEFAULT_SETTINGS.itemTools),
 		socketWarning: v.fallback(v.boolean(), DEFAULT_SETTINGS.socketWarning),
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),

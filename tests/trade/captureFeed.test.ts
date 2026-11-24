@@ -26,6 +26,8 @@ const results = (queryId: string, id: string): CaptureEvent => ({
 			indexed: null,
 			rarity: null,
 			text: null,
+			corrupted: false,
+			affixes: null,
 		},
 	],
 });

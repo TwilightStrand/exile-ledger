@@ -293,12 +293,20 @@ describe("keyboard shortcuts", () => {
 describe("result helper switches", () => {
 	const cases: [
 		string,
-		"listingTime" | "socketWarning" | "tildePrefixFilters",
+		(
+			| "listingTime"
+			| "socketWarning"
+			| "tildePrefixFilters"
+			| "affixCount"
+			| "itemTools"
+		),
 		boolean,
 	][] = [
 		["Exact listing time", "listingTime", true],
 		["Socket warning (PoE1)", "socketWarning", false],
 		["Fuzzy stat filter search", "tildePrefixFilters", true],
+		["Prefix and suffix count", "affixCount", true],
+		["Copy item and wiki link", "itemTools", true],
 	];
 	it.each(cases)(
 		"%s starts as the default and saves",

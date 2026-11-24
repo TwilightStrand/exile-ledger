@@ -472,6 +472,20 @@ export function SettingsPage({
 							onChange={(listingTime) => settings.save({ listingTime })}
 						/>
 					</Field>
+					<Field label={s.results.affixCount} hint={s.results.affixCountHint}>
+						<Toggle
+							label={s.results.affixCount}
+							checked={prefs.affixCount}
+							onChange={(affixCount) => settings.save({ affixCount })}
+						/>
+					</Field>
+					<Field label={s.results.itemTools} hint={s.results.itemToolsHint}>
+						<Toggle
+							label={s.results.itemTools}
+							checked={prefs.itemTools}
+							onChange={(itemTools) => settings.save({ itemTools })}
+						/>
+					</Field>
 					<Field
 						label={s.results.socketWarning}
 						hint={s.results.socketWarningHint}

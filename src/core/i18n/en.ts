@@ -175,6 +175,17 @@ export const en = {
 		/** Exact listing time, in the browser's own locale and time zone. */
 		listedAt: (at: number) =>
 			`Listed ${new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+		affixes: (prefixes: number, suffixes: number) =>
+			`${prefixes}P · ${suffixes}S`,
+		affixesTitle: (prefixes: number, suffixes: number) =>
+			`${plural(locale, prefixes, { one: `${prefixes} prefix`, other: `${prefixes} prefixes` })}, ${plural(locale, suffixes, { one: `${suffixes} suffix`, other: `${suffixes} suffixes` })}`,
+		copyItem: "Copy item",
+		copyItemTitle:
+			"Copies the item as in-game text, for Path of Building or the trade site's paste search",
+		copied: "Copied",
+		copyFailed: "Copy failed",
+		wiki: "Wiki",
+		wikiTitle: (page: string) => `Open ${page} on the wiki`,
 		socketShortfall: (itemLevel: number, max: number) =>
 			`Item level ${itemLevel}: at most ${max} sockets`,
 		/** The tab title segment for an unsaved search. */
@@ -321,6 +332,12 @@ export const en = {
 			listingTime: "Exact listing time",
 			listingTimeHint:
 				'Shows the date and time each item was listed, next to the site\'s "2 hours ago".',
+			affixCount: "Prefix and suffix count",
+			affixCountHint:
+				"Shows how many prefixes and suffixes each item has, from the mod tiers the site sends.",
+			itemTools: "Copy item and wiki link",
+			itemToolsHint:
+				"Adds a button that copies the item as in-game text, and a link to the item's wiki page.",
 			socketWarning: "Socket warning (PoE1)",
 			socketWarningHint:
 				"Notes items whose item level keeps them below the base's socket count, so a 6-socket base that can never have 6.",

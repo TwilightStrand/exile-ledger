@@ -69,6 +69,8 @@ describe("togglePin", () => {
 			indexed: null,
 			rarity: null,
 			text: null,
+			corrupted: false,
+			affixes: null,
 		};
 		const pinned = togglePin([], item, 5);
 		expect(pinned.map((p) => p.id)).toEqual(["x"]);

@@ -33,6 +33,8 @@ function page(rows: number) {
 			indexed: null,
 			rarity: null,
 			text: null,
+			corrupted: false,
+			affixes: null,
 			price: { amount: 1 + (i % 5), currency: i % 2 ? "exalted" : "divine" },
 			mods: MODS.map((text, k) => ({
 				kind: "explicit",

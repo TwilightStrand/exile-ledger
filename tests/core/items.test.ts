@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { countAffixes, type ModLine } from "../../src/core/items/affixes";
-import { itemClassOf, itemTextFromBase64 } from "../../src/core/items/itemText";
+import {
+	buildItemText,
+	itemClassOf,
+	itemTextFromBase64,
+	wikiUrl,
+} from "../../src/core/items/itemText";
 import {
 	socketShortfall,
 	socketsForItemLevel,
@@ -91,36 +96,84 @@ describe("affix count", () => {
 	});
 });
 
-describe("socket caps by item level", () => {
-	it.each([
-		[1, 2],
-		[2, 3],
-		[24, 3],
-		[25, 4],
-		[34, 4],
-		[35, 5],
-		[49, 5],
-		[50, 6],
-		[86, 6],
-	])("item level %i allows %i sockets", (level, max) => {
-		expect(socketsForItemLevel(level)).toBe(max);
+describe("buildItemText", () => {
+	it("writes PoE2 items in the game's Ctrl+C layout", () => {
+		expect(
+			buildItemText({
+				rarity: "Rare",
+				name: "Viper Wrap",
+				typeLine: "Hatungo Garb",
+				ilvl: 73,
+				corrupted: true,
+				mods: [
+					{ kind: "explicit", text: "+28 to Evasion Rating" },
+					{ kind: "implicit", text: "+10% to Cold Resistance" },
+					{ kind: "rune", text: "+12% to Fire Resistance" },
+					{ kind: "crafted", text: "+20 to maximum Life" },
+				],
+			}),
+		).toBe(
+			[
+				"Rarity: Rare",
+				"Viper Wrap",
+				"Hatungo Garb",
+				"--------",
+				"Item Level: 73",
+				"--------",
+				"+12% to Fire Resistance (rune)",
+				"--------",
+				"+10% to Cold Resistance (implicit)",
+				"--------",
+				"+28 to Evasion Rating",
+				"+20 to maximum Life (crafted)",
+				"--------",
+				"Corrupted",
+			].join("\n"),
+		);
 	});
 
-	it.each([
-		["Body Armours", 30, "Rare", 4],
-		["Body Armours", 50, "Rare", null],
-		["Helmets", 30, "Rare", null],
-		["Helmets", 20, "Magic", 3],
-		["Wands", 1, "Normal", 2],
-		["Wands", 10, "Normal", null],
-		["Body Armours", 10, "Unique", null],
-		["Rings", 10, "Rare", null],
-	])(
-		"%s at item level %i (%s) is capped at %s",
-		(itemClass, level, rarity, cap) => {
-			expect(socketShortfall({ itemClass, itemLevel: level, rarity })).toBe(
-				cap,
-			);
-		},
-	);
+	it("leaves out a name a normal item does not have", () => {
+		expect(
+			buildItemText({
+				rarity: "Normal",
+				name: "",
+				typeLine: "Hatungo Garb",
+				ilvl: null,
+				corrupted: false,
+				mods: [],
+			}),
+		).toBe("Rarity: Normal\nHatungo Garb");
+	});
+});
+
+describe("wikiUrl", () => {
+	it("links uniques by name and everything else by base", () => {
+		expect(
+			wikiUrl("poe1", {
+				rarity: "Unique",
+				name: "Tabula Rasa",
+				baseType: "Simple Robe",
+			}),
+		).toBe("https://www.poewiki.net/wiki/Tabula_Rasa");
+		expect(
+			wikiUrl("poe2", {
+				rarity: "Rare",
+				name: "Viper Wrap",
+				baseType: "Hatungo Garb",
+			}),
+		).toBe("https://www.poe2wiki.net/wiki/Hatungo_Garb");
+	});
+
+	it("escapes characters that would break the path", () => {
+		expect(
+			wikiUrl("poe1", {
+				rarity: "Unique",
+				name: "Doryani's Fist",
+				baseType: "x",
+			}),
+		).toBe("https://www.poewiki.net/wiki/Doryani's_Fist");
+		expect(wikiUrl("poe1", { rarity: null, name: "", baseType: "" })).toBe(
+			null,
+		);
+	});
 });

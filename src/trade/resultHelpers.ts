@@ -1,16 +1,106 @@
 import { en, type Messages } from "../core/i18n";
-import { itemClassOf } from "../core/items/itemText";
+import { buildItemText, itemClassOf, wikiUrl } from "../core/items/itemText";
 import { socketShortfall } from "../core/items/sockets";
 import type { ResultItem } from "../core/tradeApi";
+import type { Game } from "../core/tradeUrl";
 import type { CaptureState } from "./captureFeed";
 import { SELECTORS } from "./selectors";
 
 export const LISTED_ATTR = "data-exile-ledger-listed";
 export const SOCKETS_ATTR = "data-exile-ledger-sockets";
+export const TOOLS_ATTR = "data-exile-ledger-tools";
 
 export interface ResultHelperOptions {
 	listingTime: boolean;
 	socketWarning: boolean;
+	affixCount: boolean;
+	itemTools: boolean;
+}
+
+/** Writes text to the clipboard; navigator.clipboard on the page, a spy in tests. */
+export type CopyText = (text: string) => Promise<void>;
+
+const defaultCopy: CopyText = (text) => navigator.clipboard.writeText(text);
+
+/** PoE1 sends the game's own text; PoE2 does not, so it is built from the API fields. */
+export function copyTextOf(item: ResultItem): string {
+	return item.text ?? buildItemText(item);
+}
+
+/**
+ * Affix count, Copy item and Wiki in one line. Rebuilt only when what it shows
+ * changes, so re-running on every results mutation does not loop the observer;
+ * the copy handler is a property, which the observer does not see.
+ */
+function placeTools(
+	host: Element,
+	before: Element | null,
+	item: ResultItem | undefined,
+	game: Game | null,
+	options: ResultHelperOptions,
+	t: Messages,
+	copy: CopyText,
+): boolean {
+	const existing = host.querySelector<HTMLElement>(`:scope > [${TOOLS_ATTR}]`);
+	const affixes = options.affixCount ? (item?.affixes ?? null) : null;
+	const wiki = options.itemTools && item && game ? wikiUrl(game, item) : null;
+	const canCopy = options.itemTools && item !== undefined;
+	if (!item || (!affixes && !wiki && !canCopy)) {
+		existing?.remove();
+		return false;
+	}
+	const key = JSON.stringify([item.id, affixes, wiki, canCopy]);
+	const doc = host.ownerDocument;
+	let el = existing;
+	if (!el || el.dataset.key !== key) {
+		el?.remove();
+		el = doc.createElement("div");
+		el.setAttribute(TOOLS_ATTR, "");
+		el.dataset.key = key;
+		if (affixes) {
+			const count = doc.createElement("span");
+			count.textContent = t.trade.affixes(affixes.prefixes, affixes.suffixes);
+			count.title = t.trade.affixesTitle(affixes.prefixes, affixes.suffixes);
+			el.append(count);
+		}
+		if (canCopy) {
+			const button = doc.createElement("button");
+			button.type = "button";
+			button.textContent = t.trade.copyItem;
+			button.title = t.trade.copyItemTitle;
+			el.append(button);
+		}
+		if (wiki) {
+			const link = doc.createElement("a");
+			link.href = wiki;
+			link.target = "_blank";
+			link.rel = "noopener noreferrer";
+			link.textContent = t.trade.wiki;
+			link.title = t.trade.wikiTitle(
+				decodeURIComponent(wiki.split("/wiki/")[1] ?? "").replaceAll("_", " "),
+			);
+			el.append(link);
+		}
+		host.insertBefore(el, before);
+	}
+	const button = el.querySelector("button");
+	if (button) {
+		const text = copyTextOf(item);
+		button.onclick = () => {
+			copy(text).then(
+				() => flash(button, t.trade.copied, t.trade.copyItem),
+				() => flash(button, t.trade.copyFailed, t.trade.copyItem),
+			);
+		};
+	}
+	return true;
+}
+
+function flash(button: HTMLButtonElement, text: string, back: string): void {
+	button.textContent = text;
+	setTimeout(() => {
+		button.textContent = back;
+	}, 1500);
 }
 
 function socketNote(item: ResultItem, t: Messages): string | null {
@@ -57,7 +147,9 @@ export function annotateResults(
 	capture: CaptureState,
 	options: ResultHelperOptions,
 	t: Messages = en,
+	copy: CopyText = defaultCopy,
 ): number {
+	const game = capture.search?.game ?? null;
 	const byId = new Map(capture.results.map((item) => [item.id, item]));
 	let added = 0;
 	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
@@ -69,6 +161,7 @@ export function annotateResults(
 		const sockets = item && options.socketWarning ? socketNote(item, t) : null;
 		if (place(host, before, LISTED_ATTR, listed)) added++;
 		if (place(host, before, SOCKETS_ATTR, sockets)) added++;
+		if (placeTools(host, before, item, game, options, t, copy)) added++;
 	}
 	return added;
 }

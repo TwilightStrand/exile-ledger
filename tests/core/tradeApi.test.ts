@@ -182,6 +182,8 @@ describe("parseFetchResponse", () => {
 				indexed: null,
 				rarity: null,
 				text: null,
+				corrupted: false,
+				affixes: null,
 				mods: [
 					{
 						kind: "explicit",
@@ -219,5 +221,25 @@ describe("parseFetchResponse item details", () => {
 		const items = parseFetchResponse(fetchResponse) ?? [];
 		expect(items[0]?.text).toBe(null);
 		expect(items[0]?.rarity).toBe("Rare");
+	});
+});
+
+describe("parseFetchResponse affixes", () => {
+	it("counts a hybrid prefix spanning two lines once (PoE2)", () => {
+		const items = parseFetchResponse(fetchResponse) ?? [];
+		expect(items.map((item) => item.affixes)).toEqual([
+			{ prefixes: 3, suffixes: 3 },
+			{ prefixes: 2, suffixes: 2 },
+			{ prefixes: 2, suffixes: 2 },
+		]);
+	});
+
+	it("counts PoE1 explicit tiers", () => {
+		const items = parseFetchResponse(poe1FetchResponse) ?? [];
+		expect(items.map((item) => item.affixes)).toEqual([
+			{ prefixes: 2, suffixes: 3 },
+			{ prefixes: 1, suffixes: 3 },
+			{ prefixes: 2, suffixes: 3 },
+		]);
 	});
 });

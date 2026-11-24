@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { type AffixCount, countAffixes } from "./items/affixes";
 import { itemTextFromBase64 } from "./items/itemText";
 import { type TradeQuery, TradeQuerySchema } from "./query";
 import { isTradeHost } from "./sites";
@@ -82,7 +83,20 @@ export type ModKind = (typeof MOD_KINDS)[number];
 
 const ModLine = v.union([
 	v.string(),
-	v.looseObject({ description: v.string(), hash: v.optional(v.string()) }),
+	v.looseObject({
+		description: v.string(),
+		hash: v.optional(v.string()),
+		// The rolled mods behind the line, with tier codes such as "P7" or "S5".
+		mods: v.optional(
+			// Implicits can arrive with magnitudes only, no name or tier.
+			v.array(
+				v.looseObject({
+					name: v.optional(v.string()),
+					tier: v.optional(v.string()),
+				}),
+			),
+		),
+	}),
 ]);
 const ModLines = v.nullish(v.array(ModLine));
 const HashEntry = v.tuple([v.string(), v.nullish(v.array(v.number()))]);
@@ -93,6 +107,7 @@ const ItemSchema = v.looseObject({
 	baseType: v.optional(v.string()),
 	ilvl: v.optional(v.number()),
 	frameType: v.optional(v.number()),
+	corrupted: v.optional(v.boolean()),
 	enchantMods: ModLines,
 	implicitMods: ModLines,
 	fracturedMods: ModLines,
@@ -142,6 +157,9 @@ export interface ResultItem {
 	rarity: Rarity | null;
 	/** PoE1's in-game item text, decoded; PoE2 responses do not carry it. */
 	text: string | null;
+	corrupted: boolean;
+	/** From the tier codes on rolled mods; null when the API sent none. */
+	affixes: AffixCount | null;
 }
 
 export type Rarity = "Normal" | "Magic" | "Rare" | "Unique";
@@ -171,6 +189,9 @@ function linesFor(item: Item, kind: ModKind): ModLineData[] {
 export function stripMarkup(text: string): string {
 	return text.replace(/\[(?:[^\]|]*\|)?([^\]]*)\]/g, "$1");
 }
+
+/** Kinds whose mods take an affix slot; implicits, enchants and runes do not. */
+const AFFIX_KINDS: readonly ModKind[] = ["fractured", "explicit", "crafted"];
 
 function modsOf(item: Item): ResultMod[] {
 	const hashes = item.extended?.hashes ?? {};
@@ -215,5 +236,21 @@ export function parseFetchResponse(response: unknown): ResultItem[] | null {
 			text: entry.item.extended?.text
 				? itemTextFromBase64(entry.item.extended.text)
 				: null,
+			corrupted: entry.item.corrupted ?? false,
+			affixes: countAffixes(
+				AFFIX_KINDS.flatMap((kind) =>
+					linesFor(entry.item, kind).flatMap((line) =>
+						typeof line === "string"
+							? []
+							: [
+									{
+										mods: (line.mods ?? []).flatMap(({ name, tier }) =>
+											name && tier ? [{ name, tier }] : [],
+										),
+									},
+								],
+					),
+				),
+			),
 		}));
 }

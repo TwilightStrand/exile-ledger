@@ -7,7 +7,7 @@ import { THEMES, type ThemeId } from "../core/themes";
 import type { CaptureState } from "./captureFeed";
 import { PRICE_ATTR } from "./equivalentPrices";
 import { FLASH_ATTR, PINNED_ROW_ATTR } from "./pinButtons";
-import { LISTED_ATTR, SOCKETS_ATTR } from "./resultHelpers";
+import { LISTED_ATTR, SOCKETS_ATTR, TOOLS_ATTR } from "./resultHelpers";
 import { SELECTORS } from "./selectors";
 
 export const HIGHLIGHT_ATTR = "data-exile-ledger-match";
@@ -21,6 +21,7 @@ const MARKED = [
 	FLASH_ATTR,
 	LISTED_ATTR,
 	SOCKETS_ATTR,
+	TOOLS_ATTR,
 ]
 	.map((attr) => `[${attr}]`)
 	.join(", ");
@@ -41,6 +42,9 @@ export function installPageStyles(doc: Document): void {
 		`[${PRICE_ATTR}] { display: block; margin-top: 2px; font-size: 11px; color: var(${ACCENT}); opacity: 0.9; }`,
 		`[${LISTED_ATTR}] { font-size: 11px; opacity: 0.75; }`,
 		`[${SOCKETS_ATTR}] { font-size: 11px; color: var(${ACCENT}); }`,
+		`[${TOOLS_ATTR}] { display: flex; gap: 8px; align-items: center; font-size: 11px; margin: 2px 0; }`,
+		`[${TOOLS_ATTR}] button { background: none; border: 1px solid ${tint(45)}; border-radius: 3px; color: var(${ACCENT}); padding: 0 6px; cursor: pointer; font: inherit; }`,
+		`[${TOOLS_ATTR}] a { color: var(${ACCENT}); }`,
 		`[${PINNED_ROW_ATTR}] { box-shadow: inset 3px 0 0 var(${ACCENT}); }`,
 		`@keyframes exile-ledger-flash { 0%, 40% { background: ${tint(25)}; } }`,
 		`[${FLASH_ATTR}] { animation: exile-ledger-flash 1.5s ease-out; }`,
