@@ -6,7 +6,7 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { storage } from "wxt/utils/storage";
 import { titleOfQuery } from "../../core/describe";
 import { recordSearch } from "../../core/history";
-import { messagesFor } from "../../core/i18n";
+import { messagesFor, resolveLocale } from "../../core/i18n";
 import { PRICING_ACCESS_KEY } from "../../core/messages";
 import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
@@ -41,7 +41,7 @@ import { annotateResults } from "../../trade/resultHelpers";
 import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
 import { syncWatchButtons } from "../../trade/watchButtons";
-import { MessagesProvider } from "../../ui/i18n";
+import { browserLanguages, SettingsMessages } from "../../ui/i18n";
 import { Panel } from "../../ui/Panel";
 
 function domReady(doc: Document): Promise<void> {
@@ -80,10 +80,12 @@ export default defineContentScript({
 			});
 		}
 
-		const t = messagesFor("en");
 		await domReady(document);
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
+		const messagesOf = (p: typeof prefs) =>
+			messagesFor(resolveLocale(p.language, browserLanguages()));
+		let t = messagesOf(prefs);
 		setPageTheme(document, prefs.theme);
 		const pins = createMemorySource<PinnedItem[]>([]);
 		const togglePinned = (id: string) => {
@@ -203,6 +205,7 @@ export default defineContentScript({
 				// Turning pricing on after a denied or missing permission should retry.
 				if (next.equivalentPricing && !prefs.equivalentPricing) rates.reset();
 				prefs = next;
+				t = messagesOf(prefs);
 				setBackForwardFlag();
 				setPageTheme(document, prefs.theme);
 				enhance();
@@ -224,7 +227,7 @@ export default defineContentScript({
 			anchor: "body",
 			onMount(container) {
 				render(
-					<MessagesProvider messages={t}>
+					<SettingsMessages settings={browserSettings} initial={prefs.language}>
 						<Panel
 							feed={feed}
 							settings={browserSettings}
@@ -245,7 +248,7 @@ export default defineContentScript({
 							onReserve={(reserve) => applyReserve(document, reserve)}
 							page={() => parseTradeUrl(new URL(location.href))}
 						/>
-					</MessagesProvider>,
+					</SettingsMessages>,
 					container,
 				);
 				return container;

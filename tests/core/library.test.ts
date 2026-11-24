@@ -41,6 +41,7 @@ describe("saveSearch", () => {
 				game: "poe2",
 				order: 0,
 				archived: false,
+				role: "saved-searches",
 				updatedAt: 10,
 			},
 		]);
@@ -209,5 +210,47 @@ describe("parseLibrary", () => {
 			tombstones: [],
 		});
 		expect(library.folders.map((f) => f.id)).toEqual(["a"]);
+	});
+});
+
+describe("default folder across languages", () => {
+	it("keeps using the marked folder after a rename or a language switch", () => {
+		const first = saveSearch(emptyLibrary(), poe2Search, {
+			now: 1,
+			newId: ids(),
+		});
+		const renamed = {
+			...first.library,
+			folders: first.library.folders.map((f) => ({
+				...f,
+				name: "Mes recherches",
+			})),
+		};
+		const second = saveSearch(
+			renamed,
+			{ ...poe2Search, searchId: "def" },
+			{ now: 2, newId: () => "x" },
+			"Gespeicherte Suchen",
+		);
+		expect(second.library.folders).toHaveLength(1);
+		expect(second.bookmark.folderId).toBe(first.bookmark.folderId);
+	});
+
+	it("still finds an unmarked folder from older data by its English name", () => {
+		const first = saveSearch(emptyLibrary(), poe2Search, {
+			now: 1,
+			newId: ids(),
+		});
+		const old = {
+			...first.library,
+			folders: first.library.folders.map(({ role: _r, ...f }) => f),
+		};
+		const second = saveSearch(
+			old,
+			poe2Search,
+			{ now: 2, newId: () => "y" },
+			"Gespeicherte Suchen",
+		);
+		expect(second.library.folders).toHaveLength(1);
 	});
 });

@@ -352,6 +352,10 @@ export const en = {
 				azure: "Azure",
 				bone: "Bone",
 			} satisfies Record<ThemeId, string>,
+			language: "Language",
+			languageHint:
+				"Languages other than English were machine translated. Corrections from native speakers are welcome on GitHub.",
+			languageAuto: "Same as the browser",
 			compact: "Compact mode",
 			compactHint: "Shorter rows in the panel, so more bookmarks fit.",
 		},

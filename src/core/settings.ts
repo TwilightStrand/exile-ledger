@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import { DEFAULT_HOTKEYS, type Hotkeys, parseHotkeys } from "./hotkeys";
+import { type LanguageSetting, LOCALES } from "./i18n/locales";
 import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
 import { WATCH_INTERVAL } from "./watchers";
 
@@ -57,6 +58,8 @@ export interface Settings {
 	compact: boolean;
 	/** Browser notifications for watcher events; needs the optional permission. */
 	notifications: boolean;
+	/** "auto" follows the browser's language. */
+	language: LanguageSetting;
 	/** Minutes between checks for newly added watchers. */
 	watchInterval: number;
 	/** Keyboard shortcuts on the trade page; null leaves an action unbound. */
@@ -85,6 +88,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	hotkeys: DEFAULT_HOTKEYS,
 	watchInterval: WATCH_INTERVAL.default,
 	notifications: false,
+	language: "auto",
 };
 
 export function clampWidth(percent: number): number {
@@ -123,6 +127,10 @@ export const SettingsSchema = v.fallback(
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),
 		notifications: v.fallback(v.boolean(), DEFAULT_SETTINGS.notifications),
+		language: v.fallback(
+			v.picklist(["auto", ...LOCALES]),
+			DEFAULT_SETTINGS.language,
+		),
 		watchInterval: v.fallback(
 			v.pipe(
 				v.number(),

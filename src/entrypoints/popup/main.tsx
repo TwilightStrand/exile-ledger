@@ -1,9 +1,8 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
-import { messagesFor } from "../../core/i18n";
 import { browserSettings } from "../../storage/settingsStore";
-import { MessagesProvider, useMessages } from "../../ui/i18n";
+import { SettingsMessages, useMessages } from "../../ui/i18n";
 import { Mark } from "../../ui/icons";
 import { applyTheme } from "../../ui/theme";
 
@@ -42,9 +41,9 @@ if (root) {
 	browserSettings.load().then((prefs) => {
 		applyTheme(document.documentElement, prefs.theme);
 		render(
-			<MessagesProvider messages={messagesFor("en")}>
+			<SettingsMessages settings={browserSettings} initial={prefs.language}>
 				<Popup />
-			</MessagesProvider>,
+			</SettingsMessages>,
 			root,
 		);
 	});

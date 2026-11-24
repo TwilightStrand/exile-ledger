@@ -29,6 +29,12 @@ export const FolderSchema = v.object({
 	archived: v.boolean(),
 	// Unknown icons from a newer build fall back to the plain folder.
 	icon: v.optional(v.fallback(v.picklist(FOLDER_ICONS), "folder")),
+	/**
+	 * Marks the folder saves go to, so it is found again after a rename or a
+	 * language switch. Older data has none and is found by its English name.
+	 * A plain string, so a role from a newer build does not drop the folder.
+	 */
+	role: v.optional(v.string()),
 	updatedAt: v.number(),
 });
 export type Folder = v.InferOutput<typeof FolderSchema>;

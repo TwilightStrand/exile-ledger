@@ -1,7 +1,11 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
-import { messagesFor } from "../../core/i18n";
+import {
+	type LanguageSetting,
+	messagesFor,
+	resolveLocale,
+} from "../../core/i18n";
 import { TRADE_ORIGINS } from "../../core/sites";
 import { NINJA_ORIGIN } from "../../pricing/ratesService";
 import { browserHistory } from "../../storage/historyStore";
@@ -9,7 +13,7 @@ import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
 import { browserSyncStatus } from "../../storage/syncPorts";
 import { browserWatchers } from "../../storage/watcherStore";
-import { MessagesProvider } from "../../ui/i18n";
+import { browserLanguages, SettingsMessages } from "../../ui/i18n";
 import { SettingsPage } from "../../ui/settings/SettingsPage";
 
 function download(filename: string, text: string) {
@@ -41,10 +45,18 @@ const root = document.getElementById("app");
 // Loaded before the first render so a light theme does not flash dark.
 const initialSettings = await browserSettings.load();
 if (root) {
-	const t = messagesFor("en");
-	document.title = t.settings.pageTitle;
+	const title = (language: LanguageSetting) => {
+		document.title = messagesFor(
+			resolveLocale(language, browserLanguages()),
+		).settings.pageTitle;
+	};
+	title(initialSettings.language);
+	browserSettings.watch((prefs) => title(prefs.language));
 	render(
-		<MessagesProvider messages={t}>
+		<SettingsMessages
+			settings={browserSettings}
+			initial={initialSettings.language}
+		>
 			<SettingsPage
 				settings={browserSettings}
 				initialSettings={initialSettings}
@@ -60,7 +72,7 @@ if (root) {
 				version={browser.runtime.getManifest().version}
 				download={download}
 			/>
-		</MessagesProvider>,
+		</SettingsMessages>,
 		root,
 	);
 }

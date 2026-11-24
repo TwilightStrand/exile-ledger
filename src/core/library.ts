@@ -60,7 +60,7 @@ function nextOrder(items: { order: number }[]): number {
 	return items.reduce((max, item) => Math.max(max, item.order + 1), 0);
 }
 
-/** Saves into the game's default root folder, creating it on first use. */
+/** Saves into the game's default root folder, creating it on first use with the given (translated) name. */
 export function saveSearch(
 	library: Library,
 	input: SaveInput,
@@ -68,13 +68,14 @@ export function saveSearch(
 	defaultFolder: string = en.bookmarks.defaultFolder,
 ): { library: Library; bookmark: Bookmark } {
 	let folders = library.folders;
-	let folder = folders.find(
-		(f) =>
-			f.game === input.game &&
-			f.parentId === null &&
-			f.name === defaultFolder &&
-			!f.archived,
+	const candidates = folders.filter(
+		(f) => f.game === input.game && f.parentId === null && !f.archived,
 	);
+	let folder =
+		candidates.find((f) => f.role === "saved-searches") ??
+		candidates.find(
+			(f) => f.role === undefined && f.name === en.bookmarks.defaultFolder,
+		);
 	if (!folder) {
 		folder = {
 			id: newId(),
@@ -85,6 +86,7 @@ export function saveSearch(
 				folders.filter((f) => f.game === input.game && f.parentId === null),
 			),
 			archived: false,
+			role: "saved-searches",
 			updatedAt: now,
 		};
 		folders = [...folders, folder];

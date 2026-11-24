@@ -9,6 +9,7 @@ import {
 	parseBackup,
 } from "../../core/exchange";
 import type { HistoryEntry } from "../../core/history";
+import { type LanguageSetting, LOCALE_NAMES, LOCALES } from "../../core/i18n";
 import { decodeImport, type ImportSource } from "../../core/importers";
 import type { Clock, LibrarySource } from "../../core/library";
 import {
@@ -104,6 +105,7 @@ type Pending =
 	| null;
 
 const PANEL_SIDES: readonly PanelSide[] = ["left", "right"];
+const LANGUAGE_OPTIONS: readonly LanguageSetting[] = ["auto", ...LOCALES];
 const PANEL_MODES: readonly PanelMode[] = ["overlay", "push"];
 
 function BackupSection({
@@ -450,6 +452,26 @@ export function SettingsPage({
 							names={s.appearance.themes}
 							onChange={(theme) => settings.save({ theme })}
 						/>
+					</Field>
+					<Field label={s.appearance.language} hint={s.appearance.languageHint}>
+						<select
+							aria-label={s.appearance.language}
+							value={prefs.language}
+							class="rounded-md border border-ledger-border bg-ledger-bg px-2 py-1 text-[13px] text-ledger-text outline-none focus:border-ledger-gold/60"
+							onChange={(e) => {
+								const value = e.currentTarget.value;
+								const language = LANGUAGE_OPTIONS.find((l) => l === value);
+								if (language) settings.save({ language });
+							}}
+						>
+							{LANGUAGE_OPTIONS.map((value) => (
+								<option key={value} value={value}>
+									{value === "auto"
+										? s.appearance.languageAuto
+										: LOCALE_NAMES[value]}
+								</option>
+							))}
+						</select>
 					</Field>
 					<Field label={s.appearance.compact} hint={s.appearance.compactHint}>
 						<Toggle
