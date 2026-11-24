@@ -742,6 +742,9 @@ function FolderRow({
 						onDone={(league, byKey) => {
 							refocus.current = byKey;
 							setMode("view");
+							// Only Enter applies: this rewrites the whole folder, so losing
+							// focus with half a name typed must not.
+							if (!byKey) return;
 							const target = league?.trim();
 							if (!target) return;
 							actions.onChangeLeague(folder.id, target).then(

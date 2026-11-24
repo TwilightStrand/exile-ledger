@@ -902,3 +902,35 @@ describe("folder menu focus", () => {
 		}
 	});
 });
+
+describe("league field blur", () => {
+	it("cancels instead of moving the folder", async () => {
+		const { library } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Standard",
+				name: "Rings",
+				query: { query: { term: "ring" } },
+				searchId: "r",
+				live: false,
+			},
+			{ now: 1, newId: () => `lb${++n}` },
+		);
+		const source = createMemoryLibrary(library);
+		const root = await mount({ library: source });
+		await act(async () =>
+			button(root, `More for ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		await act(async () => button(root, "Change league")?.click());
+		const input = root.querySelector<HTMLInputElement>(
+			"input[aria-label='League']",
+		);
+		if (!input) throw new Error("no league field");
+		input.value = "Daw";
+		await act(async () => {
+			input.dispatchEvent(new FocusEvent("blur"));
+		});
+		expect((await source.load()).bookmarks[0]?.league).toBe("Standard");
+	});
+});
