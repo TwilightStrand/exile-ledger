@@ -10,6 +10,7 @@ import {
 import { repairTree } from "./repair";
 import { type Settings, SettingsSchema } from "./settings";
 import { subtreeIds } from "./tree";
+import { parseWatchers, type Watcher } from "./watchers";
 
 export const SHARE_PREFIX = "EL1:";
 export const BACKUP_FORMAT = "exile-ledger-backup";
@@ -31,6 +32,13 @@ const BackupSchema = v.object({
 	exportedAt: v.number(),
 	library: PayloadSchema,
 	settings: v.optional(SettingsSchema),
+	// Invalid entries are dropped one by one, as in storage.
+	watchers: v.optional(
+		v.pipe(
+			v.array(v.unknown()),
+			v.transform((raw: unknown[]) => parseWatchers(raw)),
+		),
+	),
 });
 export type Backup = v.InferOutput<typeof BackupSchema>;
 
@@ -110,6 +118,7 @@ export function createBackup(
 	library: Library,
 	settings: Settings,
 	now: number,
+	watchers: readonly Watcher[] = [],
 ): Backup {
 	return {
 		format: BACKUP_FORMAT,
@@ -117,7 +126,53 @@ export function createBackup(
 		exportedAt: now,
 		library: { folders: library.folders, bookmarks: library.bookmarks },
 		settings,
+		watchers: [...watchers],
 	};
+}
+
+const sameTarget = (a: Watcher, b: Watcher) =>
+	a.kind === "listing" && b.kind === "listing"
+		? a.itemId === b.itemId
+		: a.kind === "search" &&
+			b.kind === "search" &&
+			a.league === b.league &&
+			JSON.stringify(a.query) === JSON.stringify(b.query);
+
+/**
+ * Adds a backup's watchers that are not already watched, as new watchers with
+ * fresh ids that start over: the old check state belongs to another machine.
+ * Search watchers lose their bookmark link, since imported bookmarks get new
+ * ids too. Existing watchers are never changed.
+ */
+export function importWatchers(
+	current: readonly Watcher[],
+	incoming: readonly Watcher[],
+	{ now, newId }: Clock,
+): { watchers: Watcher[]; added: number } {
+	const added: Watcher[] = [];
+	for (const watcher of incoming) {
+		if ([...current, ...added].some((w) => sameTarget(w, watcher))) continue;
+		const fresh = {
+			id: newId(),
+			createdAt: now,
+			lastCheckedAt: null,
+			failures: 0,
+			retryAt: null,
+		};
+		added.push(
+			watcher.kind === "listing"
+				? { ...watcher, ...fresh }
+				: {
+						...watcher,
+						...fresh,
+						bookmarkId: null,
+						seenIds: [],
+						newIds: [],
+						total: null,
+					},
+		);
+	}
+	return { watchers: [...current, ...added], added: added.length };
 }
 
 export function parseBackup(text: string): Parsed<Backup> {

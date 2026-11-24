@@ -183,6 +183,14 @@ export const en = {
 		remove: (name: string) => `Stop watching ${name}`,
 		every: (minutes: number) => `every ${minutes} min`,
 	},
+	notices: {
+		goneTitle: (name: string) => `${name} is gone`,
+		goneBody: (seller: string) =>
+			seller ? `Sold or delisted by ${seller}.` : "Sold or delisted.",
+		backTitle: (name: string) => `${name} is listed again`,
+		repricedTitle: (name: string) => `${name} changed price`,
+		newTitle: (name: string) => `New results for ${name}`,
+	},
 	pins: {
 		emptyTitle: "Nothing pinned",
 		emptyBody: "Use Pin on a result to keep it here while you keep searching.",
@@ -404,6 +412,11 @@ export const en = {
 			intervalHint: (min: number) =>
 				`Minutes between checks for new watchers, ${min} at the least. Each failed check waits twice as long as the last.`,
 			intervalInput: "Minutes between checks",
+			notify: "Notifications",
+			notifyHint:
+				"A browser notification when a watched listing sells, comes back or changes price, or a watched search has new results. Turning this on asks permission once.",
+			notifyDenied:
+				"Notifications need your browser's permission. Nothing was changed.",
 		},
 		hotkeys: {
 			title: "Keyboard shortcuts",

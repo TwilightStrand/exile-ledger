@@ -8,6 +8,7 @@ import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
 import { browserSyncStatus } from "../../storage/syncPorts";
+import { browserWatchers } from "../../storage/watcherStore";
 import { MessagesProvider } from "../../ui/i18n";
 import { SettingsPage } from "../../ui/settings/SettingsPage";
 
@@ -33,6 +34,9 @@ const requestTradeAccess = () =>
 const hasTradeAccess = () =>
 	browser.permissions.contains({ origins: TRADE_ORIGINS });
 
+const requestNotifications = () =>
+	browser.permissions.request({ permissions: ["notifications"] });
+
 const root = document.getElementById("app");
 // Loaded before the first render so a light theme does not flash dark.
 const initialSettings = await browserSettings.load();
@@ -51,6 +55,8 @@ if (root) {
 				hasPricingAccess={hasPricingAccess}
 				requestTradeAccess={requestTradeAccess}
 				hasTradeAccess={hasTradeAccess}
+				requestNotifications={requestNotifications}
+				watchers={browserWatchers}
 				version={browser.runtime.getManifest().version}
 				download={download}
 			/>

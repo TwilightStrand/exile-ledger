@@ -12,6 +12,7 @@ import { createMemorySettings } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../../src/core/syncEngine";
 import { THEMES } from "../../src/core/themes";
+import type { Watcher } from "../../src/core/watchers";
 import { SettingsPage } from "../../src/ui/settings/SettingsPage";
 
 function seededLibrary() {
@@ -33,6 +34,7 @@ function seededLibrary() {
 
 let grantPricing = true;
 let grantTrade = true;
+let grantNotify = true;
 
 async function mount({
 	equivalentPricing = false,
@@ -45,6 +47,7 @@ async function mount({
 	const hasPricingAccess = async () => hasAccess;
 	const library = createMemoryLibrary(seededLibrary());
 	const history = createMemorySource<HistoryEntry[]>([]);
+	const watchers = createMemorySource<Watcher[]>([]);
 	const downloads: { name: string; text: string }[] = [];
 	const root = document.createElement("div");
 	document.body.append(root);
@@ -65,6 +68,8 @@ async function mount({
 				hasPricingAccess={hasPricingAccess}
 				requestTradeAccess={async () => grantTrade}
 				hasTradeAccess={async () => false}
+				requestNotifications={async () => grantNotify}
+				watchers={watchers}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
 				now={() => Date.UTC(2026, 10, 24)}
@@ -73,7 +78,7 @@ async function mount({
 			root,
 		);
 	});
-	return { root, settings, library, downloads };
+	return { root, settings, library, downloads, watchers };
 }
 
 const button = (root: HTMLElement, text: string) =>
@@ -354,5 +359,52 @@ describe("watcher settings", () => {
 			input.dispatchEvent(new Event("change", { bubbles: true }));
 		});
 		expect((await settings.load()).watchInterval).toBe(15);
+	});
+});
+
+describe("watcher notifications and backups", () => {
+	it("turns notifications on only when the browser allows them", async () => {
+		grantNotify = false;
+		const { root, settings } = await mount();
+		const toggle = root.querySelector<HTMLButtonElement>(
+			'button[role=switch][aria-label="Notifications"]',
+		);
+		await act(async () => toggle?.click());
+		expect((await settings.load()).notifications).toBe(false);
+		expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+			"permission",
+		);
+		grantNotify = true;
+		await act(async () => toggle?.click());
+		expect((await settings.load()).notifications).toBe(true);
+	});
+
+	it("puts watchers in the backup file", async () => {
+		const { root, downloads, watchers } = await mount();
+		await watchers.update(() => [
+			{
+				kind: "listing",
+				id: "w1",
+				origin: "https://www.pathofexile.com",
+				game: "poe2",
+				realm: "poe2",
+				league: "Dawn",
+				intervalMin: 5,
+				createdAt: 0,
+				lastCheckedAt: null,
+				failures: 0,
+				retryAt: null,
+				searchId: "s",
+				itemId: "i",
+				name: "Garb",
+				seller: "",
+				price: null,
+				previousPrice: null,
+				status: "listed",
+				changedAt: null,
+			},
+		]);
+		await act(async () => button(root, "Save backup file")?.click());
+		expect(JSON.parse(downloads[0]?.text ?? "{}").watchers).toHaveLength(1);
 	});
 });

@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { notify, startNotifications } from "../background/notifications";
 import { startWatchers } from "../background/watchers";
 import {
 	OpenSettingsSchema,
@@ -35,8 +36,10 @@ const MAX_WAITS = 5;
 
 export default defineBackground(() => {
 	listenForLibraryWrites();
-	// Notifications for these events arrive with the notifications permission.
-	startWatchers(() => {});
+	startNotifications();
+	startWatchers((events) => {
+		notify(events).catch(() => {});
+	});
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let running = false;
 	let rerun = false;

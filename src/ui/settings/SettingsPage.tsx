@@ -3,6 +3,7 @@ import {
 	type Backup,
 	createBackup,
 	importPayload,
+	importWatchers,
 	type Parsed,
 	type Payload,
 	parseBackup,
@@ -20,7 +21,7 @@ import {
 } from "../../core/settings";
 import type { Source } from "../../core/source";
 import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
-import { WATCH_INTERVAL } from "../../core/watchers";
+import { WATCH_INTERVAL, type Watcher } from "../../core/watchers";
 import { useMessages } from "../i18n";
 import { Mark } from "../icons";
 import { quotaPercent, syncStatusText } from "../syncStatusText";
@@ -42,6 +43,8 @@ export interface SettingsPageProps {
 	/** Settings already loaded by the page, so the first paint has the right theme. */
 	initialSettings?: Settings;
 	library: LibrarySource;
+	/** Saved in backups and added back on restore. */
+	watchers: Source<Watcher[]>;
 	history: Source<HistoryEntry[]>;
 	syncStatus: Source<SyncStatus>;
 	version: string;
@@ -52,6 +55,8 @@ export interface SettingsPageProps {
 	/** Asks for the trade sites, for background watcher checks. */
 	requestTradeAccess: () => Promise<boolean>;
 	hasTradeAccess: () => Promise<boolean>;
+	/** Asks for the notifications permission; resolves to whether it was granted. */
+	requestNotifications: () => Promise<boolean>;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
 	now?: () => number;
@@ -104,11 +109,13 @@ const PANEL_MODES: readonly PanelMode[] = ["overlay", "push"];
 function BackupSection({
 	settings,
 	library,
+	watchers,
 	download,
 	clock,
 }: {
 	settings: SettingsSource;
 	library: LibrarySource;
+	watchers: Source<Watcher[]>;
 	download: SettingsPageProps["download"];
 	clock: () => Clock;
 }) {
@@ -124,11 +131,12 @@ function BackupSection({
 	} | null>(null);
 
 	const exportBackup = async () => {
-		const backup = createBackup(
-			await library.load(),
-			await settings.load(),
-			clock().now,
-		);
+		const [lib, prefs, watched] = await Promise.all([
+			library.load(),
+			settings.load(),
+			watchers.load(),
+		]);
+		const backup = createBackup(lib, prefs, clock().now, watched);
 		const date = new Date(backup.exportedAt).toISOString().slice(0, 10);
 		download(
 			`exile-ledger-backup-${date}.json`,
@@ -206,6 +214,14 @@ function BackupSection({
 				text: t.imports.saveFailed,
 			});
 			return;
+		}
+		const restoredWatchers =
+			pending.kind === "backup" ? pending.backup.watchers : undefined;
+		if (restoredWatchers && restoredWatchers.length > 0) {
+			await watchers.update(
+				(current) =>
+					importWatchers(current, restoredWatchers, clock()).watchers,
+			);
 		}
 		if (
 			pending.kind === "backup" &&
@@ -322,12 +338,14 @@ export function SettingsPage({
 	settings,
 	initialSettings,
 	library,
+	watchers,
 	history,
 	syncStatus,
 	requestPricingAccess,
 	hasPricingAccess,
 	requestTradeAccess,
 	hasTradeAccess,
+	requestNotifications,
 	version,
 	download,
 	now = Date.now,
@@ -344,6 +362,7 @@ export function SettingsPage({
 	}, [hasPricingAccess]);
 	const [tradeAccess, setTradeAccess] = useState<boolean | null>(null);
 	const [tradeDenied, setTradeDenied] = useState(false);
+	const [notifyDenied, setNotifyDenied] = useState(false);
 	useEffect(() => {
 		hasTradeAccess().then(setTradeAccess);
 	}, [hasTradeAccess]);
@@ -584,6 +603,23 @@ export function SettingsPage({
 						)}
 					</Field>
 					{tradeDenied && <Notice tone="error">{s.watchers.denied}</Notice>}
+					<Field label={s.watchers.notify} hint={s.watchers.notifyHint}>
+						<Toggle
+							label={s.watchers.notify}
+							checked={prefs.notifications}
+							onChange={async (notifications) => {
+								if (notifications && !(await requestNotifications())) {
+									setNotifyDenied(true);
+									return;
+								}
+								setNotifyDenied(false);
+								settings.save({ notifications });
+							}}
+						/>
+					</Field>
+					{notifyDenied && (
+						<Notice tone="error">{s.watchers.notifyDenied}</Notice>
+					)}
 					<Field
 						label={s.watchers.interval}
 						hint={s.watchers.intervalHint(WATCH_INTERVAL.min)}
@@ -641,6 +677,7 @@ export function SettingsPage({
 				<BackupSection
 					settings={settings}
 					library={library}
+					watchers={watchers}
 					download={download}
 					clock={clock}
 				/>

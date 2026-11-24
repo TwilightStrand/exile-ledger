@@ -10,6 +10,7 @@ import { OFF_STATUS, type SyncStatus } from "../src/core/syncEngine";
 import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "../src/core/themes";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
+import type { Watcher } from "../src/core/watchers";
 import { createCaptureFeed } from "../src/trade/captureFeed";
 import { Panel, type Reserve, TABS, type TabId } from "../src/ui/Panel";
 import { SettingsPage } from "../src/ui/settings/SettingsPage";
@@ -304,6 +305,8 @@ function SettingsPreview() {
 			hasPricingAccess={grantAccess}
 			requestTradeAccess={async () => true}
 			hasTradeAccess={async () => true}
+			requestNotifications={async () => true}
+			watchers={createMemorySource<Watcher[]>([])}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}
 		/>

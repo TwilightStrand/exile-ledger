@@ -55,6 +55,8 @@ export interface Settings {
 	theme: ThemeId;
 	/** Shorter rows in the panel, for long bookmark lists on small screens. */
 	compact: boolean;
+	/** Browser notifications for watcher events; needs the optional permission. */
+	notifications: boolean;
 	/** Minutes between checks for newly added watchers. */
 	watchInterval: number;
 	/** Keyboard shortcuts on the trade page; null leaves an action unbound. */
@@ -82,6 +84,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	compact: false,
 	hotkeys: DEFAULT_HOTKEYS,
 	watchInterval: WATCH_INTERVAL.default,
+	notifications: false,
 };
 
 export function clampWidth(percent: number): number {
@@ -119,6 +122,7 @@ export const SettingsSchema = v.fallback(
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),
+		notifications: v.fallback(v.boolean(), DEFAULT_SETTINGS.notifications),
 		watchInterval: v.fallback(
 			v.pipe(
 				v.number(),

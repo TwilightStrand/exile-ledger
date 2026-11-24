@@ -45,6 +45,8 @@ export default defineConfig({
 		// alarms lets watchers run with no trade tab open; it shows no install
 		// warning.
 		permissions: ["storage", "alarms"],
+		// Asked for when the user turns notifications on in settings.
+		optional_permissions: ["notifications"],
 		optional_host_permissions: [
 			// Asked for only when the user turns on equivalent prices; poe.ninja
 			// sends no CORS headers, so the fetch needs host access.
