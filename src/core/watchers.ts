@@ -207,3 +207,68 @@ export function applySearchCheck(
 export function markSeen(watcher: SearchWatcher): SearchWatcher {
 	return { ...watcher, newIds: [] };
 }
+
+/** Where a watcher's requests go: the trade site and search it was made on. */
+export interface WatchSite {
+	origin: string;
+	game: Watcher["game"];
+	realm: string | null;
+	league: string;
+}
+
+/** Watches one result row; the first check confirms it is still listed. */
+export function listingWatcherFrom(
+	item: {
+		id: string;
+		name: string;
+		baseType: string;
+		seller: string | null;
+		price: Price | null;
+	},
+	site: WatchSite & { searchId: string },
+	intervalMin: number,
+	now: number,
+	id: string,
+): ListingWatcher {
+	return {
+		kind: "listing",
+		id,
+		origin: site.origin,
+		game: site.game,
+		realm: site.realm,
+		league: site.league,
+		intervalMin,
+		createdAt: now,
+		lastCheckedAt: null,
+		failures: 0,
+		retryAt: null,
+		searchId: site.searchId,
+		itemId: item.id,
+		name: [item.name, item.baseType].filter(Boolean).join(" "),
+		seller: item.seller ?? "",
+		price: item.price,
+		previousPrice: null,
+		status: "listed",
+		changedAt: null,
+	};
+}
+
+/** Adds the watcher, or removes the one already watching that listing. */
+export function toggleListingWatch(
+	watchers: readonly Watcher[],
+	watcher: ListingWatcher,
+): Watcher[] {
+	const existing = watchers.find(
+		(w) => w.kind === "listing" && w.itemId === watcher.itemId,
+	);
+	return existing
+		? watchers.filter((w) => w !== existing)
+		: [...watchers, watcher];
+}
+
+export function removeWatcher(
+	watchers: readonly Watcher[],
+	id: string,
+): Watcher[] {
+	return watchers.filter((w) => w.id !== id);
+}

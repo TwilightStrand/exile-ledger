@@ -2,7 +2,11 @@ import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { startWatchers } from "../background/watchers";
-import { PRICING_ACCESS_KEY, RatesRequestSchema } from "../core/messages";
+import {
+	OpenSettingsSchema,
+	PRICING_ACCESS_KEY,
+	RatesRequestSchema,
+} from "../core/messages";
 import { OFF_STATUS, type SyncStatus, syncOnce } from "../core/syncEngine";
 import { getRates, NINJA_ORIGIN } from "../pricing/ratesService";
 import { listenForLibraryWrites } from "../storage/libraryStore";
@@ -93,6 +97,10 @@ export default defineBackground(() => {
 			_sender: unknown,
 			sendResponse: (rates: unknown) => void,
 		) => {
+			if (v.is(OpenSettingsSchema, message)) {
+				browser.runtime.openOptionsPage().catch(() => {});
+				return undefined;
+			}
 			const request = v.safeParse(RatesRequestSchema, message);
 			if (!request.success) return undefined;
 			// sendResponse plus `return true` is the async reply form every

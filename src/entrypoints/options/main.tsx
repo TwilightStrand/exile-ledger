@@ -2,6 +2,7 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
 import { messagesFor } from "../../core/i18n";
+import { TRADE_ORIGINS } from "../../core/sites";
 import { NINJA_ORIGIN } from "../../pricing/ratesService";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
@@ -27,6 +28,11 @@ const requestPricingAccess = () =>
 const hasPricingAccess = () =>
 	browser.permissions.contains({ origins: [NINJA_ORIGIN] });
 
+const requestTradeAccess = () =>
+	browser.permissions.request({ origins: TRADE_ORIGINS });
+const hasTradeAccess = () =>
+	browser.permissions.contains({ origins: TRADE_ORIGINS });
+
 const root = document.getElementById("app");
 // Loaded before the first render so a light theme does not flash dark.
 const initialSettings = await browserSettings.load();
@@ -43,6 +49,8 @@ if (root) {
 				syncStatus={browserSyncStatus}
 				requestPricingAccess={requestPricingAccess}
 				hasPricingAccess={hasPricingAccess}
+				requestTradeAccess={requestTradeAccess}
+				hasTradeAccess={hasTradeAccess}
 				version={browser.runtime.getManifest().version}
 				download={download}
 			/>

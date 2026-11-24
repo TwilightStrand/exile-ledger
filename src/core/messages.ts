@@ -24,3 +24,15 @@ export const LibraryWriteSchema = v.object({
  * always change the synced setting, so this is how open tabs learn to retry.
  */
 export const PRICING_ACCESS_KEY = "pricingAccessAt";
+
+/**
+ * storage.local key holding whether the background may call the trade API.
+ * Content scripts have no permissions API, so the panel reads this to say
+ * when watchers are waiting for access.
+ */
+export const TRADE_ACCESS_KEY = "tradeAccess";
+
+/** Content script to background: open the settings page, which content scripts cannot do. */
+export const OpenSettingsSchema = v.object({
+	type: v.literal("exile-ledger:open-settings"),
+});

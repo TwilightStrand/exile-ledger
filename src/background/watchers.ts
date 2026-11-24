@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
+import { TRADE_ACCESS_KEY } from "../core/messages";
 import { TRADE_ORIGINS } from "../core/sites";
 import { fetchApiUrl, searchApiUrl } from "../core/tradeApiUrls";
 import type { QueueResult } from "../core/tradeQueue";
@@ -137,8 +138,18 @@ export async function runWatchers(
 	}
 }
 
+async function publishAccess(): Promise<void> {
+	await browser.storage.local.set({
+		[TRADE_ACCESS_KEY]: await hasTradeAccess(),
+	});
+}
+
 /** Wires the alarm, reschedules on edits, and restarts once access is granted. */
 export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
+	publishAccess().catch(() => {});
+	browser.permissions.onRemoved.addListener(() => {
+		publishAccess().catch(() => {});
+	});
 	browser.alarms.onAlarm.addListener((alarm) => {
 		if (alarm.name === WATCHER_ALARM) runWatchers(onEvents).catch(() => {});
 	});
@@ -146,8 +157,10 @@ export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
 		schedule(watchers).catch(() => {});
 	});
 	browser.permissions.onAdded.addListener((granted) => {
-		if (granted.origins?.some((o) => TRADE_ORIGINS.includes(o)))
+		if (granted.origins?.some((o) => TRADE_ORIGINS.includes(o))) {
+			publishAccess().catch(() => {});
 			runWatchers(onEvents).catch(() => {});
+		}
 	});
 	runWatchers(onEvents).catch(() => {});
 }

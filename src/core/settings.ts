@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { DEFAULT_HOTKEYS, type Hotkeys, parseHotkeys } from "./hotkeys";
 import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
+import { WATCH_INTERVAL } from "./watchers";
 
 export const PANEL_SIDES = ["left", "right"] as const;
 export type PanelSide = (typeof PANEL_SIDES)[number];
@@ -54,6 +55,8 @@ export interface Settings {
 	theme: ThemeId;
 	/** Shorter rows in the panel, for long bookmark lists on small screens. */
 	compact: boolean;
+	/** Minutes between checks for newly added watchers. */
+	watchInterval: number;
 	/** Keyboard shortcuts on the trade page; null leaves an action unbound. */
 	hotkeys: Hotkeys;
 }
@@ -78,6 +81,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	theme: DEFAULT_THEME,
 	compact: false,
 	hotkeys: DEFAULT_HOTKEYS,
+	watchInterval: WATCH_INTERVAL.default,
 };
 
 export function clampWidth(percent: number): number {
@@ -115,6 +119,15 @@ export const SettingsSchema = v.fallback(
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),
+		watchInterval: v.fallback(
+			v.pipe(
+				v.number(),
+				v.integer(),
+				v.minValue(WATCH_INTERVAL.min),
+				v.maxValue(1440),
+			),
+			DEFAULT_SETTINGS.watchInterval,
+		),
 		hotkeys: v.pipe(v.optional(v.unknown(), {}), v.transform(parseHotkeys)),
 		equivalentPricing: v.fallback(
 			v.boolean(),

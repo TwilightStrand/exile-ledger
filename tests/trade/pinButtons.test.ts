@@ -70,6 +70,7 @@ describe("togglePin", () => {
 			rarity: null,
 			text: null,
 			corrupted: false,
+			seller: null,
 			affixes: null,
 		};
 		const pinned = togglePin([], item, 5);

@@ -48,3 +48,25 @@ export function bookmarkHref(
 		live: false,
 	});
 }
+
+/** A search watcher's query on the site and league it watches, as a fresh search. */
+export function searchWatcherHref(watcher: {
+	origin: string;
+	game: Bookmark["game"];
+	realm: string | null;
+	league: string;
+	query: NonNullable<Bookmark["query"]>;
+}): string {
+	return buildTradeUrl(
+		watcher.origin,
+		{
+			game: watcher.game,
+			type: "search",
+			realm: watcher.realm,
+			league: watcher.league,
+			searchId: null,
+			live: false,
+		},
+		{ query: watcher.query },
+	);
+}

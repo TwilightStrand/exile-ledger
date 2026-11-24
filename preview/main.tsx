@@ -302,6 +302,8 @@ function SettingsPreview() {
 			})}
 			requestPricingAccess={grantAccess}
 			hasPricingAccess={grantAccess}
+			requestTradeAccess={async () => true}
+			hasTradeAccess={async () => true}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}
 		/>

@@ -20,6 +20,11 @@ import { THEMES } from "../../src/core/themes";
 import { parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
 import type { UiState } from "../../src/core/uiState";
+import type {
+	ListingWatcher,
+	SearchWatcher,
+	Watcher,
+} from "../../src/core/watchers";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { Panel, type PanelProps, type Reserve } from "../../src/ui/Panel";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
@@ -701,5 +706,96 @@ describe("bookmark extras", () => {
 		);
 		await act(async () => button(root, "Mark all done")?.click());
 		expect((await library.load()).bookmarks.every((b) => b.done)).toBe(true);
+	});
+});
+
+describe("watchers tab", () => {
+	const listing: ListingWatcher = {
+		kind: "listing",
+		id: "w1",
+		origin: "https://www.pathofexile.com",
+		game: "poe2",
+		realm: "poe2",
+		league: "Dawn",
+		intervalMin: 5,
+		createdAt: 0,
+		lastCheckedAt: 400,
+		failures: 0,
+		retryAt: null,
+		searchId: "s1",
+		itemId: "i1",
+		name: "Viper Wrap Hatungo Garb",
+		seller: "Seller#0000",
+		price: { amount: 8, currency: "exalted" },
+		previousPrice: { amount: 10, currency: "exalted" },
+		status: "listed",
+		changedAt: 400,
+	};
+	const search: SearchWatcher = {
+		...listing,
+		kind: "search",
+		id: "w2",
+		bookmarkId: null,
+		name: "Life rings",
+		query: { query: { term: "ring" } },
+		seenIds: ["a", "b"],
+		newIds: ["c"],
+		total: 40,
+	};
+	const tab = (root: HTMLElement) =>
+		root.querySelector<HTMLButtonElement>("#exile-ledger-tab-watchers");
+
+	it("lists watched listings with their price change", async () => {
+		const root = await mount({
+			watchers: createMemorySource<Watcher[]>([listing]),
+		});
+		await act(async () => tab(root)?.click());
+		expect(treeText(root)).toContain("Viper Wrap Hatungo Garb");
+		expect(treeText(root)).toContain("10 exalted → 8 exalted");
+		expect(root.querySelector("[role=alert]")).toBeNull();
+	});
+
+	it("asks for access when the background may not check", async () => {
+		let opened = false;
+		const root = await mount({
+			watchers: createMemorySource<Watcher[]>([listing]),
+			tradeAccess: createMemorySource(false),
+			onOpenSettings: () => {
+				opened = true;
+			},
+		});
+		await act(async () => tab(root)?.click());
+		await act(async () => button(root, "Open settings")?.click());
+		expect(opened).toBe(true);
+	});
+
+	it("opens a search watcher and marks its new results seen", async () => {
+		const watchers = createMemorySource<Watcher[]>([search, listing]);
+		const visited: string[] = [];
+		const root = await mount({
+			watchers,
+			navigate: (href) => visited.push(href),
+		});
+		await act(async () => tab(root)?.click());
+		expect(treeText(root)).toContain("1 new");
+		const open = [...root.querySelectorAll("button")].find((b) =>
+			b.textContent?.includes("Life rings"),
+		);
+		await act(async () => open?.click());
+		const [stored] = await watchers.load();
+		expect(stored?.kind === "search" && stored.newIds).toEqual([]);
+		expect(visited[0]).toMatch(
+			/^https:\/\/www\.pathofexile\.com\/trade2\/search\/poe2\/Dawn\?q=/,
+		);
+	});
+
+	it("stops watching", async () => {
+		const watchers = createMemorySource<Watcher[]>([listing]);
+		const root = await mount({ watchers });
+		await act(async () => tab(root)?.click());
+		await act(async () =>
+			button(root, "Stop watching Viper Wrap Hatungo Garb")?.click(),
+		);
+		expect(await watchers.load()).toEqual([]);
 	});
 });

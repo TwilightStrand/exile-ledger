@@ -173,3 +173,10 @@ export const Replace = (p: IconProps) => (
 		<path d="M18 3v4h-4M6 21v-4h4" />
 	</Svg>
 );
+
+export const Eye = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+		<circle cx="12" cy="12" r="2.75" />
+	</Svg>
+);

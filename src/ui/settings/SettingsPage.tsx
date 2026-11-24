@@ -20,6 +20,7 @@ import {
 } from "../../core/settings";
 import type { Source } from "../../core/source";
 import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
+import { WATCH_INTERVAL } from "../../core/watchers";
 import { useMessages } from "../i18n";
 import { Mark } from "../icons";
 import { quotaPercent, syncStatusText } from "../syncStatusText";
@@ -48,6 +49,9 @@ export interface SettingsPageProps {
 	requestPricingAccess: () => Promise<boolean>;
 	/** Whether this browser already has access to poe.ninja. */
 	hasPricingAccess: () => Promise<boolean>;
+	/** Asks for the trade sites, for background watcher checks. */
+	requestTradeAccess: () => Promise<boolean>;
+	hasTradeAccess: () => Promise<boolean>;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
 	now?: () => number;
@@ -322,6 +326,8 @@ export function SettingsPage({
 	syncStatus,
 	requestPricingAccess,
 	hasPricingAccess,
+	requestTradeAccess,
+	hasTradeAccess,
 	version,
 	download,
 	now = Date.now,
@@ -336,6 +342,11 @@ export function SettingsPage({
 	useEffect(() => {
 		hasPricingAccess().then(setPricingAccess);
 	}, [hasPricingAccess]);
+	const [tradeAccess, setTradeAccess] = useState<boolean | null>(null);
+	const [tradeDenied, setTradeDenied] = useState(false);
+	useEffect(() => {
+		hasTradeAccess().then(setTradeAccess);
+	}, [hasTradeAccess]);
 	// The setting syncs but browser permissions do not, so another machine can
 	// have prices on while this one was never asked.
 	const pricingMissingAccess =
@@ -548,6 +559,53 @@ export function SettingsPage({
 							label={s.trade.backForward}
 							checked={prefs.backForward}
 							onChange={(backForward) => settings.save({ backForward })}
+						/>
+					</Field>
+				</Section>
+
+				<Section title={s.watchers.title} description={s.watchers.description}>
+					<Field label={s.watchers.access} hint={s.watchers.accessHint}>
+						{tradeAccess ? (
+							<span class="text-[13px] text-ledger-live">
+								{s.watchers.allowed}
+							</span>
+						) : (
+							<button
+								type="button"
+								class={PRIMARY_BUTTON}
+								onClick={async () => {
+									const granted = await requestTradeAccess();
+									setTradeAccess(granted);
+									setTradeDenied(!granted);
+								}}
+							>
+								{s.watchers.allow}
+							</button>
+						)}
+					</Field>
+					{tradeDenied && <Notice tone="error">{s.watchers.denied}</Notice>}
+					<Field
+						label={s.watchers.interval}
+						hint={s.watchers.intervalHint(WATCH_INTERVAL.min)}
+					>
+						<input
+							type="number"
+							aria-label={s.watchers.intervalInput}
+							min={WATCH_INTERVAL.min}
+							max={1440}
+							step={1}
+							value={prefs.watchInterval}
+							class="w-20 rounded-md border border-ledger-border bg-ledger-bg px-2 py-1 text-right text-[13px] text-ledger-text tabular-nums outline-none focus:border-ledger-gold/60"
+							onChange={(e) => {
+								const minutes = Math.round(Number(e.currentTarget.value));
+								if (Number.isFinite(minutes))
+									settings.save({
+										watchInterval: Math.min(
+											1440,
+											Math.max(WATCH_INTERVAL.min, minutes),
+										),
+									});
+							}}
 						/>
 					</Field>
 				</Section>

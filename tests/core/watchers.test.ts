@@ -4,11 +4,14 @@ import {
 	applySearchCheck,
 	isDue,
 	type ListingWatcher,
+	listingWatcherFrom,
 	markSeen,
 	nextDueInMinutes,
 	parseWatchers,
+	removeWatcher,
 	SEEN_CAP,
 	type SearchWatcher,
+	toggleListingWatch,
 } from "../../src/core/watchers";
 
 const listing: ListingWatcher = {
@@ -161,5 +164,42 @@ describe("parseWatchers", () => {
 			parseWatchers([listing, { ...search, intervalMin: 0 }, "junk", search]),
 		).toEqual([listing, search]);
 		expect(parseWatchers(null)).toEqual([]);
+	});
+});
+
+describe("listingWatcherFrom", () => {
+	const site: Parameters<typeof listingWatcherFrom>[1] = {
+		origin: "https://www.pathofexile.com",
+		game: "poe1",
+		realm: null,
+		league: "Standard",
+		searchId: "s1",
+	};
+	const item = {
+		id: "item1",
+		name: "Eagle Sanctuary",
+		baseType: "Astral Plate",
+		seller: "Seller#0000",
+		price: { amount: 10, currency: "chaos" },
+	};
+
+	it("stores what a check and the panel need", () => {
+		const made = listingWatcherFrom(item, site, 5, 100, "w9");
+		expect(made).toEqual({
+			...listing,
+			id: "w9",
+			name: "Eagle Sanctuary Astral Plate",
+			createdAt: 100,
+		});
+		expect(parseWatchers([made])).toEqual([made]);
+	});
+
+	it("toggles a listing on and off by item id", () => {
+		const made = listingWatcherFrom(item, site, 5, 100, "w9");
+		const on = toggleListingWatch([search], made);
+		expect(on).toEqual([search, made]);
+		const again = listingWatcherFrom(item, site, 5, 200, "w10");
+		expect(toggleListingWatch(on, again)).toEqual([search]);
+		expect(removeWatcher(on, "w2")).toEqual([made]);
 	});
 });

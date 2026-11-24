@@ -1,5 +1,6 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
+import { browser } from "wxt/browser";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { storage } from "wxt/utils/storage";
@@ -11,11 +12,16 @@ import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
 import { createMemorySource } from "../../core/source";
 import { parseTradeUrl } from "../../core/tradeUrl";
+import { listingWatcherFrom, toggleListingWatch } from "../../core/watchers";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
 import { browserSyncStatus } from "../../storage/syncPorts";
 import { browserUiState } from "../../storage/uiStateStore";
+import {
+	browserTradeAccess,
+	browserWatchers,
+} from "../../storage/watcherStore";
 import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
 import {
@@ -34,6 +40,7 @@ import { applyReserve } from "../../trade/reserve";
 import { annotateResults } from "../../trade/resultHelpers";
 import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
+import { syncWatchButtons } from "../../trade/watchButtons";
 import { MessagesProvider } from "../../ui/i18n";
 import { Panel } from "../../ui/Panel";
 
@@ -85,6 +92,27 @@ export default defineContentScript({
 		};
 		const rates = createRatesClient(() => enhance());
 		let library = await browserLibrary.load();
+		let watchers = await browserWatchers.load();
+		const toggleWatch = (id: string) => {
+			const capture = feed.get();
+			const item = capture.results.find((r) => r.id === id);
+			const search = capture.search;
+			if (!item || !search) return;
+			const watcher = listingWatcherFrom(
+				item,
+				{
+					origin: location.origin,
+					game: search.game,
+					realm: search.realm,
+					league: search.league,
+					searchId: search.search.searchId,
+				},
+				prefs.watchInterval,
+				Date.now(),
+				crypto.randomUUID(),
+			);
+			browserWatchers.update((current) => toggleListingWatch(current, watcher));
+		};
 		const title = createTitleKeeper(document);
 		ctx.onInvalidated(() => title.stop());
 		const updateTitle = () => {
@@ -119,6 +147,12 @@ export default defineContentScript({
 			),
 		);
 		ctx.onInvalidated(
+			browserWatchers.watch((next) => {
+				watchers = next;
+				enhance();
+			}),
+		);
+		ctx.onInvalidated(
 			browserLibrary.watch((next) => {
 				library = next;
 				updateTitle();
@@ -143,6 +177,14 @@ export default defineContentScript({
 			highlightMods(document, capture, prefs.highlightMods);
 			annotateResults(document, capture, prefs, t);
 			updateTitle();
+			syncWatchButtons(
+				document,
+				new Set(
+					watchers.flatMap((w) => (w.kind === "listing" ? [w.itemId] : [])),
+				),
+				toggleWatch,
+				t,
+			);
 			pins
 				.load()
 				.then((current) => syncPinButtons(document, current, togglePinned, t));
@@ -192,6 +234,13 @@ export default defineContentScript({
 							history={browserHistory}
 							syncStatus={browserSyncStatus}
 							pins={pins}
+							watchers={browserWatchers}
+							tradeAccess={browserTradeAccess}
+							onOpenSettings={() => {
+								browser.runtime
+									.sendMessage({ type: "exile-ledger:open-settings" })
+									.catch(() => {});
+							}}
 							onJumpToPin={(id) => jumpToResult(document, id)}
 							onReserve={(reserve) => applyReserve(document, reserve)}
 							page={() => parseTradeUrl(new URL(location.href))}

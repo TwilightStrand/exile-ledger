@@ -127,6 +127,7 @@ const ResultEntrySchema = v.looseObject({
 	id: v.string(),
 	listing: v.looseObject({
 		indexed: v.optional(v.string()),
+		account: v.optional(v.looseObject({ name: v.optional(v.string()) })),
 		price: v.optional(
 			v.looseObject({ amount: v.number(), currency: v.string() }),
 		),
@@ -158,6 +159,8 @@ export interface ResultItem {
 	/** PoE1's in-game item text, decoded; PoE2 responses do not carry it. */
 	text: string | null;
 	corrupted: boolean;
+	/** The seller's account name. */
+	seller: string | null;
 	/** From the tier codes on rolled mods; null when the API sent none. */
 	affixes: AffixCount | null;
 }
@@ -237,6 +240,7 @@ export function parseFetchResponse(response: unknown): ResultItem[] | null {
 				? itemTextFromBase64(entry.item.extended.text)
 				: null,
 			corrupted: entry.item.corrupted ?? false,
+			seller: entry.listing.account?.name ?? null,
 			affixes: countAffixes(
 				AFFIX_KINDS.flatMap((kind) =>
 					linesFor(entry.item, kind).flatMap((line) =>

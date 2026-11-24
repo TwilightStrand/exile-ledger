@@ -32,6 +32,7 @@ function seededLibrary() {
 }
 
 let grantPricing = true;
+let grantTrade = true;
 
 async function mount({
 	equivalentPricing = false,
@@ -62,6 +63,8 @@ async function mount({
 				})}
 				requestPricingAccess={async () => grantPricing}
 				hasPricingAccess={hasPricingAccess}
+				requestTradeAccess={async () => grantTrade}
+				hasTradeAccess={async () => false}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
 				now={() => Date.UTC(2026, 10, 24)}
@@ -320,4 +323,36 @@ describe("result helper switches", () => {
 			expect((await settings.load())[key]).toBe(!initial);
 		},
 	);
+});
+
+describe("watcher settings", () => {
+	it("asks for trade site access and says when it was refused", async () => {
+		grantTrade = false;
+		const { root } = await mount();
+		await act(async () => button(root, "Allow")?.click());
+		expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+			"Watchers stay paused",
+		);
+		grantTrade = true;
+		await act(async () => button(root, "Allow")?.click());
+		expect(root.textContent).toContain("Allowed");
+	});
+
+	it("saves the check interval, never below a minute", async () => {
+		const { root, settings } = await mount();
+		const input = root.querySelector<HTMLInputElement>(
+			'input[aria-label="Minutes between checks"]',
+		);
+		if (!input) throw new Error("no interval input");
+		input.value = "0";
+		await act(() => {
+			input.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		expect((await settings.load()).watchInterval).toBe(1);
+		input.value = "15";
+		await act(() => {
+			input.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		expect((await settings.load()).watchInterval).toBe(15);
+	});
 });

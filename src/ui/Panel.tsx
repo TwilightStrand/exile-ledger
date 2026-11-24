@@ -18,6 +18,7 @@ import {
 	saveSearch,
 	setBookmarkDone,
 } from "../core/library";
+import { searchWatcherHref } from "../core/openUrl";
 import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
 import {
@@ -42,6 +43,7 @@ import {
 	setFolderIcon,
 } from "../core/tree";
 import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
+import { markSeen, removeWatcher, type Watcher } from "../core/watchers";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
@@ -53,6 +55,7 @@ import { PinnedList } from "./PinnedList";
 import { SYNC_DOT, syncStatusText } from "./syncStatusText";
 import { themeStyle } from "./theme";
 import { countBookmarks } from "./viewModels";
+import { type WatcherActions, WatcherList } from "./WatcherList";
 
 function useCapture(feed: CaptureFeed): CaptureState {
 	const [state, setState] = useState(feed.get);
@@ -194,7 +197,7 @@ export interface Reserve {
 	width: string | null;
 }
 
-export const TABS = ["bookmarks", "history", "pinned"] as const;
+export const TABS = ["bookmarks", "history", "pinned", "watchers"] as const;
 export type TabId = (typeof TABS)[number];
 
 // Literal class strings so Tailwind's scanner picks them up.
@@ -234,6 +237,14 @@ export interface PanelProps {
 	onJumpToPin?: (id: string) => boolean;
 	/** Written by the background sync; shown as a dot in the header. */
 	syncStatus?: Source<SyncStatus>;
+	/** Listing and search watchers, checked by the background. */
+	watchers?: Source<Watcher[]>;
+	/** Whether the background may call the trade API; watchers wait without it. */
+	tradeAccess?: Source<boolean>;
+	/** Content scripts cannot open the settings page themselves. */
+	onOpenSettings?: () => void;
+	/** Goes to a URL in this tab; injectable for tests. */
+	navigate?: (href: string) => void;
 	/** Searches the page ran; recorded by the content script, read here. */
 	history?: Source<HistoryEntry[]>;
 	/** Clipboard write; injectable because tests and previews have no clipboard. */
@@ -257,6 +268,10 @@ export function Panel({
 	history: historySource,
 	syncStatus: syncStatusSource,
 	pins: pinsSource,
+	watchers: watchersSource,
+	tradeAccess: tradeAccessSource,
+	onOpenSettings = () => {},
+	navigate = (href) => location.assign(href),
 	onJumpToPin = () => false,
 	onReserve,
 	copyText = (text) => navigator.clipboard.writeText(text),
@@ -283,6 +298,11 @@ export function Panel({
 	const [ownPins] = useState(() => createMemorySource<PinnedItem[]>([]));
 	const pinStore = pinsSource ?? ownPins;
 	const pinned = useSource(pinStore, (): PinnedItem[] => []);
+	const [ownWatchers] = useState(() => createMemorySource<Watcher[]>([]));
+	const watcherStore = watchersSource ?? ownWatchers;
+	const watchers = useSource(watcherStore, (): Watcher[] => []);
+	const [ownAccess] = useState(() => createMemorySource(true));
+	const hasTradeAccess = useSource(tradeAccessSource ?? ownAccess, () => true);
 	const [ownSyncStatus] = useState(() => createMemorySource(OFF_STATUS));
 	const sync = useSource(syncStatusSource ?? ownSyncStatus, () => OFF_STATUS);
 	const [ownHistory] = useState(() => createMemorySource<HistoryEntry[]>([]));
@@ -439,6 +459,20 @@ export function Panel({
 		bookmarks: countBookmarks(bookmarks),
 		history: history.length,
 		pinned: pinned.length,
+		watchers: watchers.length,
+	};
+	const watcherActions: WatcherActions = {
+		onRemove: (id) => watcherStore.update((ws) => removeWatcher(ws, id)),
+		onOpenSearch: (watcher) => {
+			watcherStore
+				.update((ws) =>
+					ws.map((w) =>
+						w.id === watcher.id && w.kind === "search" ? markSeen(w) : w,
+					),
+				)
+				.then(() => navigate(searchWatcherHref(watcher)));
+		},
+		onOpenSettings,
 	};
 
 	return (
@@ -510,7 +544,7 @@ export function Panel({
 					>
 						<span
 							aria-hidden="true"
-							class="absolute bottom-[-1px] left-3 h-0.5 w-[calc((100%-1.5rem)/3)] rounded-full bg-ledger-gold transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]"
+							class="absolute bottom-[-1px] left-3 h-0.5 w-[calc((100%-1.5rem)/4)] rounded-full bg-ledger-gold transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]"
 							style={{ transform: `translateX(${TABS.indexOf(tab) * 100}%)` }}
 						/>
 						{TABS.map((id) => {
@@ -568,6 +602,14 @@ export function Panel({
 									pins={pinned}
 									onJump={onJumpToPin}
 									onUnpin={(id) => pinStore.update((p) => unpin(p, id))}
+								/>
+							)}
+							{tab === "watchers" && (
+								<WatcherList
+									watchers={watchers}
+									hasAccess={hasTradeAccess}
+									now={now()}
+									actions={watcherActions}
 								/>
 							)}
 						</div>

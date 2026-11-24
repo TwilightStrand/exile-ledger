@@ -34,6 +34,7 @@ function page(rows: number) {
 			rarity: null,
 			text: null,
 			corrupted: false,
+			seller: null,
 			affixes: null,
 			price: { amount: 1 + (i % 5), currency: i % 2 ? "exalted" : "divine" },
 			mods: MODS.map((text, k) => ({

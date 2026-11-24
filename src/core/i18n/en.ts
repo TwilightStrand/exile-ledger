@@ -5,6 +5,7 @@ import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
+import type { ListingWatcher } from "../watchers";
 import { plural } from "./plural";
 
 const locale = "en";
@@ -68,6 +69,7 @@ export const en = {
 			bookmarks: "Bookmarks",
 			history: "History",
 			pinned: "Pinned",
+			watchers: "Watch",
 		},
 	},
 	currentSearch: {
@@ -155,6 +157,30 @@ export const en = {
 		clear: "Clear history",
 		saveAs: (title: string) => `Save ${title} as bookmark`,
 	},
+	watchers: {
+		emptyTitle: "Nothing watched",
+		emptyBody:
+			"Use Watch on a result, or the eye on a bookmark, and Exile Ledger checks it in the background.",
+		needsAccess:
+			"Background checks need permission to reach the trade site. Allow it on the settings page.",
+		allow: "Open settings",
+		listings: "Listings",
+		searches: "Searches",
+		status: {
+			listed: "Listed",
+			gone: "Sold or delisted",
+			back: "Listed again",
+		} satisfies Record<ListingWatcher["status"], string>,
+		repriced: (from: string, to: string) => `${from} → ${to}`,
+		noPrice: "No price",
+		notChecked: "Not checked yet",
+		checked: (ago: string) => `checked ${ago}`,
+		retrying: "Trade site busy, trying again later",
+		newResults: (n: number) => `${number(n)} new`,
+		total: (n: number) => results(n),
+		remove: (name: string) => `Stop watching ${name}`,
+		every: (minutes: number) => `every ${minutes} min`,
+	},
 	pins: {
 		emptyTitle: "Nothing pinned",
 		emptyBody: "Use Pin on a result to keep it here while you keep searching.",
@@ -163,6 +189,10 @@ export const en = {
 		unpin: (name: string) => `Unpin ${name}`,
 	},
 	trade: {
+		watch: "Watch",
+		watching: "Watching",
+		watchTitle:
+			"Checks this listing in the background and tells you when its price changes or it sells",
 		pin: "Pin",
 		unpin: "Unpin",
 		/** Under a listing's price: "≈ 74.1 c · 0.088 div". */
@@ -357,6 +387,21 @@ export const en = {
 			backForward: "Back and Forward between searches",
 			backForwardHint:
 				"The browser's Back button returns to your previous search instead of leaving the site.",
+		},
+		watchers: {
+			title: "Watchers",
+			description:
+				"Watched listings and searches are checked in the background, at most as often as GGG's rate limits allow.",
+			access: "Trade site access",
+			accessHint:
+				"Needed for background checks. Your browser asks once; requests go only to the official trade site.",
+			allowed: "Allowed",
+			allow: "Allow",
+			denied: "Not allowed. Watchers stay paused until you allow it.",
+			interval: "Check every",
+			intervalHint: (min: number) =>
+				`Minutes between checks for new watchers, ${min} at the least. Each failed check waits twice as long as the last.`,
+			intervalInput: "Minutes between checks",
 		},
 		hotkeys: {
 			title: "Keyboard shortcuts",
