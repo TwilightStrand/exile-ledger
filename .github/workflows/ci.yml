@@ -24,4 +24,6 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build:firefox
-      - run: npx --yes web-ext@10.8.0 lint --source-dir .output/firefox-mv3
+      # The linter addons.mozilla.org runs on upload; warnings fail here so they
+      # are fixed before submission instead of explained to reviewers.
+      - run: npx --yes addons-linter@10.16.0 --warnings-as-errors .output/firefox-mv3
