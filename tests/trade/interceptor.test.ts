@@ -69,6 +69,7 @@ describe("installInterceptor (XMLHttpRequest)", () => {
 		const listeners: Array<() => void> = [];
 		class FakeXhr {
 			status = 0;
+			responseType = "";
 			responseText = "";
 			open(_method: string, _url: string) {}
 			send(_body?: string) {
@@ -100,5 +101,37 @@ describe("installInterceptor (XMLHttpRequest)", () => {
 				responseBody: '{"id":"xhr"}',
 			},
 		]);
+	});
+});
+
+describe("installInterceptor (XHR)", () => {
+	it("reads JSON-typed responses without touching responseText", () => {
+		let onLoad = () => {};
+		class FakeXhr {
+			status = 200;
+			responseType = "json";
+			response = { id: "abc" };
+			get responseText(): string {
+				throw new Error("InvalidStateError");
+			}
+			open(_method: string, _url: string) {}
+			send(_body?: string) {
+				onLoad();
+			}
+			addEventListener(_type: "load", listener: () => void) {
+				onLoad = listener;
+			}
+		}
+		const win = {
+			location: { href: SEARCH_URL },
+			fetch: async () => new Response("{}"),
+			XMLHttpRequest: FakeXhr,
+		};
+		const seen: CapturedExchange[] = [];
+		installInterceptor(win, (e) => seen.push(e));
+		const xhr = new FakeXhr();
+		xhr.open("POST", SEARCH_URL);
+		xhr.send('{"query":{}}');
+		expect(seen[0]?.responseBody).toBe('{"id":"abc"}');
 	});
 });

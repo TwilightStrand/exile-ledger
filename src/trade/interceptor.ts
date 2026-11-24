@@ -17,6 +17,8 @@ const API_PATH = /\/api\/trade2?\/(search|fetch)\//;
 
 interface XhrLike {
 	status: number;
+	responseType: string;
+	response: unknown;
 	responseText: string;
 	open(method: string, url: string | URL, ...rest: never[]): void;
 	send(body?: never): void;
@@ -58,7 +60,10 @@ function wrapFetch(
 			: typeof init?.body === "string"
 				? init.body
 				: isRequest
-					? await input.clone().text()
+					? await input
+							.clone()
+							.text()
+							.catch(() => null)
 					: null;
 
 		const response = await original.call(win, input, init);
@@ -77,6 +82,18 @@ function wrapFetch(
 
 function isXhrLike(value: object): value is XhrLike {
 	return "open" in value && "send" in value && "addEventListener" in value;
+}
+
+/** responseText throws unless responseType is "" or "text", so read what the page asked for. */
+function xhrBody(xhr: XhrLike): string | null {
+	try {
+		if (xhr.responseType === "" || xhr.responseType === "text")
+			return xhr.responseText;
+		if (xhr.responseType === "json") return JSON.stringify(xhr.response);
+	} catch {
+		// A body we cannot read is skipped; the page's own handling is untouched.
+	}
+	return null;
 }
 
 function wrapXhr(win: InterceptTarget, report: (e: CapturedExchange) => void) {
@@ -99,9 +116,10 @@ function wrapXhr(win: InterceptTarget, report: (e: CapturedExchange) => void) {
 		if (request && isApiUrl(request.url)) {
 			const requestBody = typeof body === "string" ? body : null;
 			this.addEventListener("load", () => {
-				if (this.status >= 200 && this.status < 300) {
-					report({ ...request, requestBody, responseBody: this.responseText });
-				}
+				if (this.status < 200 || this.status >= 300) return;
+				const responseBody = xhrBody(this);
+				if (responseBody !== null)
+					report({ ...request, requestBody, responseBody });
 			});
 		}
 		originalSend.call(this, body);
