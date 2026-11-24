@@ -5,7 +5,7 @@ import { Pin, Trash } from "./icons";
 import { EmptyState } from "./parts";
 
 const ICON_BUTTON =
-	"grid size-6 shrink-0 place-items-center rounded text-ledger-faint transition-colors hover:bg-ledger-border hover:text-red-300 focus-visible:outline-2 focus-visible:outline-ledger-gold";
+	"grid size-6 shrink-0 place-items-center rounded text-ledger-faint transition-colors hover:bg-ledger-border hover:text-ledger-danger focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
 export function PinnedList({
 	pins,

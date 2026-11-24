@@ -18,7 +18,11 @@ import { browserSyncStatus } from "../../storage/syncPorts";
 import { browserUiState } from "../../storage/uiStateStore";
 import { type CaptureEvent, listenForCaptures } from "../../trade/capture";
 import { createCaptureFeed } from "../../trade/captureFeed";
-import { highlightMods, installPageStyles } from "../../trade/enhanceResults";
+import {
+	highlightMods,
+	installPageStyles,
+	setPageTheme,
+} from "../../trade/enhanceResults";
 import { annotatePrices } from "../../trade/equivalentPrices";
 import { BACK_FORWARD_FLAG } from "../../trade/historyPatch";
 import { observeResults } from "../../trade/observeResults";
@@ -71,6 +75,7 @@ export default defineContentScript({
 		await domReady(document);
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
+		setPageTheme(document, prefs.theme);
 		const pins = createMemorySource<PinnedItem[]>([]);
 		const togglePinned = (id: string) => {
 			const item = feed.get().results.find((r) => r.id === id);
@@ -150,6 +155,7 @@ export default defineContentScript({
 				if (next.equivalentPricing && !prefs.equivalentPricing) rates.reset();
 				prefs = next;
 				setBackForwardFlag();
+				setPageTheme(document, prefs.theme);
 				enhance();
 			}),
 		);

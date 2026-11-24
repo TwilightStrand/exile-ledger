@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { THEMES } from "../../src/core/themes";
 import { parseFetchResponse, parseSearch } from "../../src/core/tradeApi";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import {
 	HIGHLIGHT_ATTR,
 	highlightMods,
 	installPageStyles,
+	setPageTheme,
 } from "../../src/trade/enhanceResults";
 import fetchResponse from "../fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
@@ -76,6 +78,17 @@ describe("highlightMods", () => {
 		expect(marked()).toEqual([]);
 		highlightMods(document, captured(true), true);
 		expect(marked()).toEqual([]);
+	});
+
+	it("themes only our marks and follows a theme change", () => {
+		setPageTheme(document, "blood");
+		setPageTheme(document, "azure");
+		const styles = document.querySelectorAll("#exile-ledger-page-theme");
+		expect(styles).toHaveLength(1);
+		const css = styles[0]?.textContent ?? "";
+		expect(css).toContain(THEMES.azure.siteAccent);
+		expect(css).not.toContain(THEMES.blood.siteAccent);
+		expect(css.startsWith(":is([data-exile-ledger-match]")).toBe(true);
 	});
 
 	it("installs page styles once", () => {

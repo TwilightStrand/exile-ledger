@@ -95,9 +95,9 @@ const HOVER_ACTIONS =
 
 // Box shadows written out: Tailwind's shadow utilities need @property, which shadow roots ignore.
 const HINT_CLASSES: Record<DropWhere, string> = {
-	before: "[box-shadow:inset_0_2px_0_#d6ad62]",
-	after: "[box-shadow:inset_0_-2px_0_#d6ad62]",
-	into: "bg-ledger-gold/15 [box-shadow:inset_0_0_0_1px_rgb(214_173_98/0.6)]",
+	before: "[box-shadow:inset_0_2px_0_var(--color-ledger-gold)]",
+	after: "[box-shadow:inset_0_-2px_0_var(--color-ledger-gold)]",
+	into: "bg-ledger-gold/15 [box-shadow:inset_0_0_0_1px_color-mix(in_srgb,var(--color-ledger-gold)_60%,transparent)]",
 };
 
 const KEY_HINT = "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight";
@@ -271,11 +271,11 @@ function ConfirmRow({
 }) {
 	const t = useMessages();
 	return (
-		<div class="flex min-h-8 animate-fade-in items-center gap-2 rounded bg-red-950/40 px-2 py-1 text-[12px]">
+		<div class="flex min-h-8 animate-fade-in items-center gap-2 rounded bg-ledger-danger-bg/40 px-2 py-1 text-[12px]">
 			<span class="min-w-0 flex-1 text-ledger-text">{message}</span>
 			<button
 				type="button"
-				class="rounded px-2 py-0.5 font-semibold text-red-300 hover:bg-red-900/50"
+				class="rounded px-2 py-0.5 font-semibold text-ledger-danger hover:bg-ledger-danger-mark/20"
 				onClick={onConfirm}
 			>
 				{t.common.delete}
@@ -407,7 +407,7 @@ function BookmarkRow({
 					</button>
 					<button
 						type="button"
-						class={`${ICON_BUTTON} hover:text-red-300`}
+						class={`${ICON_BUTTON} hover:text-ledger-danger`}
 						aria-label={t.bookmarks.delete(bookmark.title)}
 						onClick={() => setMode("confirm-delete")}
 					>
@@ -520,7 +520,7 @@ function FolderRow({
 					</button>
 					<button
 						type="button"
-						class={`${ICON_BUTTON} hover:text-red-300`}
+						class={`${ICON_BUTTON} hover:text-ledger-danger`}
 						aria-label={t.bookmarks.delete(folder.name)}
 						onClick={() => setMode("confirm-delete")}
 					>

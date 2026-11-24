@@ -35,7 +35,7 @@ export function HistoryList({
 				<div class="flex justify-end px-3 pb-1">
 					<button
 						type="button"
-						class="rounded px-1.5 py-0.5 text-[11px] text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-red-300"
+						class="rounded px-1.5 py-0.5 text-[11px] text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-danger"
 						onClick={actions.onClear}
 					>
 						{t.history.clear}

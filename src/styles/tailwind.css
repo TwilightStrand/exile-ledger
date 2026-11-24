@@ -6,6 +6,10 @@
 @import "tailwindcss" source(none);
 @source "../";
 
+/*
+ * The default (gold) theme. src/core/themes.ts holds every theme and the UI sets
+ * the chosen one's values on its root, so these only seed Tailwind's colour names.
+ */
 @theme {
 	--color-ledger-bg: #0b0907;
 	--color-ledger-panel: #12100d;
@@ -21,6 +25,15 @@
 	--color-ledger-poe1: #c98b4a;
 	--color-ledger-poe2: #7fb0d8;
 	--color-ledger-live: #7cc47f;
+	--color-ledger-warn: #efc39a;
+	--color-ledger-warn-mark: #e0985a;
+	--color-ledger-warn-edge: #c9824a;
+	--color-ledger-danger: #ffa2a2;
+	--color-ledger-danger-mark: #ff6467;
+	--color-ledger-danger-bg: #460809;
+	--color-ledger-header-from: #1f1912;
+	--color-ledger-header-to: #14110d;
+	--color-ledger-shadow: #000000;
 
 	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 	--animate-panel-in-left: panel-in-left 220ms var(--ease-out-soft);
@@ -56,7 +69,11 @@
 	@keyframes glow {
 		0%,
 		35% {
-			background-color: rgb(214 173 98 / 0.22);
+			background-color: color-mix(
+				in srgb,
+				var(--color-ledger-gold) 22%,
+				transparent
+			);
 		}
 	}
 

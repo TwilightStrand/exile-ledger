@@ -15,6 +15,7 @@ import {
 	type SettingsSource,
 } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
+import { THEMES } from "../../src/core/themes";
 import { parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
 import type { UiState } from "../../src/core/uiState";
@@ -93,6 +94,24 @@ describe("Panel side", () => {
 		expect(sideOf(root)).toBe("right");
 		await act(() => settings.save({ panelSide: "left" }));
 		expect(sideOf(root)).toBe("left");
+	});
+});
+
+describe("Panel theme", () => {
+	const token = (root: HTMLElement, name: string) =>
+		root
+			.querySelector("aside")
+			?.style.getPropertyValue(`--color-ledger-${name}`);
+
+	it("applies the stored theme and follows changes without a reload", async () => {
+		const settings = createMemorySettings({ theme: "azure" });
+		const root = await mount({ settings });
+		expect(token(root, "gold")).toBe(THEMES.azure.colors.gold);
+		expect(root.querySelector("aside")?.style.colorScheme).toBe("dark");
+		await act(() => settings.save({ theme: "bone" }));
+		expect(token(root, "gold")).toBe(THEMES.bone.colors.gold);
+		expect(token(root, "panel")).toBe(THEMES.bone.colors.panel);
+		expect(root.querySelector("aside")?.style.colorScheme).toBe("light");
 	});
 });
 

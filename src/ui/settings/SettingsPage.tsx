@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import {
 	type Backup,
 	createBackup,
@@ -23,6 +23,7 @@ import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
 import { useMessages } from "../i18n";
 import { Mark } from "../icons";
 import { quotaPercent, syncStatusText } from "../syncStatusText";
+import { applyTheme } from "../theme";
 import {
 	BUTTON,
 	Field,
@@ -30,6 +31,7 @@ import {
 	PRIMARY_BUTTON,
 	Section,
 	Segmented,
+	ThemePicker,
 	Toggle,
 } from "./controls";
 
@@ -333,6 +335,10 @@ export function SettingsPage({
 		prefs.equivalentPricing && pricingAccess === false;
 	const sync = useSourceValue(syncStatus, OFF_STATUS);
 	const clock = (): Clock => ({ now: now(), newId });
+	// On <html> rather than this tree, so the page background and scrollbars follow too.
+	useLayoutEffect(() => {
+		applyTheme(document.documentElement, prefs.theme);
+	}, [prefs.theme]);
 
 	return (
 		<div class="min-h-screen bg-ledger-bg px-4 py-10 font-sans text-ledger-text antialiased">
@@ -384,7 +390,7 @@ export function SettingsPage({
 								max={PANEL_WIDTH.max}
 								step={1}
 								value={prefs.panelWidth}
-								class="w-40 accent-[#d6ad62]"
+								class="w-40 accent-ledger-gold"
 								onChange={(e) =>
 									settings.save({ panelWidth: Number(e.currentTarget.value) })
 								}
@@ -393,6 +399,20 @@ export function SettingsPage({
 								{Math.round(prefs.panelWidth)}%
 							</span>
 						</div>
+					</Field>
+				</Section>
+
+				<Section
+					title={s.appearance.title}
+					description={s.appearance.description}
+				>
+					<Field label={s.appearance.theme}>
+						<ThemePicker
+							label={s.appearance.theme}
+							value={prefs.theme}
+							names={s.appearance.themes}
+							onChange={(theme) => settings.save({ theme })}
+						/>
 					</Field>
 				</Section>
 
@@ -412,7 +432,7 @@ export function SettingsPage({
 							</div>
 							<div class="mt-1 h-1.5 overflow-hidden rounded-full bg-ledger-bg">
 								<div
-									class={`h-full rounded-full transition-[width] duration-500 ${quotaPercent(sync) > 85 ? "bg-red-400" : "bg-ledger-gold"}`}
+									class={`h-full rounded-full transition-[width] duration-500 ${quotaPercent(sync) > 85 ? "bg-ledger-danger-mark" : "bg-ledger-gold"}`}
 									style={{ width: `${quotaPercent(sync)}%` }}
 								/>
 							</div>

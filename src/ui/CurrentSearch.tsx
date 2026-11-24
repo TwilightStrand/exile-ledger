@@ -44,9 +44,9 @@ export function CurrentSearch({
 							{warnings.map((warning) => (
 								<li
 									key={warning.id}
-									class="flex animate-fade-in items-start gap-2 rounded border border-[#c9824a]/40 bg-[#c9824a]/10 px-2 py-1.5 text-[12px] leading-[18px] text-[#efc39a]"
+									class="flex animate-fade-in items-start gap-2 rounded border border-ledger-warn-edge/40 bg-ledger-warn-edge/10 px-2 py-1.5 text-[12px] leading-[18px] text-ledger-warn"
 								>
-									<Warning class="mt-px size-3.5 shrink-0 text-[#e0985a]" />
+									<Warning class="mt-px size-3.5 shrink-0 text-ledger-warn-mark" />
 									{searchWarningText(t, warning)}
 								</li>
 							))}

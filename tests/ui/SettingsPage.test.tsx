@@ -11,6 +11,7 @@ import {
 import { createMemorySettings } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../../src/core/syncEngine";
+import { THEMES } from "../../src/core/themes";
 import { SettingsPage } from "../../src/ui/settings/SettingsPage";
 
 function seededLibrary() {
@@ -80,6 +81,25 @@ const button = (root: HTMLElement, text: string) =>
 describe("SettingsPage", () => {
 	beforeEach(() => {
 		document.body.innerHTML = "";
+	});
+
+	it("switches theme live from the picker", async () => {
+		const { root, settings } = await mount();
+		const html = document.documentElement;
+		expect(html.style.getPropertyValue("--color-ledger-bg")).toBe(
+			THEMES.gold.colors.bg,
+		);
+		const bone = root.querySelector<HTMLInputElement>(
+			"input[type=radio][value=bone]",
+		);
+		expect(bone?.closest("label")?.textContent).toBe("Bone");
+		await act(async () => bone?.click());
+		expect((await settings.load()).theme).toBe("bone");
+		expect(html.style.getPropertyValue("--color-ledger-bg")).toBe(
+			THEMES.bone.colors.bg,
+		);
+		expect(html.style.colorScheme).toBe("light");
+		expect(bone?.checked).toBe(true);
 	});
 
 	it("shows sync state and quota", async () => {

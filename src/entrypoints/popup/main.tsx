@@ -2,8 +2,10 @@ import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
 import { messagesFor } from "../../core/i18n";
+import { browserSettings } from "../../storage/settingsStore";
 import { MessagesProvider, useMessages } from "../../ui/i18n";
 import { Mark } from "../../ui/icons";
+import { applyTheme } from "../../ui/theme";
 
 function Popup() {
 	const t = useMessages();
@@ -35,10 +37,18 @@ function Popup() {
 }
 
 const root = document.getElementById("app");
-if (root)
-	render(
-		<MessagesProvider messages={messagesFor("en")}>
-			<Popup />
-		</MessagesProvider>,
-		root,
+if (root) {
+	// Themed before the first render so a light theme does not flash dark.
+	browserSettings.load().then((prefs) => {
+		applyTheme(document.documentElement, prefs.theme);
+		render(
+			<MessagesProvider messages={messagesFor("en")}>
+				<Popup />
+			</MessagesProvider>,
+			root,
+		);
+	});
+	browserSettings.watch((prefs) =>
+		applyTheme(document.documentElement, prefs.theme),
 	);
+}

@@ -41,6 +41,7 @@ import { ChevronLeft, ChevronRight, Mark } from "./icons";
 import { archivedView, historyView, libraryView } from "./libraryView";
 import { PinnedList } from "./PinnedList";
 import { SYNC_DOT, syncStatusText } from "./syncStatusText";
+import { themeStyle } from "./theme";
 import { countBookmarks } from "./viewModels";
 
 function useCapture(feed: CaptureFeed): CaptureState {
@@ -202,7 +203,7 @@ const SIDE_CLASSES = {
 // Box shadows set by hand: Tailwind's shadow utilities rely on @property, which
 // shadow roots ignore.
 const PANEL_SHADOW =
-	"[box-shadow:0_0_0_1px_rgb(0_0_0/0.4),0_12px_40px_rgb(0_0_0/0.55)]";
+	"[box-shadow:0_0_0_1px_color-mix(in_srgb,var(--color-ledger-shadow)_40%,transparent),0_12px_40px_color-mix(in_srgb,var(--color-ledger-shadow)_55%,transparent)]";
 
 export interface PanelProps {
 	feed: CaptureFeed;
@@ -392,7 +393,8 @@ export function Panel({
 
 	return (
 		<aside
-			class={`fixed top-0 z-[2147483000] h-full font-sans text-[13px] leading-5 text-ledger-text antialiased [color-scheme:dark] ${classes.aside}`}
+			class={`fixed top-0 z-[2147483000] h-full font-sans text-[13px] leading-5 text-ledger-text antialiased ${classes.aside}`}
+			style={themeStyle(prefs.theme)}
 			aria-label={t.app.name}
 			data-side={side}
 		>
@@ -425,7 +427,7 @@ export function Panel({
 					>
 						<span class="mx-auto block h-full w-px bg-transparent transition-colors group-hover/handle:bg-ledger-gold/60 group-focus-visible/handle:bg-ledger-gold" />
 					</div>
-					<header class="flex h-12 shrink-0 items-center gap-2.5 border-b border-ledger-line/60 bg-[linear-gradient(180deg,#1f1912,#14110d)] px-3.5">
+					<header class="flex h-12 shrink-0 items-center gap-2.5 border-b border-ledger-line/60 bg-[linear-gradient(180deg,var(--color-ledger-header-from),var(--color-ledger-header-to))] px-3.5">
 						<Mark class="size-5 text-ledger-gold" />
 						<h1 class="font-display text-[17px] tracking-[0.04em] text-ledger-gold-bright">
 							{t.app.name}
@@ -493,7 +495,7 @@ export function Panel({
 						id="exile-ledger-tabpanel"
 						role="tabpanel"
 						aria-labelledby={`exile-ledger-tab-${tab}`}
-						class="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#4a3b27_transparent] [scrollbar-width:thin]"
+						class="min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--color-ledger-line)_transparent] [scrollbar-width:thin]"
 					>
 						<div key={tab} class="animate-fade-in">
 							{tab === "bookmarks" && (

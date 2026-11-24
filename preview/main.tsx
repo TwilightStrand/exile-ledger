@@ -7,11 +7,13 @@ import { createMemoryLibrary, emptyLibrary } from "../src/core/library";
 import { createMemorySettings, type PanelSide } from "../src/core/settings";
 import { createMemorySource } from "../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../src/core/syncEngine";
+import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "../src/core/themes";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
 import { createCaptureFeed } from "../src/trade/captureFeed";
 import { Panel, type Reserve, TABS, type TabId } from "../src/ui/Panel";
 import { SettingsPage } from "../src/ui/settings/SettingsPage";
+import { themeStyle } from "../src/ui/theme";
 import fetchResponse from "../tests/fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../tests/fixtures/trade/poe2-search-request.json";
 import searchResponse from "../tests/fixtures/trade/poe2-search-response.json";
@@ -19,8 +21,10 @@ import { MOCK_HISTORY, MOCK_LIBRARY, MOCK_NOW } from "./mocks";
 import panelCss from "./preview.css?inline";
 
 // URL parameters pick the starting state, so each state is one link away:
-// ?search=1&data=1&side=right&open=0&tab=history&game=poe1
+// ?search=1&data=1&side=right&open=0&tab=history&game=poe1&theme=bone
 const params = new URLSearchParams(location.search);
+const startTheme: ThemeId =
+	THEME_IDS.find((id) => id === params.get("theme")) ?? DEFAULT_THEME;
 const startSide: PanelSide = params.get("side") === "right" ? "right" : "left";
 const startMode = params.get("mode") === "overlay" ? "overlay" : "push";
 const startTab: TabId =
@@ -143,9 +147,31 @@ function Controls({
 	setWithData: (v: boolean) => void;
 	settings: ReturnType<typeof createMemorySettings>;
 }) {
+	const [theme, setTheme] = useState<ThemeId>(startTheme);
+	useEffect(() => settings.watch((s) => setTheme(s.theme)), [settings]);
 	return (
-		<div class="fixed right-4 bottom-4 z-[2147483001] flex flex-col gap-2 rounded-md border border-ledger-border bg-ledger-surface/95 p-3 text-[12px] text-ledger-text">
+		<div
+			class="fixed right-4 bottom-4 z-[2147483001] flex flex-col gap-2 rounded-md border border-ledger-border bg-ledger-surface/95 p-3 text-[12px] text-ledger-text"
+			style={themeStyle(theme)}
+		>
 			<p class="font-display text-ledger-gold">Preview</p>
+			<label class="flex items-center justify-between gap-2">
+				Theme
+				<select
+					class="rounded border border-ledger-border bg-ledger-bg px-1 py-0.5"
+					value={theme}
+					onChange={(e) => {
+						const next = THEME_IDS.find((id) => id === e.currentTarget.value);
+						if (next) settings.save({ theme: next });
+					}}
+				>
+					{THEME_IDS.map((id) => (
+						<option key={id} value={id}>
+							{id}
+						</option>
+					))}
+				</select>
+			</label>
 			<label class="flex items-center gap-1.5">
 				<input
 					type="checkbox"
@@ -190,7 +216,12 @@ function Controls({
 
 function Preview() {
 	const settings = useMemo(
-		() => createMemorySettings({ panelSide: startSide, panelMode: startMode }),
+		() =>
+			createMemorySettings({
+				panelSide: startSide,
+				panelMode: startMode,
+				theme: startTheme,
+			}),
 		[],
 	);
 	const [withSearch, setWithSearch] = useState(
@@ -250,7 +281,10 @@ function Preview() {
 }
 
 function SettingsPreview() {
-	const settings = useMemo(() => createMemorySettings(), []);
+	const settings = useMemo(
+		() => createMemorySettings({ theme: startTheme }),
+		[],
+	);
 	const library = useMemo(() => createMemoryLibrary(MOCK_LIBRARY), []);
 	const history = useMemo(() => createMemorySource(MOCK_HISTORY), []);
 	return (

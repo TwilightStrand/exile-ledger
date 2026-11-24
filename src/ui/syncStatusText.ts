@@ -37,6 +37,6 @@ export const SYNC_DOT: Record<SyncStatus["state"], string> = {
 	on: "bg-ledger-live",
 	waiting: "bg-ledger-gold",
 	off: "bg-ledger-faint",
-	quota: "bg-red-400",
-	error: "bg-red-400",
+	quota: "bg-ledger-danger-mark",
+	error: "bg-ledger-danger-mark",
 };

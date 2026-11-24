@@ -2,6 +2,7 @@ import type { ImportError } from "../exchange";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import { plural } from "./plural";
 
@@ -260,6 +261,19 @@ export const en = {
 			widthHint: (minPx: number, maxPx: number) =>
 				`Share of the browser window, kept between ${minPx} and ${maxPx} px. You can also drag the panel's inner edge.`,
 			widthInput: "Panel width",
+		},
+		appearance: {
+			title: "Appearance",
+			description:
+				"Colours for the panel, this page and the marks Exile Ledger adds to trade results.",
+			theme: "Theme",
+			themes: {
+				gold: "Dark gold",
+				blood: "Blood",
+				verdant: "Verdant",
+				azure: "Azure",
+				bone: "Bone",
+			} satisfies Record<ThemeId, string>,
 		},
 		sync: {
 			title: "Sync",

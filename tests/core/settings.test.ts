@@ -21,8 +21,24 @@ describe("parseSettings", () => {
 			{ ...DEFAULT_SETTINGS, panelWidth: 40 },
 		],
 		["a non-number width", { panelWidth: "wide" }, DEFAULT_SETTINGS],
+		["an unknown theme", { theme: "neon" }, DEFAULT_SETTINGS],
+		["a non-string theme", { theme: 3 }, DEFAULT_SETTINGS],
+		[
+			"a known theme",
+			{ theme: "bone" },
+			{ ...DEFAULT_SETTINGS, theme: "bone" },
+		],
+		[
+			"an unknown theme beside valid fields",
+			{ theme: "neon", panelSide: "right" },
+			{ ...DEFAULT_SETTINGS, panelSide: "right" },
+		],
 	])("falls back to defaults for %s", (_label, raw, expected) => {
 		expect(parseSettings(raw)).toEqual(expected);
+	});
+
+	it("starts on the gold theme", () => {
+		expect(DEFAULT_SETTINGS.theme).toBe("gold");
 	});
 
 	it("docks the panel on the left by default", () => {

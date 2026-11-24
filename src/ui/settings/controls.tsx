@@ -1,4 +1,5 @@
 import type { ComponentChildren } from "preact";
+import { THEME_IDS, THEMES, type ThemeId } from "../../core/themes";
 
 export function Section({
 	title,
@@ -85,6 +86,58 @@ export function Segmented<T extends string>({
 	);
 }
 
+/** One choice per theme, each with a swatch drawn in that theme's own colours. */
+export function ThemePicker({
+	label,
+	value,
+	names,
+	onChange,
+}: {
+	label: string;
+	value: ThemeId;
+	names: Record<ThemeId, string>;
+	onChange: (id: ThemeId) => void;
+}) {
+	return (
+		<fieldset class="flex flex-wrap gap-2">
+			<legend class="sr-only">{label}</legend>
+			{THEME_IDS.map((id) => {
+				const colors = THEMES[id].colors;
+				const selected = id === value;
+				return (
+					<label
+						key={id}
+						class={`flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ledger-gold ${
+							selected
+								? "border-ledger-gold/60 bg-ledger-raised text-ledger-gold-bright"
+								: "border-ledger-border bg-ledger-bg text-ledger-muted hover:text-ledger-text"
+						}`}
+					>
+						<input
+							type="radio"
+							class="sr-only"
+							name={label}
+							value={id}
+							checked={selected}
+							onChange={() => onChange(id)}
+						/>
+						<span
+							aria-hidden="true"
+							data-swatch={id}
+							class="block h-5 w-7 rounded-sm border"
+							style={{
+								background: `linear-gradient(135deg, ${colors.panel} 55%, ${colors.gold} 55%)`,
+								borderColor: colors.line,
+							}}
+						/>
+						{names[id]}
+					</label>
+				);
+			})}
+		</fieldset>
+	);
+}
+
 export function Toggle({
 	label,
 	checked,
@@ -135,7 +188,7 @@ export function Notice({
 			class={`animate-fade-in rounded-md border px-3 py-2 text-[13px] ${
 				tone === "ok"
 					? "border-ledger-live/40 bg-ledger-live/10 text-ledger-live"
-					: "border-red-400/40 bg-red-950/40 text-red-300"
+					: "border-ledger-danger-mark/40 bg-ledger-danger-bg/40 text-ledger-danger"
 			}`}
 		>
 			{children}

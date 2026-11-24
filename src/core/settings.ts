@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
 
 export const PANEL_SIDES = ["left", "right"] as const;
 export type PanelSide = (typeof PANEL_SIDES)[number];
@@ -38,6 +39,8 @@ export interface Settings {
 	tildePrefix: boolean;
 	/** Browser Back and Forward move between searches. */
 	backForward: boolean;
+	/** Colours for the panel, the settings page and the marks on the trade site. */
+	theme: ThemeId;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -52,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	tabTitles: true,
 	tildePrefix: true,
 	backForward: true,
+	theme: DEFAULT_THEME,
 };
 
 export function clampWidth(percent: number): number {
@@ -79,6 +83,7 @@ export const SettingsSchema = v.fallback(
 		tabTitles: v.fallback(v.boolean(), DEFAULT_SETTINGS.tabTitles),
 		tildePrefix: v.fallback(v.boolean(), DEFAULT_SETTINGS.tildePrefix),
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
+		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		equivalentPricing: v.fallback(
 			v.boolean(),
 			DEFAULT_SETTINGS.equivalentPricing,
