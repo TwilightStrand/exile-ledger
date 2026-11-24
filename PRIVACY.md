@@ -4,7 +4,8 @@ Exile Ledger does not collect, sell or share any data. It has no analytics, trac
 
 ## What it stores
 
-- **Bookmarks, folders and settings** are kept in your browser's extension storage. If sync is on, they are copied through your browser's own sync (Google account in Chrome, Firefox account in Firefox) to your other machines. The developer has no access to them.
+- **Bookmarks and folders** are kept in your browser's extension storage. If bookmark sync is on, they are copied through your browser's own sync (Google account in Chrome, Firefox account in Firefox) to your other machines. Turning bookmark sync off stops further copies but leaves the last synced copy in your browser's sync storage until you clear it there. The developer has no access to any of it.
+- **Settings** always go through your browser's own sync, so your other machines get the same panel layout and options.
 - **Search history** stays in local extension storage on each machine and is never synced. You can turn it off or clear it in the settings.
 - **Pinned results** are held in memory for the current tab and discarded when it closes.
 

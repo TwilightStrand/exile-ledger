@@ -32,8 +32,15 @@ function seededLibrary() {
 
 let grantPricing = true;
 
-async function mount() {
-	const settings = createMemorySettings();
+async function mount({
+	equivalentPricing = false,
+	hasAccess = false,
+}: {
+	equivalentPricing?: boolean;
+	hasAccess?: boolean;
+} = {}) {
+	const settings = createMemorySettings({ equivalentPricing });
+	const hasPricingAccess = async () => hasAccess;
 	const library = createMemoryLibrary(seededLibrary());
 	const history = createMemorySource<HistoryEntry[]>([]);
 	const downloads: { name: string; text: string }[] = [];
@@ -53,6 +60,7 @@ async function mount() {
 					lastSyncAt: Date.UTC(2026, 10, 24) - 120_000,
 				})}
 				requestPricingAccess={async () => grantPricing}
+				hasPricingAccess={hasPricingAccess}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
 				now={() => Date.UTC(2026, 10, 24)}
@@ -96,6 +104,32 @@ describe("SettingsPage", () => {
 		grantPricing = true;
 		await act(async () => toggle()?.click());
 		expect((await settings.load()).equivalentPricing).toBe(true);
+	});
+
+	it("shows prices as off when the setting synced from a browser that has access", async () => {
+		const { root, settings } = await mount({ equivalentPricing: true });
+		const toggle = root.querySelector<HTMLButtonElement>(
+			"[role=switch][aria-label='Equivalent prices']",
+		);
+		expect(toggle?.getAttribute("aria-checked")).toBe("false");
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			"has not been allowed to read poe.ninja",
+		);
+		grantPricing = true;
+		await act(async () => toggle?.click());
+		expect(toggle?.getAttribute("aria-checked")).toBe("true");
+		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect((await settings.load()).equivalentPricing).toBe(true);
+	});
+
+	it("leaves prices on when this browser already has access", async () => {
+		const { root } = await mount({ equivalentPricing: true, hasAccess: true });
+		expect(
+			root
+				.querySelector("[role=switch][aria-label='Equivalent prices']")
+				?.getAttribute("aria-checked"),
+		).toBe("true");
+		expect(root.querySelector("[role=alert]")).toBeNull();
 	});
 
 	it("changes panel settings", async () => {

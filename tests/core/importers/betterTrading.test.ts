@@ -72,6 +72,24 @@ describe("parseBetterTrading", () => {
 		expect(imported).toMatchObject({ folders: 3, bookmarks: 4 });
 	});
 
+	it("reads backups where one section is empty", () => {
+		const [active, archived] = fixture("backup.txt")
+			.replaceAll("\r\n", "\n")
+			.split("\n--------------------\n");
+		const separator = "\n--------------------\n";
+		const activeOnly = parseBetterTrading(`${active}${separator}`, 5);
+		expect(activeOnly?.folders.map((f) => f.archived)).toEqual([false, false]);
+		const archivedOnly = parseBetterTrading(`${separator}${archived}`, 5);
+		expect(archivedOnly?.folders.map((f) => [f.name, f.archived])).toEqual([
+			["Old league", true],
+		]);
+	});
+
+	it("skips unreadable lines in a backup and keeps the rest", () => {
+		const backup = fixture("backup.txt").replace("\n", "\n2:not-base64\n");
+		expect(parseBetterTrading(backup, 5)?.folders).toHaveLength(3);
+	});
+
 	it.each(["", "EL1:abc", "3:@@@", `2:${btoa("{}")}`, "hello world"])(
 		"rejects %j",
 		(text) => {

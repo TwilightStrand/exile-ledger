@@ -53,6 +53,8 @@ const EMPOWER_SEARCH = {
 	resultIds: [],
 };
 
+const grantAccess = async () => true;
+
 function feedFor(withSearch: boolean) {
 	const feed = createCaptureFeed();
 	if (withSearch && params.get("search") === "empower") {
@@ -262,7 +264,8 @@ function SettingsPreview() {
 				usedBytes: 23_500,
 				lastSyncAt: Date.now() - 90_000,
 			})}
-			requestPricingAccess={async () => true}
+			requestPricingAccess={grantAccess}
+			hasPricingAccess={grantAccess}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}
 		/>

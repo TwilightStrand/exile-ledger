@@ -10,7 +10,9 @@ import type { Game } from "../tradeUrl";
  * to each location ("ver:type:slug"); older locations are "type:slug".
  * A backup is one folder string per line, archived folders after SECTION.
  */
-const SECTION = "\n--------------------\n";
+// Better Trading joins the two sections with "\n" + 20 dashes + "\n", so an
+// empty section leaves the separator at the very start or end of the text.
+const SECTION = /(?:^|\n)-{20}(?:\n|$)/;
 
 const FolderSchema = v.object({
 	icn: v.nullish(v.string()),
@@ -158,9 +160,12 @@ export function parseBetterTrading(text: string, now: number): Payload | null {
 	const payloads = lines.map(({ line, archived: isArchived }, i) =>
 		parseFolderString(line, isArchived, i, now),
 	);
-	if (payloads.length === 0 || payloads.some((p) => p === null)) return null;
+	// A single string must decode. In a backup, Better Trading's own restore
+	// skips lines it cannot read, so this does too.
+	const read = payloads.flatMap((p) => (p ? [p] : []));
+	if (read.length === 0) return null;
 	return {
-		folders: payloads.flatMap((p) => p?.folders ?? []),
-		bookmarks: payloads.flatMap((p) => p?.bookmarks ?? []),
+		folders: read.flatMap((p) => p.folders),
+		bookmarks: read.flatMap((p) => p.bookmarks),
 	};
 }

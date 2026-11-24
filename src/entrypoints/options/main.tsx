@@ -20,6 +20,11 @@ function download(filename: string, text: string) {
 	setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+const requestPricingAccess = () =>
+	browser.permissions.request({ origins: [NINJA_ORIGIN] });
+const hasPricingAccess = () =>
+	browser.permissions.contains({ origins: [NINJA_ORIGIN] });
+
 const root = document.getElementById("app");
 if (root) {
 	render(
@@ -28,9 +33,8 @@ if (root) {
 			library={browserLibrary}
 			history={browserHistory}
 			syncStatus={browserSyncStatus}
-			requestPricingAccess={() =>
-				browser.permissions.request({ origins: [NINJA_ORIGIN] })
-			}
+			requestPricingAccess={requestPricingAccess}
+			hasPricingAccess={hasPricingAccess}
 			version={browser.runtime.getManifest().version}
 			download={download}
 		/>,

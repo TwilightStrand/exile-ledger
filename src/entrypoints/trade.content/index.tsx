@@ -27,9 +27,19 @@ import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
 import { Panel } from "../../ui/Panel";
 
+function domReady(doc: Document): Promise<void> {
+	if (doc.readyState !== "loading") return Promise.resolve();
+	return new Promise((resolve) =>
+		doc.addEventListener("DOMContentLoaded", () => resolve(), { once: true }),
+	);
+}
+
 export default defineContentScript({
 	matches: TRADE_MATCHES,
 	cssInjectionMode: "ui",
+	// The page fires its first search while loading; the default (document_idle)
+	// would start listening after those captures were already posted and lost.
+	runAt: "document_start",
 	async main(ctx) {
 		if (!isTradePage(new URL(location.href))) return;
 
@@ -53,6 +63,7 @@ export default defineContentScript({
 			});
 		}
 
+		await domReady(document);
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
 		const pins = createMemorySource<PinnedItem[]>([]);

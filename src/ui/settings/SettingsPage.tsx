@@ -40,6 +40,8 @@ export interface SettingsPageProps {
 	version: string;
 	/** Asks for access to poe.ninja; resolves to whether it was granted. */
 	requestPricingAccess: () => Promise<boolean>;
+	/** Whether this browser already has access to poe.ninja. */
+	hasPricingAccess: () => Promise<boolean>;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
 	now?: () => number;
@@ -321,6 +323,7 @@ export function SettingsPage({
 	history,
 	syncStatus,
 	requestPricingAccess,
+	hasPricingAccess,
 	version,
 	download,
 	now = Date.now,
@@ -329,6 +332,14 @@ export function SettingsPage({
 	const prefs = useSettingsValue(settings);
 	const [historyCleared, setHistoryCleared] = useState(false);
 	const [pricingDenied, setPricingDenied] = useState(false);
+	const [pricingAccess, setPricingAccess] = useState<boolean | null>(null);
+	useEffect(() => {
+		hasPricingAccess().then(setPricingAccess);
+	}, [hasPricingAccess]);
+	// The setting syncs but browser permissions do not, so another machine can
+	// have prices on while this one was never asked.
+	const pricingMissingAccess =
+		prefs.equivalentPricing && pricingAccess === false;
 	const sync = useSourceValue(syncStatus, OFF_STATUS);
 	const clock = (): Clock => ({ now: now(), newId });
 
@@ -444,17 +455,24 @@ export function SettingsPage({
 					>
 						<Toggle
 							label="Equivalent prices"
-							checked={prefs.equivalentPricing}
+							checked={prefs.equivalentPricing && !pricingMissingAccess}
 							onChange={async (equivalentPricing) => {
 								if (equivalentPricing && !(await requestPricingAccess())) {
 									setPricingDenied(true);
 									return;
 								}
+								if (equivalentPricing) setPricingAccess(true);
 								setPricingDenied(false);
 								settings.save({ equivalentPricing });
 							}}
 						/>
 					</Field>
+					{pricingMissingAccess && !pricingDenied && (
+						<Notice tone="error">
+							Equivalent prices are on in another browser, but this one has not
+							been allowed to read poe.ninja. Turn the switch on to allow it.
+						</Notice>
+					)}
 					{pricingDenied && (
 						<Notice tone="error">
 							Equivalent prices need access to poe.ninja. Nothing was changed.
