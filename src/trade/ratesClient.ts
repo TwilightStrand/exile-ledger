@@ -9,33 +9,51 @@ import type { Game } from "../core/tradeUrl";
  * they arrive so the page can be annotated. Lookups are synchronous so the
  * enhance pass never waits on the network.
  */
-export function createRatesClient(onArrive: () => void) {
-	const cache = new Map<string, Rates | null>();
+/**
+ * How long a league without rates waits before asking again. Private leagues
+ * never get poe.ninja rates, and every results update runs a lookup, so
+ * without a pause a miss would mean a request per frame while scrolling.
+ */
+export const RATES_RETRY_MS = 5 * 60_000;
+
+type Entry =
+	| { state: "pending" }
+	| { state: "ready"; rates: Rates }
+	| { state: "missing"; retryAt: number };
+
+export function createRatesClient(
+	onArrive: () => void,
+	now: () => number = Date.now,
+) {
+	const cache = new Map<string, Entry>();
 	return {
 		get(game: Game, league: string): Rates | null {
 			const key = `${game}:${league}`;
-			if (!cache.has(key)) {
-				cache.set(key, null);
-				const request: RatesRequest = {
-					type: "exile-ledger:rates",
-					game,
-					league,
-				};
-				browser.runtime
-					.sendMessage(request)
-					.then((reply: unknown) => {
-						const parsed = v.safeParse(RatesSchema, reply);
-						// No rates yet (no access, poe.ninja down): ask again on a later pass.
-						if (!parsed.success) {
-							cache.delete(key);
-							return;
-						}
-						cache.set(key, parsed.output);
-						onArrive();
-					})
-					.catch(() => cache.delete(key));
-			}
-			return cache.get(key) ?? null;
+			const entry = cache.get(key);
+			if (entry?.state === "ready") return entry.rates;
+			if (entry?.state === "pending") return null;
+			if (entry?.state === "missing" && now() < entry.retryAt) return null;
+			cache.set(key, { state: "pending" });
+			const request: RatesRequest = {
+				type: "exile-ledger:rates",
+				game,
+				league,
+			};
+			const miss = () =>
+				cache.set(key, { state: "missing", retryAt: now() + RATES_RETRY_MS });
+			browser.runtime
+				.sendMessage(request)
+				.then((reply: unknown) => {
+					const parsed = v.safeParse(RatesSchema, reply);
+					if (!parsed.success) {
+						miss();
+						return;
+					}
+					cache.set(key, { state: "ready", rates: parsed.output });
+					onArrive();
+				})
+				.catch(miss);
+			return null;
 		},
 		/** Forget misses, e.g. after the user grants access to poe.ninja. */
 		reset: () => cache.clear(),

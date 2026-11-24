@@ -45,6 +45,11 @@ export function listenForLibraryWrites(): () => void {
 	return () => browser.runtime.onMessage.removeListener(listener);
 }
 
+/**
+ * For tabs and extension pages. Never call `update` from the background: a
+ * context does not receive its own runtime messages, so it would fail there.
+ * The background uses `writeLibrary` directly.
+ */
 export const browserLibrary: LibrarySource = {
 	load: stored.load,
 	watch: stored.watch,

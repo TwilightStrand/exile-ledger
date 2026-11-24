@@ -12,6 +12,8 @@ import { browserSyncPorts, browserSyncStatus } from "../storage/syncPorts";
 const PUSH_DELAY_MS = 5000;
 const PULL_DELAY_MS = 500;
 const WAIT_RETRY_MS = 3000;
+/** Long enough for Chrome's per-minute storage.sync write limit to reset. */
+const ERROR_RETRY_MS = 60_000;
 /** After this many half-written reads in a row the remote is treated as damaged and replaced. */
 const MAX_WAITS = 5;
 
@@ -53,6 +55,7 @@ export default defineBackground(() => {
 			running = false;
 		}
 		if (status.state === "waiting") schedule(WAIT_RETRY_MS);
+		else if (status.state === "error") schedule(ERROR_RETRY_MS);
 		else if (rerun) {
 			rerun = false;
 			schedule(0);

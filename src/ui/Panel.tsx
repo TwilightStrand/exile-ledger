@@ -142,14 +142,27 @@ function useResize(
 	const nudgeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
 		undefined,
 	);
-	useEffect(() => () => clearTimeout(nudgeTimer.current), []);
+	const pendingNudge = useRef<(() => void) | null>(null);
+	// Closing the panel right after an arrow key still saves that width.
+	useEffect(
+		() => () => {
+			clearTimeout(nudgeTimer.current);
+			pendingNudge.current?.();
+		},
+		[],
+	);
 	const nudge = (delta: number) => {
 		const next = clampWidth((dragWidth ?? width) + delta);
 		setDragWidth(next);
 		clearTimeout(nudgeTimer.current);
+		const save = () => {
+			pendingNudge.current = null;
+			if (next !== width) onDone(next);
+		};
+		pendingNudge.current = save;
 		nudgeTimer.current = setTimeout(() => {
 			setDragWidth(null);
-			if (next !== width) onDone(next);
+			save();
 		}, KEY_RESIZE_SAVE_MS);
 	};
 	return {

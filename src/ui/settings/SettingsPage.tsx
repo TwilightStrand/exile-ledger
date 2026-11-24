@@ -199,11 +199,19 @@ function BackupSection({
 		const payload =
 			pending.kind === "backup" ? pending.backup.library : pending.payload;
 		let counts = { folders: 0, bookmarks: 0 };
-		await library.update((lib) => {
-			const result = importPayload(lib, payload, clock());
-			counts = result;
-			return result.library;
-		});
+		try {
+			await library.update((lib) => {
+				const result = importPayload(lib, payload, clock());
+				counts = result;
+				return result.library;
+			});
+		} catch {
+			setMessage({
+				tone: "error",
+				text: "Could not save the import. Reload this page and try again.",
+			});
+			return;
+		}
 		if (
 			pending.kind === "backup" &&
 			restoreSettings &&

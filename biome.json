@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!.wxt", "!.output"]
+		"includes": ["**", "!.wxt", "!.output", "!.changeset", "!CHANGELOG.md"]
 	},
 	"formatter": {
 		"enabled": true,
