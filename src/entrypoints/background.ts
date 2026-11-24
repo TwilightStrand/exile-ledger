@@ -19,6 +19,12 @@ const WAIT_RETRY_MS = 3000;
  * again.
  */
 const ERROR_RETRY_MS = 25_000;
+/**
+ * An error that never clears (sync disabled in the browser, for one) would
+ * otherwise keep the background awake for good; after this many the next
+ * change or browser start tries again.
+ */
+const MAX_ERROR_RETRIES = 3;
 /** After this many half-written reads in a row the remote is treated as damaged and replaced. */
 const MAX_WAITS = 5;
 
@@ -28,6 +34,7 @@ export default defineBackground(() => {
 	let running = false;
 	let rerun = false;
 	let waits = 0;
+	let errors = 0;
 
 	const schedule = (ms: number) => {
 		clearTimeout(timer);
@@ -59,8 +66,10 @@ export default defineBackground(() => {
 		} finally {
 			running = false;
 		}
+		if (status.state !== "error") errors = 0;
 		if (status.state === "waiting") schedule(WAIT_RETRY_MS);
-		else if (status.state === "error") schedule(ERROR_RETRY_MS);
+		else if (status.state === "error" && errors++ < MAX_ERROR_RETRIES)
+			schedule(ERROR_RETRY_MS);
 		else if (rerun) {
 			rerun = false;
 			schedule(0);
@@ -95,7 +104,10 @@ export default defineBackground(() => {
 
 	browser.permissions.onAdded.addListener((granted) => {
 		if (granted.origins?.includes(NINJA_ORIGIN)) {
-			browser.storage.local.set({ [PRICING_ACCESS_KEY]: Date.now() });
+			// Best effort: open tabs also retry on their next settings change.
+			browser.storage.local
+				.set({ [PRICING_ACCESS_KEY]: Date.now() })
+				.catch(() => {});
 		}
 	});
 
