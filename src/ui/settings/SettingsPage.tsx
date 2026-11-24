@@ -37,6 +37,8 @@ import {
 
 export interface SettingsPageProps {
 	settings: SettingsSource;
+	/** Settings already loaded by the page, so the first paint has the right theme. */
+	initialSettings?: Settings;
 	library: LibrarySource;
 	history: Source<HistoryEntry[]>;
 	syncStatus: Source<SyncStatus>;
@@ -67,8 +69,11 @@ function useSourceValue<T>(source: Source<T>, initial: T): T {
 	return value;
 }
 
-function useSettingsValue(source: SettingsSource): Settings {
-	const [value, setValue] = useState<Settings>(DEFAULT_SETTINGS);
+function useSettingsValue(
+	source: SettingsSource,
+	initial: Settings | undefined,
+): Settings {
+	const [value, setValue] = useState<Settings>(initial ?? DEFAULT_SETTINGS);
 	useEffect(() => {
 		let active = true;
 		source.load().then((s) => {
@@ -247,7 +252,7 @@ function BackupSection({
 						rows={2}
 						spellcheck={false}
 						placeholder={t.imports.sharePlaceholder}
-						class="min-w-0 flex-1 resize-y rounded-md border border-ledger-border bg-ledger-bg px-3 py-2 font-mono text-[12px] text-ledger-text outline-none placeholder:text-ledger-faint focus:border-ledger-gold/60"
+						class="min-w-0 flex-1 resize-y rounded-md border border-ledger-border bg-ledger-bg px-3 py-2 font-mono text-[12px] text-ledger-text outline-none placeholder:text-ledger-muted focus:border-ledger-gold/60"
 						value={shareText}
 						onInput={(e) => setShareText(e.currentTarget.value)}
 					/>
@@ -310,6 +315,7 @@ function BackupSection({
 
 export function SettingsPage({
 	settings,
+	initialSettings,
 	library,
 	history,
 	syncStatus,
@@ -322,7 +328,7 @@ export function SettingsPage({
 }: SettingsPageProps) {
 	const t = useMessages();
 	const s = t.settings;
-	const prefs = useSettingsValue(settings);
+	const prefs = useSettingsValue(settings, initialSettings);
 	const [historyCleared, setHistoryCleared] = useState(false);
 	const [pricingDenied, setPricingDenied] = useState(false);
 	const [pricingAccess, setPricingAccess] = useState<boolean | null>(null);

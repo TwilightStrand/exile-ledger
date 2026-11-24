@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import {
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "preact/hooks";
 import { titleOfQuery } from "../core/describe";
 import { encodeShare } from "../core/exchange";
 import { clearHistory, type HistoryEntry } from "../core/history";
@@ -72,8 +78,11 @@ function useSource<T>(source: Source<T>, initial: () => T): T {
 	return value;
 }
 
-function useSettings(settings: SettingsSource): Settings {
-	const [value, setValue] = useState<Settings>(DEFAULT_SETTINGS);
+function useSettings(
+	settings: SettingsSource,
+	initial: Settings | undefined,
+): Settings {
+	const [value, setValue] = useState<Settings>(initial ?? DEFAULT_SETTINGS);
 	useEffect(() => {
 		let active = true;
 		settings.load().then((s) => {
@@ -208,6 +217,8 @@ const PANEL_SHADOW =
 export interface PanelProps {
 	feed: CaptureFeed;
 	settings: SettingsSource;
+	/** Settings already loaded by the caller, so the first paint has the right theme. */
+	initialSettings?: Settings;
 	library: LibrarySource;
 	/** Per-machine view state such as collapsed folders. */
 	uiState?: Source<UiState>;
@@ -235,6 +246,7 @@ export interface PanelProps {
 export function Panel({
 	feed,
 	settings,
+	initialSettings,
 	library: librarySource,
 	uiState,
 	page,
@@ -253,7 +265,8 @@ export function Panel({
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
-	const prefs = useSettings(settings);
+	const prefs = useSettings(settings, initialSettings);
+	const themeVars = useMemo(() => themeStyle(prefs.theme), [prefs.theme]);
 	const side = prefs.panelSide;
 	const library = useSource(librarySource, emptyLibrary);
 	const [ownUiState] = useState(() =>
@@ -394,7 +407,7 @@ export function Panel({
 	return (
 		<aside
 			class={`fixed top-0 z-[2147483000] h-full font-sans text-[13px] leading-5 text-ledger-text antialiased ${classes.aside}`}
-			style={themeStyle(prefs.theme)}
+			style={themeVars}
 			aria-label={t.app.name}
 			data-side={side}
 			data-density={prefs.compact ? "compact" : undefined}

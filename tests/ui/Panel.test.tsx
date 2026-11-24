@@ -12,6 +12,7 @@ import {
 import type { PinnedItem } from "../../src/core/pins";
 import {
 	createMemorySettings,
+	parseSettings,
 	type SettingsSource,
 } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
@@ -79,6 +80,29 @@ const treeText = (root: HTMLElement) =>
 
 beforeEach(() => {
 	document.body.innerHTML = "";
+});
+
+describe("Panel first paint", () => {
+	it("paints the stored theme on the first render when settings are passed in", () => {
+		const root = document.createElement("div");
+		document.body.append(root);
+		const settings = createMemorySettings({ theme: "bone" });
+		render(
+			<Panel
+				feed={createCaptureFeed()}
+				settings={settings}
+				initialSettings={parseSettings({ theme: "bone" })}
+				library={createMemoryLibrary()}
+				page={pageAt(POE2_PAGE)}
+			/>,
+			root,
+		);
+		const aside = root.querySelector("aside");
+		expect(aside?.style.getPropertyValue("--color-ledger-panel")).toBe(
+			THEMES.bone.colors.panel,
+		);
+		render(null, root);
+	});
 });
 
 describe("Panel density", () => {

@@ -81,6 +81,8 @@ const button = (root: HTMLElement, text: string) =>
 describe("SettingsPage", () => {
 	beforeEach(() => {
 		document.body.innerHTML = "";
+		// The page themes <html>, which outlives each test's mount.
+		document.documentElement.removeAttribute("style");
 	});
 
 	it("switches theme live from the picker", async () => {

@@ -179,6 +179,7 @@ export default defineContentScript({
 						<Panel
 							feed={feed}
 							settings={browserSettings}
+							initialSettings={prefs}
 							library={browserLibrary}
 							uiState={browserUiState}
 							history={browserHistory}

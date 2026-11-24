@@ -41,7 +41,7 @@ export function PinnedList({
 						<span class="w-full truncate text-[13px] text-ledger-text">
 							{[pin.name, pin.baseType].filter(Boolean).join(" ")}
 						</span>
-						<span class="text-[11px] text-ledger-faint">
+						<span class="text-[11px] text-ledger-muted">
 							{missing === pin.id
 								? t.pins.gone
 								: pin.price

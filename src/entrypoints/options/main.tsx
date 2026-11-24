@@ -28,6 +28,8 @@ const hasPricingAccess = () =>
 	browser.permissions.contains({ origins: [NINJA_ORIGIN] });
 
 const root = document.getElementById("app");
+// Loaded before the first render so a light theme does not flash dark.
+const initialSettings = await browserSettings.load();
 if (root) {
 	const t = messagesFor("en");
 	document.title = t.settings.pageTitle;
@@ -35,6 +37,7 @@ if (root) {
 		<MessagesProvider messages={t}>
 			<SettingsPage
 				settings={browserSettings}
+				initialSettings={initialSettings}
 				library={browserLibrary}
 				history={browserHistory}
 				syncStatus={browserSyncStatus}

@@ -248,7 +248,7 @@ function NameField({
 				ref={input}
 				aria-label={label}
 				placeholder={placeholder}
-				class="h-7 w-full rounded border border-ledger-gold/60 bg-ledger-bg px-2 text-[13px] text-ledger-text outline-none placeholder:text-ledger-faint"
+				class="h-7 w-full rounded border border-ledger-gold/60 bg-ledger-bg px-2 text-[13px] text-ledger-text outline-none placeholder:text-ledger-muted"
 				defaultValue={initial}
 				onKeyDown={(e) => {
 					if (e.key === "Enter") finish(e.currentTarget.value);
@@ -459,7 +459,7 @@ function FolderRow({
 				/>
 				<Icon class="size-4 shrink-0 text-ledger-gold/75" />
 				<span class="min-w-0 flex-1 truncate font-medium">{folder.name}</span>
-				<span class="text-[11px] text-ledger-faint tabular-nums">{count}</span>
+				<span class="text-[11px] text-ledger-muted tabular-nums">{count}</span>
 			</button>
 			{actions && (
 				<div class={HOVER_ACTIONS}>

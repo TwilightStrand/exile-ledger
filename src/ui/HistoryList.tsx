@@ -55,7 +55,7 @@ export function HistoryList({
 								</span>
 								<GameTag game={entry.game} />
 							</span>
-							<span class="text-[11px] text-ledger-faint">
+							<span class="text-[11px] text-ledger-muted">
 								{entry.league} · {formatAgo(entry.at, now, t.time)}
 								{entry.total !== null && ` · ${t.common.results(entry.total)}`}
 							</span>
