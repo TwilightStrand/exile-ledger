@@ -592,16 +592,17 @@ export function Panel({
 									id={`exile-ledger-tab-${id}`}
 									aria-selected={selected}
 									aria-controls="exile-ledger-tabpanel"
-									class={`flex flex-1 items-center justify-center gap-1.5 py-2 font-display text-[14px] tracking-[0.03em] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ledger-gold ${
+									title={label}
+									class={`flex min-w-0 flex-1 items-center justify-center gap-1 py-2 font-display text-[14px] tracking-[0.03em] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ledger-gold ${
 										selected
 											? "text-ledger-gold-bright"
 											: "text-ledger-muted hover:text-ledger-text"
 									}`}
 									onClick={() => setTab(id)}
 								>
-									{label}
+									<span class="truncate">{label}</span>
 									{counts[id] > 0 && (
-										<span class="rounded-full bg-ledger-raised px-1.5 text-[10px] leading-4 text-ledger-muted tabular-nums">
+										<span class="shrink-0 rounded-full bg-ledger-raised px-1.5 text-[10px] leading-4 text-ledger-muted tabular-nums">
 											{counts[id]}
 										</span>
 									)}

@@ -19,18 +19,21 @@
 
 A panel docked beside the trade site, plus a few touches on the result list itself.
 
-| Area              | Included                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| **Bookmarks**     | One-click save, nested folders (five levels), drag and drop, icons, archive          |
-| **Leagues**       | Bookmarks reopen in the current league, so they outlive the league they were made in |
-| **History**       | Every search per game, kept on each machine, one click to rerun or save              |
-| **Results**       | Searched mods highlighted, pinned items, optional poe.ninja equivalent prices        |
-| **Search checks** | Warnings for searches that cannot match, such as an uncorrupted level 4 Empower      |
-| **Trade site**    | Bookmark names in tab titles, Back and Forward between searches, `~` fuzzy prefix    |
-| **Sharing**       | Share strings per folder, full backup and restore                                    |
-| **Imports**       | Better Trading and Poe Trade Plus, folder strings and full backups                   |
-| **Panel**         | Left or right, floats or pushes the page aside, resizable                            |
-| **Sync**          | Bookmarks and settings through Firefox Sync or your Google account                   |
+| Area              | Included                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| **Bookmarks**     | One-click save, nested folders (five levels), drag and drop, icons, archive, done marks |
+| **Leagues**       | Bookmarks reopen in the current league; a folder can be moved to a new league in one go |
+| **History**       | Every search per game, kept on each machine, one click to rerun or save                 |
+| **Results**       | Searched mods highlighted, listing time, prefix and suffix count, copy item, wiki links |
+| **Prices**        | Optional poe.ninja equivalents, divination card stack values                            |
+| **Watchers**      | Background checks on listings (sold, back, repriced) and saved searches (new results)   |
+| **Search checks** | Warnings for searches that cannot match, such as an uncorrupted level 4 Empower         |
+| **Trade site**    | Tab titles, Back and Forward between searches, `~` fuzzy prefix, keyboard shortcuts     |
+| **Sharing**       | Share strings per folder, full backup and restore                                       |
+| **Imports**       | Better Trading, Poe Trade Plus and TFT exports                                          |
+| **Panel**         | Left or right, floats or pushes the page aside, resizable, five themes, compact mode    |
+| **Sync**          | Bookmarks and settings through Firefox Sync or your Google account                      |
+| **Languages**     | English, Deutsch, Español, 简体中文, Français, Português, Русский, Polski, 한국어       |
 
 ## Quick start
 
@@ -65,6 +68,10 @@ Requires Node.js 24+ and pnpm.
 Every pull request carries a changeset (`changesetter add`). Merges to `main` keep a **Next Release** pull request up to date; merging it bumps the version, writes `CHANGELOG.md`, tags the release, attaches the store zips and submits them to the Chrome Web Store and addons.mozilla.org.
 
 To build the Firefox add-on exactly as submitted, see [BUILDING.md](BUILDING.md).
+
+## Translations
+
+Everything except English was machine translated. If you play in one of these languages, corrections are welcome: the strings live in `src/core/i18n/`, one file per language, and a pull request or an issue quoting the wrong line and the right one both work.
 
 ## License
 

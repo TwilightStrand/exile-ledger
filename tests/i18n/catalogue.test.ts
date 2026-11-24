@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { en, type Messages, messagesFor, plural } from "../../src/core/i18n";
+import {
+	en,
+	LOCALES,
+	type Messages,
+	messagesFor,
+	plural,
+} from "../../src/core/i18n";
 
 /** One plausible call per function-valued entry, keyed by its path in the catalogue. */
 const CALLS: Record<string, (t: Messages) => string> = {
@@ -70,7 +76,7 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"bookmarks.leagueChanged": (t) => t.bookmarks.leagueChanged(3, "Dawn"),
 	"settings.watchers.intervalHint": (t) => t.settings.watchers.intervalHint(1),
 	"watchers.repriced": (t) => t.watchers.repriced("10 chaos", "8 chaos"),
-	"watchers.checked": (t) => t.watchers.checked("5m ago"),
+	"watchers.checked": (t) => t.watchers.checked("[when]"),
 	"watchers.newResults": (t) => t.watchers.newResults(3),
 	"watchers.total": (t) => t.watchers.total(120),
 	"watchers.remove": (t) => t.watchers.remove("Garb"),
@@ -99,7 +105,10 @@ function leaves(node: object, prefix = ""): [string, unknown][] {
 }
 
 describe("catalogue", () => {
-	const catalogues: [string, Messages][] = [["en", messagesFor("en")]];
+	const catalogues: [string, Messages][] = LOCALES.map((locale) => [
+		locale,
+		messagesFor(locale),
+	]);
 
 	it.each(catalogues)(
 		"%s has a non-empty string for every static entry",
@@ -169,5 +178,54 @@ describe("plural", () => {
 
 	it("falls back to other when a form is missing", () => {
 		expect(plural("pl", 3, { one: "one", other: "other" })).toBe("other");
+	});
+});
+
+/** Argument values the CALLS above pass in; a translation must keep every one it was given. */
+const ARGUMENTS = [
+	"Garb",
+	"Rings",
+	"Tabula Rasa",
+	"Clear",
+	"Ctrl+T",
+	"Alt+Shift+C",
+	"Seller#0000",
+	"Dawn",
+	"Maps",
+	"0.2.0",
+	"74.1 c",
+	"0.088 div",
+	"10 chaos",
+	"8 chaos",
+	"[when]",
+];
+
+describe("translations", () => {
+	const others = LOCALES.filter((l) => l !== "en");
+
+	it.each(others)("%s has its own catalogue", (locale) => {
+		expect(messagesFor(locale)).not.toBe(en);
+		expect(messagesFor(locale).bookmarks.defaultFolder).not.toBe(
+			en.bookmarks.defaultFolder,
+		);
+	});
+
+	it.each(others)("%s keeps every placeholder English shows", (locale) => {
+		const t = messagesFor(locale);
+		const missing = Object.entries(CALLS).flatMap(([path, call]) => {
+			const english = call(en);
+			const translated = call(t);
+			return ARGUMENTS.filter(
+				(arg) => english.includes(arg) && !translated.includes(arg),
+			).map((arg) => `${path}: ${arg}`);
+		});
+		expect(missing).toEqual([]);
+	});
+
+	it.each(LOCALES)("%s writes every count with its number", (locale) => {
+		const t = messagesFor(locale);
+		for (const n of [0, 1, 2, 3, 5, 11, 21, 22, 25, 101]) {
+			expect(t.common.results(n)).toContain(t.format.number(n));
+		}
 	});
 });

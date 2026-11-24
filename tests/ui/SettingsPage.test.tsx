@@ -3,6 +3,7 @@ import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { encodeShare } from "../../src/core/exchange";
 import type { HistoryEntry } from "../../src/core/history";
+import { en, messagesFor } from "../../src/core/i18n";
 import {
 	createMemoryLibrary,
 	emptyLibrary,
@@ -13,6 +14,7 @@ import { createMemorySource } from "../../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../../src/core/syncEngine";
 import { THEMES } from "../../src/core/themes";
 import type { Watcher } from "../../src/core/watchers";
+import { SettingsMessages } from "../../src/ui/i18n";
 import { SettingsPage } from "../../src/ui/settings/SettingsPage";
 
 function seededLibrary() {
@@ -406,5 +408,48 @@ describe("watcher notifications and backups", () => {
 		]);
 		await act(async () => button(root, "Save backup file")?.click());
 		expect(JSON.parse(downloads[0]?.text ?? "{}").watchers).toHaveLength(1);
+	});
+});
+
+describe("language", () => {
+	it("switches the page's language without a reload", async () => {
+		const settings = createMemorySettings({ language: "en" });
+		const root = document.createElement("div");
+		document.body.append(root);
+		await act(async () => {
+			render(
+				<SettingsMessages settings={settings} initial="en">
+					<SettingsPage
+						settings={settings}
+						library={createMemoryLibrary()}
+						watchers={createMemorySource<Watcher[]>([])}
+						history={createMemorySource<HistoryEntry[]>([])}
+						syncStatus={createMemorySource<SyncStatus>(OFF_STATUS)}
+						requestPricingAccess={async () => false}
+						hasPricingAccess={async () => false}
+						requestTradeAccess={async () => false}
+						hasTradeAccess={async () => false}
+						requestNotifications={async () => false}
+						version="1.2.3"
+						download={() => {}}
+					/>
+				</SettingsMessages>,
+				root,
+			);
+		});
+		const headings = () =>
+			[...root.querySelectorAll("h2")].map((h) => h.textContent);
+		expect(headings()).toContain(en.settings.appearance.title);
+		const select = root.querySelector<HTMLSelectElement>(
+			`select[aria-label="${en.settings.appearance.language}"]`,
+		);
+		if (!select) throw new Error("no language picker");
+		select.value = "de";
+		await act(async () => {
+			select.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		expect((await settings.load()).language).toBe("de");
+		expect(headings()).toContain(messagesFor("de").settings.appearance.title);
+		expect(headings()).not.toContain(en.settings.appearance.title);
 	});
 });

@@ -8,14 +8,21 @@ Exile Ledger does not collect, sell or share any data. It has no analytics, trac
 - **Settings** always go through your browser's own sync, so your other machines get the same panel layout and options.
 - **Search history** stays in local extension storage on each machine and is never synced. You can turn it off or clear it in the settings.
 - **Pinned results** are held in memory for the current tab and discarded when it closes.
+- **Watchers** (the listings and searches you watch, with their last known price, status and result ids) stay in local extension storage on each machine and are never synced. They are included in backup files you save yourself.
 
 ## What it reads
 
-On the Path of Exile trade site, the extension reads the search requests and results the page itself makes, to fill in the panel, record history and highlight mods. It does not read cookies or your session, and it does not send requests to the trade site on its own.
+On the Path of Exile trade site, the extension reads the search requests and results the page itself makes, to fill in the panel, record history and highlight mods. It does not read cookies or your session.
+
+## Watchers
+
+If you watch a listing or a search and allow access to the trade site, the extension checks them in the background: it repeats the watched search, or fetches the watched listings, through the official trade API, on the schedule you set and within the rate limits GGG publishes. Your browser sends these requests to the trade site the same way it sends the page's own, including your login cookie for that site; the extension never reads that cookie or sends anything to any other place. Without watchers, or without that access, the extension sends no requests to the trade site on its own.
+
+If you turn on notifications and allow them, watcher changes are shown as notifications by your browser. Nothing about them leaves your machine.
 
 ## Other sites
 
-If you turn on equivalent prices and grant access, the extension fetches public currency rates from poe.ninja. Those requests carry the game and league name and nothing about you. Without that setting, the extension contacts no site other than the trade site you are on.
+If you turn on equivalent prices and grant access, the extension fetches public currency and divination card prices from poe.ninja. Those requests carry the game and league name and nothing about you. Without that setting, the extension contacts no site other than the official trade site.
 
 ## Removing your data
 
