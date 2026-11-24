@@ -55,20 +55,20 @@ describe("matchHotkey", () => {
 			matchHotkey(
 				bindings,
 				press("KeyL", { altKey: true, shiftKey: true }),
-				false,
+				"none",
 			),
 		).toBe("togglePanel");
 	});
 
 	it("needs every modifier to match exactly", () => {
-		expect(matchHotkey(bindings, press("KeyL", { altKey: true }), false)).toBe(
+		expect(matchHotkey(bindings, press("KeyL", { altKey: true }), "none")).toBe(
 			null,
 		);
 		expect(
 			matchHotkey(
 				bindings,
 				press("KeyL", { altKey: true, shiftKey: true, ctrlKey: true }),
-				false,
+				"none",
 			),
 		).toBe(null);
 	});
@@ -78,7 +78,7 @@ describe("matchHotkey", () => {
 			matchHotkey(
 				bindings,
 				press(code, { altKey: true, shiftKey: true }),
-				true,
+				"page-field",
 			);
 		expect(inField("KeyL")).toBe(null);
 		expect(inField("KeyN")).toBe("focusMin");
@@ -87,15 +87,46 @@ describe("matchHotkey", () => {
 
 	it("never runs a key without Ctrl, Alt or Cmd inside a text field", () => {
 		const plain = { ...bindings, focusItemSearch: key("Slash") };
-		expect(matchHotkey(plain, press("Slash"), false)).toBe("focusItemSearch");
-		expect(matchHotkey(plain, press("Slash"), true)).toBe(null);
+		expect(matchHotkey(plain, press("Slash"), "none")).toBe("focusItemSearch");
+		expect(matchHotkey(plain, press("Slash"), "page-field")).toBe(null);
 	});
 
 	it("skips unbound actions", () => {
 		const none = { ...bindings, togglePanel: null };
 		expect(
-			matchHotkey(none, press("KeyL", { altKey: true, shiftKey: true }), false),
+			matchHotkey(
+				none,
+				press("KeyL", { altKey: true, shiftKey: true }),
+				"none",
+			),
 		).toBe(null);
+	});
+});
+
+describe("matchHotkey in the panel's own fields", () => {
+	it("runs any modified shortcut but never a plain key", () => {
+		const plain = { ...DEFAULT_HOTKEYS, togglePanel: key("KeyR") };
+		expect(
+			matchHotkey(
+				DEFAULT_HOTKEYS,
+				press("KeyL", { altKey: true, shiftKey: true }),
+				"own-field",
+			),
+		).toBe("togglePanel");
+		expect(matchHotkey(plain, press("KeyR"), "own-field")).toBe(null);
+		expect(matchHotkey(plain, press("KeyR"), "none")).toBe("togglePanel");
+	});
+
+	it("ignores AltGr, which types characters such as @", () => {
+		const altGr = {
+			...DEFAULT_HOTKEYS,
+			clearSearch: key("KeyQ", { ctrl: true, alt: true }),
+		};
+		const event = press("KeyQ", { ctrlKey: true, altKey: true });
+		Object.defineProperty(event, "getModifierState", {
+			value: (k: string) => k === "AltGraph",
+		});
+		expect(matchHotkey(altGr, event, "page-field")).toBe(null);
 	});
 });
 

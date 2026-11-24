@@ -438,6 +438,8 @@ export const pl: Messages = {
 			notify: "Powiadomienia",
 			notifyHint:
 				"Powiadomienie przeglądarki, gdy obserwowana oferta zostanie sprzedana, wróci lub zmieni cenę, albo obserwowane wyszukiwanie ma nowe wyniki. Włączenie prosi o zgodę jednorazowo.",
+			notifyMissingAccess:
+				"Powiadomienia są włączone w innej przeglądarce, ale ta na nie nie zezwoliła. Włącz przełącznik, aby zezwolić na nie tutaj.",
 			notifyDenied:
 				"Powiadomienia wymagają zgody przeglądarki. Nic nie zmieniono.",
 		},

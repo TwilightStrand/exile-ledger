@@ -44,8 +44,10 @@ import {
 } from "../core/tree";
 import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
 import {
+	forgetBookmark,
 	markSeen,
 	removeWatcher,
+	retargetSearchWatch,
 	searchWatcherFrom,
 	toggleSearchWatch,
 	type Watcher,
@@ -370,8 +372,11 @@ export function Panel({
 		highlightId: lastSavedId,
 		onRename: (id, name) =>
 			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
-		onDelete: (id) =>
-			librarySource.update((lib) => deleteBookmark(lib, id, now())),
+		onDelete: (id) => {
+			librarySource.update((lib) => deleteBookmark(lib, id, now()));
+			if (watchers.some((w) => w.kind === "search" && w.bookmarkId === id))
+				watcherStore.update((ws) => forgetBookmark(ws, id));
+		},
 		onOverwrite:
 			capture.search && capture.search.game === game
 				? (id) => {
@@ -390,6 +395,18 @@ export function Panel({
 								now(),
 							),
 						);
+						const name = library.bookmarks.find((b) => b.id === id)?.name;
+						if (
+							name !== undefined &&
+							watchers.some((w) => w.kind === "search" && w.bookmarkId === id)
+						)
+							watcherStore.update((ws) =>
+								retargetSearchWatch(ws, id, {
+									query: event.search.query,
+									name,
+									league: event.league,
+								}),
+							);
 					}
 				: undefined,
 		watched: new Set(
@@ -401,6 +418,9 @@ export function Panel({
 			const bookmark = library.bookmarks.find((b) => b.id === id);
 			if (!bookmark?.query || !currentPage) return;
 			const sameGame = currentPage.location.game === bookmark.game;
+			const league = sameGame ? currentPage.location.league : bookmark.league;
+			// League-less imports only have a league on their own game's page.
+			if (!league) return;
 			const watcher = searchWatcherFrom(
 				{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
 				{
@@ -412,7 +432,7 @@ export function Panel({
 						: bookmark.game === "poe2"
 							? "poe2"
 							: null,
-					league: sameGame ? currentPage.location.league : bookmark.league,
+					league,
 				},
 				prefs.watchInterval,
 				now(),

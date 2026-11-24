@@ -441,6 +441,8 @@ export const es: Messages = {
 			notify: "Notificaciones",
 			notifyHint:
 				"Una notificación del navegador cuando un anuncio vigilado se vende, vuelve o cambia de precio, o cuando una búsqueda vigilada tiene resultados nuevos. Al activarlo se pide permiso una vez.",
+			notifyMissingAccess:
+				"Las notificaciones están activadas en otro navegador, pero este no las ha permitido. Actívalas para permitirlas aquí.",
 			notifyDenied:
 				"Las notificaciones necesitan el permiso de tu navegador. No se cambió nada.",
 		},

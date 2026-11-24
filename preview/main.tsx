@@ -306,6 +306,7 @@ function SettingsPreview() {
 			requestTradeAccess={async () => true}
 			hasTradeAccess={async () => true}
 			requestNotifications={async () => true}
+			hasNotifications={async () => true}
 			watchers={createMemorySource<Watcher[]>([])}
 			version="0.1.0"
 			download={(name, text) => console.info("download", name, text.length)}

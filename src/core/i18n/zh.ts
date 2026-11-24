@@ -400,6 +400,8 @@ export const zh: Messages = {
 			notify: "通知",
 			notifyHint:
 				"当被监视的商品售出、重新上架或价格变动，或被监视的搜索有新结果时，发送浏览器通知。开启时会请求一次权限。",
+			notifyMissingAccess:
+				"通知已在另一个浏览器中开启，但此浏览器尚未允许。打开开关即可在此允许。",
 			notifyDenied: "通知需要浏览器的权限。未作任何更改。",
 		},
 		hotkeys: {

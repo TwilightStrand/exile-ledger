@@ -426,6 +426,8 @@ export const fr: Messages = {
 			notify: "Notifications",
 			notifyHint:
 				"Une notification du navigateur quand une annonce suivie est vendue, revient ou change de prix, ou qu'une recherche suivie a de nouveaux résultats. L'activer demande l'autorisation une fois.",
+			notifyMissingAccess:
+				"Les notifications sont activées dans un autre navigateur, mais celui-ci ne les a pas autorisées. Activez-les pour les autoriser ici.",
 			notifyDenied:
 				"Les notifications ont besoin de l'autorisation de votre navigateur. Rien n'a été modifié.",
 		},

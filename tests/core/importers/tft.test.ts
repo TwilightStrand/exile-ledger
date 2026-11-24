@@ -202,3 +202,76 @@ describe("parseTft", () => {
 		expect(library.bookmarks.every((b) => b.id.startsWith("id"))).toBe(true);
 	});
 });
+
+describe("parseTft edge cases", () => {
+	const mark = (name: string, poeVersion: string, league = "Auto") => ({
+		name,
+		endpoint: name,
+		type: "search",
+		isDone: false,
+		league,
+		poeVersion,
+	});
+
+	it("keeps the other game's bookmarks in a folder of their own", () => {
+		const payload = parseTft(
+			tftCode({
+				folders: [
+					{
+						id: "f",
+						parentId: null,
+						index: 0,
+						name: "Mixed",
+						bookmarks: [
+							mark("one", "Poe1"),
+							mark("two", "Poe1"),
+							mark("three", "Poe2"),
+						],
+					},
+				],
+			}),
+			1,
+		);
+		expect(payload?.folders.map((f) => [f.name, f.game])).toEqual([
+			["Mixed", "poe1"],
+			["Mixed (PoE2)", "poe2"],
+		]);
+		expect(payload?.bookmarks.map((b) => [b.name, b.game, b.folderId])).toEqual(
+			[
+				["one", "poe1", "tft-folder-0"],
+				["two", "poe1", "tft-folder-0"],
+				["three", "poe2", "tft-folder-0-poe2"],
+			],
+		);
+	});
+
+	it("keeps a real league and maps Auto to the page's league", () => {
+		const payload = parseTft(
+			tftCode({
+				folders: [
+					{
+						id: "f",
+						parentId: null,
+						name: "L",
+						bookmarks: [mark("a", "Poe1", "Settlers"), mark("b", "Poe1")],
+					},
+				],
+			}),
+			1,
+		);
+		expect(payload?.bookmarks.map((b) => b.league)).toEqual(["Settlers", ""]);
+	});
+
+	it("survives a parent cycle in a damaged code", () => {
+		const payload = parseTft(
+			tftCode({
+				folders: [
+					{ id: "a", parentId: "b", name: "A", bookmarks: [] },
+					{ id: "b", parentId: "a", name: "B", bookmarks: [] },
+				],
+			}),
+			1,
+		);
+		expect(payload?.folders).toHaveLength(2);
+	});
+});

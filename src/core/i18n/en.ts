@@ -423,6 +423,8 @@ export const en = {
 			notify: "Notifications",
 			notifyHint:
 				"A browser notification when a watched listing sells, comes back or changes price, or a watched search has new results. Turning this on asks permission once.",
+			notifyMissingAccess:
+				"Notifications are on in another browser, but this one has not allowed them. Turn the switch on to allow them here.",
 			notifyDenied:
 				"Notifications need your browser's permission. Nothing was changed.",
 		},

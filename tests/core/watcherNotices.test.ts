@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	backupSettings,
 	createBackup,
 	importWatchers,
 	parseBackup,
@@ -113,6 +114,26 @@ describe("watchers in backups", () => {
 			seenIds: [],
 			newIds: [],
 			total: null,
+		});
+	});
+});
+
+describe("settings in backups", () => {
+	it("restores only the settings a backup has", () => {
+		const parsed = parseBackup(
+			JSON.stringify({
+				format: "exile-ledger-backup",
+				version: 1,
+				exportedAt: 1,
+				library: { folders: [], bookmarks: [] },
+				settings: { panelSide: "right", theme: "nope" },
+			}),
+		);
+		if (!parsed.ok) throw new Error("did not parse");
+		// theme is invalid, so it falls back; hotkeys and language are absent and left alone.
+		expect(backupSettings(parsed.value)).toEqual({
+			panelSide: "right",
+			theme: DEFAULT_SETTINGS.theme,
 		});
 	});
 });

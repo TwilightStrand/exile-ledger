@@ -427,6 +427,7 @@ function BookmarkRow({
 						title={t.bookmarks.watch(bookmark.title)}
 					>
 						<Eye class="size-3.5" />
+						<span class="sr-only">{t.bookmarks.watch(bookmark.title)}</span>
 					</span>
 				)}
 				{bookmark.done && (
@@ -531,6 +532,17 @@ function FolderRow({
 	const [mode, setMode] = useState<FolderMode>("view");
 	const [copied, setCopied] = useState(false);
 	const [status, setStatus] = useState<string | null>(null);
+	const moreButton = useRef<HTMLButtonElement>(null);
+	const firstMenuItem = useRef<HTMLButtonElement>(null);
+	const lastMode = useRef<FolderMode>(mode);
+	// Focus goes into the menu when it opens and back to its button when it closes.
+	useLayoutEffect(() => {
+		const from = lastMode.current;
+		lastMode.current = mode;
+		if (mode === "more") firstMenuItem.current?.focus();
+		else if (mode === "view" && (from === "more" || from === "league"))
+			moreButton.current?.focus();
+	}, [mode]);
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
 	const count = countBookmarks(folder.children);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
@@ -609,6 +621,7 @@ function FolderRow({
 						{copied ? <Check class="size-3.5" /> : <Share class="size-3.5" />}
 					</button>
 					<button
+						ref={moreButton}
 						type="button"
 						class={ICON_BUTTON}
 						aria-label={t.bookmarks.more(folder.name)}
@@ -681,6 +694,7 @@ function FolderRow({
 				>
 					<li>
 						<button
+							ref={firstMenuItem}
 							type="button"
 							class={MENU_ITEM}
 							onClick={() => {
@@ -724,9 +738,10 @@ function FolderRow({
 							setMode("view");
 							const target = league?.trim();
 							if (!target) return;
-							actions
-								.onChangeLeague(folder.id, target)
-								.then((n) => setStatus(t.bookmarks.leagueChanged(n, target)));
+							actions.onChangeLeague(folder.id, target).then(
+								(n) => setStatus(t.bookmarks.leagueChanged(n, target)),
+								() => setStatus(t.imports.saveFailed),
+							);
 						}}
 					/>
 				</div>

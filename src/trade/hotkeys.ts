@@ -1,4 +1,9 @@
-import { type HotkeyAction, type Hotkeys, matchHotkey } from "../core/hotkeys";
+import {
+	type HotkeyAction,
+	type Hotkeys,
+	type KeyContext,
+	matchHotkey,
+} from "../core/hotkeys";
 import { SELECTORS } from "./selectors";
 
 function isTextField(node: EventTarget | undefined): boolean {
@@ -14,10 +19,18 @@ function isTextField(node: EventTarget | undefined): boolean {
 	);
 }
 
-/** Opens the filter pane when the user has collapsed it, so its inputs can take focus. */
-function showFilters(doc: Document): void {
-	if (doc.querySelector(SELECTORS.filtersHidden))
-		doc.querySelector<HTMLElement>(SELECTORS.toggleFilters)?.click();
+/**
+ * Opens the filter pane when the user has collapsed it, then runs `then`. The
+ * site shows the pane on its next render, and a hidden input cannot take
+ * focus, so after opening it waits a frame.
+ */
+function withFilters(doc: Document, then: () => void): void {
+	if (!doc.querySelector(SELECTORS.filtersHidden)) {
+		then();
+		return;
+	}
+	doc.querySelector<HTMLElement>(SELECTORS.toggleFilters)?.click();
+	(doc.defaultView ?? window).requestAnimationFrame(then);
 }
 
 function focusItemSearch(doc: Document): void {
@@ -29,7 +42,6 @@ function focusItemSearch(doc: Document): void {
  * filter when focus is elsewhere: that is the one just added.
  */
 function focusMinMax(doc: Document, which: 0 | 1): void {
-	showFilters(doc);
 	const pane = doc.querySelector(SELECTORS.statPane);
 	if (!pane) return;
 	const active = doc.activeElement;
@@ -37,9 +49,16 @@ function focusMinMax(doc: Document, which: 0 | 1): void {
 		active && pane.contains(active)
 			? active.closest(SELECTORS.statFilter)
 			: null;
-	const boxes = current
+	const own = current
 		? [...current.querySelectorAll<HTMLInputElement>(SELECTORS.minMax)]
-		: [...pane.querySelectorAll<HTMLInputElement>(SELECTORS.minMax)].slice(-2);
+		: [];
+	// A focused filter without min and max (an option filter) falls back to the last one.
+	const boxes =
+		own.length > 0
+			? own
+			: [...pane.querySelectorAll<HTMLInputElement>(SELECTORS.minMax)].slice(
+					-2,
+				);
 	boxes[which]?.focus();
 }
 
@@ -48,22 +67,22 @@ export const TRADE_ACTIONS: Record<
 	(doc: Document) => void
 > = {
 	focusItemSearch,
-	addStatFilter(doc) {
-		showFilters(doc);
-		doc.querySelector<HTMLInputElement>(SELECTORS.addStatFilter)?.focus();
-	},
+	addStatFilter: (doc) =>
+		withFilters(doc, () =>
+			doc.querySelector<HTMLInputElement>(SELECTORS.addStatFilter)?.focus(),
+		),
 	clearSearch(doc) {
 		doc.querySelector<HTMLElement>(SELECTORS.clearButton)?.click();
 		focusItemSearch(doc);
 	},
-	focusMin: (doc) => focusMinMax(doc, 0),
-	focusMax: (doc) => focusMinMax(doc, 1),
+	focusMin: (doc) => withFilters(doc, () => focusMinMax(doc, 0)),
+	focusMax: (doc) => withFilters(doc, () => focusMinMax(doc, 1)),
 };
 
 /**
  * Listens for the user's shortcuts on the trade page. `isOurs` says whether a
- * node belongs to the extension's own panel, whose inputs do not count as the
- * page's text fields.
+ * node belongs to the extension's own panel, whose text fields allow every
+ * modified shortcut while the site's allow only the search-box ones.
  */
 export function installHotkeys(
 	doc: Document,
@@ -78,9 +97,13 @@ export function installHotkeys(
 		// Inside a shadow root the event's target is the host; the path's first
 		// entry is the element that actually has focus.
 		const origin = event.composedPath()[0] ?? event.target ?? undefined;
-		const inTextField =
-			origin !== undefined && !options.isOurs(origin) && isTextField(origin);
-		const action = matchHotkey(options.hotkeys(), event, inTextField);
+		const context: KeyContext =
+			origin === undefined || !isTextField(origin)
+				? "none"
+				: options.isOurs(origin)
+					? "own-field"
+					: "page-field";
+		const action = matchHotkey(options.hotkeys(), event, context);
 		if (!action) return;
 		event.preventDefault();
 		event.stopPropagation();

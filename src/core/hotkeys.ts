@@ -137,24 +137,36 @@ export function bindingFromEvent(event: KeyboardEvent): Hotkey | null {
 }
 
 /**
- * The action a key press triggers. `inTextField` is whether focus is in an
- * input the extension does not own; there only search-box actions run, and
- * only with Ctrl, Alt or Cmd held, so plain keys always type.
+ * Where focus is when a key is pressed: in no text field, in one of the trade
+ * site's, or in one of the panel's own.
+ */
+export type KeyContext = "none" | "page-field" | "own-field";
+
+/**
+ * The action a key press triggers. In any text field a binding needs Ctrl, Alt
+ * or Cmd, so plain keys always type. In the site's fields only search-box
+ * actions run; in the panel's own fields every action does.
  */
 export function matchHotkey(
 	hotkeys: Hotkeys,
 	event: KeyboardEvent,
-	inTextField: boolean,
+	context: KeyContext,
 ): HotkeyAction | null {
+	// On Windows AltGr arrives as Ctrl+Alt and types characters such as "@" on
+	// many layouts, so it never counts as a shortcut. Only with both set: macOS
+	// browsers can report Option alone as AltGraph.
+	if (event.ctrlKey && event.altKey && event.getModifierState?.("AltGraph"))
+		return null;
 	const pressed = bindingFromEvent(event);
 	if (!pressed) return null;
 	const id = hotkeyId(pressed);
 	for (const action of HOTKEY_ACTIONS) {
 		const binding = hotkeys[action];
 		if (!binding || hotkeyId(binding) !== id) continue;
-		if (!inTextField) return action;
+		if (context === "none") return action;
 		const modified = binding.ctrl || binding.alt || binding.meta;
-		return modified && IN_FIELDS.has(action) ? action : null;
+		if (!modified) return null;
+		return context === "own-field" || IN_FIELDS.has(action) ? action : null;
 	}
 	return null;
 }

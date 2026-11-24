@@ -37,15 +37,18 @@ function seededLibrary() {
 let grantPricing = true;
 let grantTrade = true;
 let grantNotify = true;
+let notifyAccess = true;
 
 async function mount({
 	equivalentPricing = false,
 	hasAccess = false,
+	notifications = false,
 }: {
 	equivalentPricing?: boolean;
 	hasAccess?: boolean;
+	notifications?: boolean;
 } = {}) {
-	const settings = createMemorySettings({ equivalentPricing });
+	const settings = createMemorySettings({ equivalentPricing, notifications });
 	const hasPricingAccess = async () => hasAccess;
 	const library = createMemoryLibrary(seededLibrary());
 	const history = createMemorySource<HistoryEntry[]>([]);
@@ -71,6 +74,7 @@ async function mount({
 				requestTradeAccess={async () => grantTrade}
 				hasTradeAccess={async () => false}
 				requestNotifications={async () => grantNotify}
+				hasNotifications={async () => notifyAccess}
 				watchers={watchers}
 				version="1.2.3"
 				download={(name, text) => downloads.push({ name, text })}
@@ -430,6 +434,7 @@ describe("language", () => {
 						requestTradeAccess={async () => false}
 						hasTradeAccess={async () => false}
 						requestNotifications={async () => false}
+						hasNotifications={async () => notifyAccess}
 						version="1.2.3"
 						download={() => {}}
 					/>
@@ -451,5 +456,24 @@ describe("language", () => {
 		expect((await settings.load()).language).toBe("de");
 		expect(headings()).toContain(messagesFor("de").settings.appearance.title);
 		expect(headings()).not.toContain(en.settings.appearance.title);
+	});
+});
+
+describe("notifications without permission on this machine", () => {
+	it("shows the switch off with a notice when the permission is missing", async () => {
+		notifyAccess = false;
+		try {
+			const { root } = await mount({ notifications: true });
+			await act(async () => {});
+			const toggle = root.querySelector<HTMLButtonElement>(
+				'button[role=switch][aria-label="Notifications"]',
+			);
+			expect(toggle?.getAttribute("aria-checked")).toBe("false");
+			expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+				"has not allowed them",
+			);
+		} finally {
+			notifyAccess = true;
+		}
 	});
 });

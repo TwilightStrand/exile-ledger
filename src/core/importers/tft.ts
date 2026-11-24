@@ -15,6 +15,7 @@ const TftBookmark = v.looseObject({
 	type: v.optional(v.string()),
 	isDone: v.optional(v.boolean(), false),
 	poeVersion: v.optional(v.string()),
+	league: v.optional(v.string(), "Auto"),
 	idx: v.optional(v.number()),
 });
 
@@ -104,6 +105,7 @@ interface Flat {
 		exchange: boolean;
 		done: boolean;
 		game: Game;
+		league: string;
 	}[];
 }
 
@@ -126,6 +128,7 @@ function flattenLegacy(
 					exchange: false,
 					done: s.isMarkedDone,
 					game: s.isPoE2 ? "poe2" : "poe1",
+					league: "Auto",
 				})),
 			},
 			...flattenLegacy(folder.subFolders, id, `${id}-`),
@@ -135,59 +138,80 @@ function flattenLegacy(
 
 function toPayload(flat: readonly Flat[], now: number): Payload {
 	const ids = new Map(flat.map((f, i) => [f.id, `tft-folder-${i}`]));
+	const byId = new Map(flat.map((f) => [f.id, f]));
 	// Our folders hold one game; a TFT folder takes the game most of its
-	// bookmarks have, and its subfolders inherit that when they have none.
+	// bookmarks have, and an empty one inherits its parent's. The visited set
+	// stops a parent cycle in a damaged code.
 	const gameOf = new Map<string, Game>();
-	const resolve = (f: Flat): Game => {
+	const resolve = (f: Flat, seen: Set<string> = new Set()): Game => {
 		const known = gameOf.get(f.id);
 		if (known) return known;
+		seen.add(f.id);
 		const poe2 = f.bookmarks.filter((b) => b.game === "poe2").length;
-		const parent = f.parentId
-			? flat.find((p) => p.id === f.parentId)
-			: undefined;
+		const parent = f.parentId ? byId.get(f.parentId) : undefined;
 		const game: Game =
 			f.bookmarks.length > 0
 				? poe2 * 2 > f.bookmarks.length
 					? "poe2"
 					: "poe1"
-				: parent && parent !== f
-					? resolve(parent)
+				: parent && !seen.has(parent.id)
+					? resolve(parent, seen)
 					: "poe1";
 		gameOf.set(f.id, game);
 		return game;
 	};
-	const folders: Folder[] = flat.map((f) => ({
-		id: ids.get(f.id) ?? f.id,
-		parentId: f.parentId ? (ids.get(f.parentId) ?? null) : null,
-		name: f.name || "TFT",
-		game: resolve(f),
-		order: f.order,
-		archived: false,
-		updatedAt: now,
-	}));
-	const bookmarks = flat.flatMap((f, fi) => {
-		const folderId = ids.get(f.id) ?? f.id;
+	const folders: Folder[] = [];
+	const bookmarks: Bookmark[] = [];
+	flat.forEach((f, fi) => {
 		const game = resolve(f);
-		return f.bookmarks.flatMap((b, order): Bookmark[] => {
+		const folderId = ids.get(f.id) ?? f.id;
+		const parent = f.parentId ? byId.get(f.parentId) : undefined;
+		const name = f.name || "TFT";
+		folders.push({
+			id: folderId,
+			parentId: parent ? (ids.get(parent.id) ?? null) : null,
+			name,
+			game,
+			order: f.order,
+			archived: false,
+			updatedAt: now,
+		});
+		// Bookmarks of the other game get a folder of their own beside this one,
+		// under the parent when that is of their game too, so none are lost.
+		const other: Game = game === "poe1" ? "poe2" : "poe1";
+		const strays = f.bookmarks.filter((b) => b.game === other);
+		const strayFolderId = `${folderId}-${other}`;
+		if (strays.length > 0)
+			folders.push({
+				id: strayFolderId,
+				parentId:
+					parent && resolve(parent) === other
+						? (ids.get(parent.id) ?? null)
+						: null,
+				name: `${name} (${other === "poe2" ? "PoE2" : "PoE1"})`,
+				game: other,
+				order: f.order,
+				archived: false,
+				updatedAt: now,
+			});
+		f.bookmarks.forEach((b, order) => {
 			const search = searchOf(b.endpoint);
-			if (!search || b.game !== game) return [];
-			return [
-				{
-					id: `tft-${fi}-${order}`,
-					folderId,
-					name: b.name || search.searchId,
-					game,
-					// TFT saves "Auto": the search opens in the page's league.
-					league: "",
-					searchId: search.searchId,
-					tradeType: b.exchange ? "exchange" : "search",
-					live: search.live,
-					...(b.done ? { done: true } : {}),
-					order,
-					createdAt: now,
-					updatedAt: now,
-				},
-			];
+			if (!search) return;
+			bookmarks.push({
+				id: `tft-${fi}-${order}`,
+				folderId: b.game === game ? folderId : strayFolderId,
+				name: b.name || search.searchId,
+				game: b.game,
+				// TFT's "Auto" means the page's league, which an empty league does here too.
+				league: b.league === "Auto" ? "" : b.league,
+				searchId: search.searchId,
+				tradeType: b.exchange ? "exchange" : "search",
+				live: search.live,
+				...(b.done ? { done: true } : {}),
+				order,
+				createdAt: now,
+				updatedAt: now,
+			});
 		});
 	});
 	return { folders, bookmarks };
@@ -211,6 +235,7 @@ export function parseTft(text: string, now: number): Payload | null {
 						exchange: b.type === "exchange",
 						done: b.isDone,
 						game: b.poeVersion === "Poe2" ? "poe2" : "poe1",
+						league: b.league,
 					})),
 			})),
 			now,

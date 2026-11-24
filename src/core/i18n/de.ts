@@ -424,6 +424,8 @@ export const de: Messages = {
 			notify: "Benachrichtigungen",
 			notifyHint:
 				"Eine Browser-Benachrichtigung, wenn ein beobachtetes Angebot verkauft wird, zurückkommt oder den Preis ändert, oder eine beobachtete Suche neue Ergebnisse hat. Beim Einschalten wird einmal um Erlaubnis gebeten.",
+			notifyMissingAccess:
+				"Benachrichtigungen sind in einem anderen Browser an, aber dieser hat sie nicht erlaubt. Schalte sie ein, um sie hier zu erlauben.",
 			notifyDenied:
 				"Benachrichtigungen brauchen die Erlaubnis deines Browsers. Nichts wurde geändert.",
 		},

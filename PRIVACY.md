@@ -8,7 +8,7 @@ Exile Ledger does not collect, sell or share any data. It has no analytics, trac
 - **Settings** always go through your browser's own sync, so your other machines get the same panel layout and options.
 - **Search history** stays in local extension storage on each machine and is never synced. You can turn it off or clear it in the settings.
 - **Pinned results** are held in memory for the current tab and discarded when it closes.
-- **Watchers** (the listings and searches you watch, with their last known price, status and result ids) stay in local extension storage on each machine and are never synced. They are included in backup files you save yourself.
+- **Watchers** (the listings and searches you watch, with the item name, the seller's public account name, the last known price, status and result ids) stay in local extension storage on each machine and are never synced. They are included in backup files you save yourself.
 
 ## What it reads
 

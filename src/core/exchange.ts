@@ -8,7 +8,7 @@ import {
 	type Library,
 } from "./model";
 import { repairTree } from "./repair";
-import { type Settings, SettingsSchema } from "./settings";
+import { parseSettings, type Settings } from "./settings";
 import { subtreeIds } from "./tree";
 import { parseWatchers, type Watcher } from "./watchers";
 
@@ -31,7 +31,9 @@ const BackupSchema = v.object({
 	version: v.literal(1),
 	exportedAt: v.number(),
 	library: PayloadSchema,
-	settings: v.optional(SettingsSchema),
+	// Kept raw: a restore applies only the keys the file has, so a backup from
+	// an older version does not reset settings it never knew about.
+	settings: v.optional(v.record(v.string(), v.unknown())),
 	// Invalid entries are dropped one by one, as in storage.
 	watchers: v.optional(
 		v.pipe(
@@ -125,7 +127,7 @@ export function createBackup(
 		version: 1,
 		exportedAt: now,
 		library: { folders: library.folders, bookmarks: library.bookmarks },
-		settings,
+		settings: Object.fromEntries(Object.entries(settings)),
 		watchers: [...watchers],
 	};
 }
@@ -175,6 +177,16 @@ export function importWatchers(
 	return { watchers: [...current, ...added], added: added.length };
 }
 
+/** The settings a backup holds, validated, limited to the keys it actually has. */
+export function backupSettings(backup: Backup): Partial<Settings> {
+	const raw = backup.settings;
+	if (!raw) return {};
+	const parsed = parseSettings(raw);
+	return Object.fromEntries(
+		Object.entries(parsed).filter(([key]) => Object.hasOwn(raw, key)),
+	);
+}
+
 export function parseBackup(text: string): Parsed<Backup> {
 	const parsed = v.safeParse(BackupSchema, parseJson(text));
 	if (!parsed.success) return { ok: false, error: "not-backup" };
@@ -204,7 +216,9 @@ export function importPayload(
 		if (!id) return [];
 		const parentId = f.parentId === null ? null : (ids.get(f.parentId) ?? null);
 		const order = parentId === null ? rootOrder[f.game]++ : f.order;
-		return [{ ...f, id, parentId, order, updatedAt: now }];
+		// An imported copy is never where saves go; the user's own folder stays that.
+		const { role: _role, ...rest } = f;
+		return [{ ...rest, id, parentId, order, updatedAt: now }];
 	});
 	const bookmarks = payload.bookmarks.flatMap((b): Bookmark[] => {
 		const folderId = ids.get(b.folderId);

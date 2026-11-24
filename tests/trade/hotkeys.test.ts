@@ -79,6 +79,36 @@ describe("installHotkeys", () => {
 		expect(ran).toEqual(["focusMin"]);
 	});
 
+	it("never lets a plain-key shortcut eat typing in the panel's own inputs", () => {
+		document.body.innerHTML = `${FORM}<div id="panel-host"></div>`;
+		const ran: HotkeyAction[] = [];
+		stop = installHotkeys(document, {
+			hotkeys: () => ({
+				...DEFAULT_HOTKEYS,
+				togglePanel: {
+					code: "KeyR",
+					ctrl: false,
+					alt: false,
+					shift: false,
+					meta: false,
+				},
+			}),
+			isOurs: (node) =>
+				node instanceof Node && byId("panel-host").contains(node),
+			run: (action) => ran.push(action),
+		});
+		const own = document.createElement("input");
+		byId("panel-host").append(own);
+		const event = new KeyboardEvent("keydown", {
+			code: "KeyR",
+			bubbles: true,
+			cancelable: true,
+		});
+		own.dispatchEvent(event);
+		expect(ran).toEqual([]);
+		expect(event.defaultPrevented).toBe(false);
+	});
+
 	it("treats the extension's own inputs as not the page's", () => {
 		const ran = setup();
 		const own = document.createElement("input");
@@ -109,7 +139,7 @@ describe("TRADE_ACTIONS", () => {
 		expect(document.activeElement).toBe(byId("item"));
 	});
 
-	it("focuses the add-stat box, opening hidden filters first", () => {
+	it("focuses the add-stat box, opening hidden filters first", async () => {
 		setup();
 		document
 			.querySelector(".search-advanced")
@@ -120,6 +150,7 @@ describe("TRADE_ACTIONS", () => {
 			?.addEventListener("click", toggle);
 		TRADE_ACTIONS.addStatFilter(document);
 		expect(toggle).toHaveBeenCalledOnce();
+		await new Promise((resolve) => requestAnimationFrame(resolve));
 		expect(document.activeElement).toBe(byId("add"));
 	});
 

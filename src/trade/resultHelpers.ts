@@ -49,7 +49,14 @@ function placeTools(
 		existing?.remove();
 		return false;
 	}
-	const key = JSON.stringify([item.id, affixes, wiki, canCopy]);
+	// The copy label is in the key so a language switch rebuilds the strip.
+	const key = JSON.stringify([
+		item.id,
+		affixes,
+		wiki,
+		canCopy,
+		t.trade.copyItem,
+	]);
 	const doc = host.ownerDocument;
 	let el = existing;
 	if (!el || el.dataset.key !== key) {

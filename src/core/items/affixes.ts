@@ -26,5 +26,6 @@ export function countAffixes(lines: readonly ModLine[]): AffixCount | null {
 			else if (mod.tier.startsWith("S")) suffixes++;
 		}
 	}
-	return seen.size === 0 ? null : { prefixes, suffixes };
+	// Tier codes other than P and S would otherwise show as "0P · 0S".
+	return prefixes + suffixes === 0 ? null : { prefixes, suffixes };
 }

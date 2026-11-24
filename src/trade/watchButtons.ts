@@ -23,10 +23,18 @@ export function syncWatchButtons(
 			// The site's own button classes, so it matches its neighbours.
 			button.className = "btn btn-xs btn-default";
 			button.setAttribute(WATCH_BUTTON_ATTR, "");
-			button.title = t.trade.watchTitle;
-			button.addEventListener("click", () => onToggle(id));
+			// The row is read at click time: the site may reuse a row element for another listing.
+			button.addEventListener("click", (event) => {
+				const target = event.currentTarget;
+				const current =
+					target instanceof Element
+						? target.closest<HTMLElement>(SELECTORS.resultRow)?.dataset.id
+						: undefined;
+				if (current) onToggle(current);
+			});
 			host.append(button);
 		}
+		if (button.title !== t.trade.watchTitle) button.title = t.trade.watchTitle;
 		const watched = watchedItemIds.has(id);
 		const label = watched ? t.trade.watching : t.trade.watch;
 		// Unchanged text is left alone so the results observer does not wake again.

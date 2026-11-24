@@ -317,3 +317,80 @@ export function toggleSearchWatch(
 		? watchers.filter((w) => w !== existing)
 		: [...watchers, watcher];
 }
+
+/**
+ * Points a bookmark's search watcher at the bookmark's new search after an
+ * overwrite. What it saw of the old search says nothing about the new one, so
+ * it starts over.
+ */
+export function retargetSearchWatch(
+	watchers: readonly Watcher[],
+	bookmarkId: string,
+	search: { query: TradeQuery; name: string; league: string },
+): Watcher[] {
+	return watchers.map((w) =>
+		w.kind === "search" && w.bookmarkId === bookmarkId
+			? {
+					...w,
+					query: search.query,
+					name: search.name,
+					league: search.league,
+					lastCheckedAt: null,
+					failures: 0,
+					retryAt: null,
+					seenIds: [],
+					newIds: [],
+					total: null,
+				}
+			: w,
+	);
+}
+
+/** Drops the search watcher of a deleted bookmark. */
+export function forgetBookmark(
+	watchers: readonly Watcher[],
+	bookmarkId: string,
+): Watcher[] {
+	return watchers.filter(
+		(w) => !(w.kind === "search" && w.bookmarkId === bookmarkId),
+	);
+}
+
+/**
+ * Folds a background pass's results into what is stored now. A tab may have
+ * changed a watcher while the pass ran: new results it marked seen stay seen,
+ * and a search watcher pointed at a new query keeps that and drops the old
+ * query's results.
+ */
+export function mergeCheckResults(
+	before: readonly Watcher[],
+	checked: readonly Watcher[],
+	current: readonly Watcher[],
+): Watcher[] {
+	const was = new Map(before.map((w) => [w.id, w]));
+	const now = new Map(checked.map((w) => [w.id, w]));
+	return current.map((stored) => {
+		const result = now.get(stored.id);
+		const start = was.get(stored.id);
+		if (!result || !start) return stored;
+		if (
+			result.kind === "search" &&
+			stored.kind === "search" &&
+			start.kind === "search"
+		) {
+			if (JSON.stringify(stored.query) !== JSON.stringify(start.query))
+				return stored;
+			return {
+				...result,
+				name: stored.name,
+				intervalMin: stored.intervalMin,
+				newIds: result.newIds.filter(
+					(id) => stored.newIds.includes(id) || !start.newIds.includes(id),
+				),
+			};
+		}
+		return result.kind === stored.kind
+			? { ...result, intervalMin: stored.intervalMin }
+			: stored;
+	});
+}

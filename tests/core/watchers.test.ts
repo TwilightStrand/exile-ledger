@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
 	applyListingCheck,
 	applySearchCheck,
+	forgetBookmark,
 	isDue,
 	type ListingWatcher,
 	listingWatcherFrom,
 	markSeen,
+	mergeCheckResults,
 	nextDueInMinutes,
 	parseWatchers,
 	removeWatcher,
+	retargetSearchWatch,
 	SEEN_CAP,
 	type SearchWatcher,
 	searchWatcherFrom,
@@ -234,5 +237,67 @@ describe("searchWatcherFrom", () => {
 		expect(
 			toggleSearchWatch(on, searchWatcherFrom(bookmark, site, 10, 9, "w8")),
 		).toEqual([listing]);
+	});
+});
+
+describe("mergeCheckResults", () => {
+	const before = {
+		...search,
+		bookmarkId: "bm1",
+		newIds: ["n1"],
+		seenIds: ["n1", "a"],
+	};
+	const checked = {
+		...before,
+		lastCheckedAt: 50,
+		newIds: ["n1", "n2"],
+		seenIds: ["n2", "n1", "a"],
+	};
+
+	it("keeps results a tab marked seen during the pass seen", () => {
+		const current = [{ ...before, newIds: [] }];
+		const [merged] = mergeCheckResults([before], [checked], current);
+		expect(merged?.kind === "search" && merged.newIds).toEqual(["n2"]);
+		expect(merged?.lastCheckedAt).toBe(50);
+	});
+
+	it("drops the pass's results for a watcher pointed at a new query meanwhile", () => {
+		const retargeted = retargetSearchWatch([before], "bm1", {
+			query: { query: { term: "new" } },
+			name: "New",
+			league: "Dawn",
+		});
+		const merged = mergeCheckResults([before], [checked], retargeted);
+		expect(merged).toEqual(retargeted);
+	});
+
+	it("keeps watchers a tab removed removed, and ones it added", () => {
+		expect(mergeCheckResults([before], [checked], [listing])).toEqual([
+			listing,
+		]);
+	});
+});
+
+describe("bookmark links", () => {
+	const linked = { ...search, bookmarkId: "bm9", seenIds: ["x"], total: 4 };
+
+	it("retargets a bookmark's watcher and makes it start over", () => {
+		const [w] = retargetSearchWatch([linked], "bm9", {
+			query: { query: { term: "z" } },
+			name: "Z",
+			league: "Dawn",
+		});
+		expect(w).toMatchObject({
+			name: "Z",
+			league: "Dawn",
+			seenIds: [],
+			newIds: [],
+			total: null,
+			lastCheckedAt: null,
+		});
+	});
+
+	it("forgets the watcher of a deleted bookmark only", () => {
+		expect(forgetBookmark([linked, listing], "bm9")).toEqual([listing]);
 	});
 });

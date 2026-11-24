@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import {
 	type Backup,
+	backupSettings,
 	createBackup,
 	importPayload,
 	importWatchers,
@@ -58,6 +59,7 @@ export interface SettingsPageProps {
 	hasTradeAccess: () => Promise<boolean>;
 	/** Asks for the notifications permission; resolves to whether it was granted. */
 	requestNotifications: () => Promise<boolean>;
+	hasNotifications: () => Promise<boolean>;
 	/** Saves text as a file; a Blob download in the extension, a spy in tests. */
 	download: (filename: string, text: string) => void;
 	now?: () => number;
@@ -230,7 +232,7 @@ function BackupSection({
 			restoreSettings &&
 			pending.backup.settings
 		) {
-			await settings.save(pending.backup.settings);
+			await settings.save(backupSettings(pending.backup));
 		}
 		setPending(null);
 		setShareText("");
@@ -348,6 +350,7 @@ export function SettingsPage({
 	requestTradeAccess,
 	hasTradeAccess,
 	requestNotifications,
+	hasNotifications,
 	version,
 	download,
 	now = Date.now,
@@ -365,6 +368,12 @@ export function SettingsPage({
 	const [tradeAccess, setTradeAccess] = useState<boolean | null>(null);
 	const [tradeDenied, setTradeDenied] = useState(false);
 	const [notifyDenied, setNotifyDenied] = useState(false);
+	const [notifyAccess, setNotifyAccess] = useState<boolean | null>(null);
+	useEffect(() => {
+		hasNotifications().then(setNotifyAccess);
+	}, [hasNotifications]);
+	// Like prices: the setting syncs and backups restore it, permissions do not.
+	const notifyMissingAccess = prefs.notifications && notifyAccess === false;
 	useEffect(() => {
 		hasTradeAccess().then(setTradeAccess);
 	}, [hasTradeAccess]);
@@ -628,17 +637,21 @@ export function SettingsPage({
 					<Field label={s.watchers.notify} hint={s.watchers.notifyHint}>
 						<Toggle
 							label={s.watchers.notify}
-							checked={prefs.notifications}
+							checked={prefs.notifications && !notifyMissingAccess}
 							onChange={async (notifications) => {
 								if (notifications && !(await requestNotifications())) {
 									setNotifyDenied(true);
 									return;
 								}
+								if (notifications) setNotifyAccess(true);
 								setNotifyDenied(false);
 								settings.save({ notifications });
 							}}
 						/>
 					</Field>
+					{notifyMissingAccess && !notifyDenied && (
+						<Notice tone="error">{s.watchers.notifyMissingAccess}</Notice>
+					)}
 					{notifyDenied && (
 						<Notice tone="error">{s.watchers.notifyDenied}</Notice>
 					)}
@@ -655,8 +668,10 @@ export function SettingsPage({
 							value={prefs.watchInterval}
 							class="w-20 rounded-md border border-ledger-border bg-ledger-bg px-2 py-1 text-right text-[13px] text-ledger-text tabular-nums outline-none focus:border-ledger-gold/60"
 							onChange={(e) => {
-								const minutes = Math.round(Number(e.currentTarget.value));
-								if (Number.isFinite(minutes))
+								const raw = e.currentTarget.value.trim();
+								const minutes = Math.round(Number(raw));
+								// An emptied field means nothing yet, not zero minutes.
+								if (raw !== "" && Number.isFinite(minutes))
 									settings.save({
 										watchInterval: Math.min(
 											1440,

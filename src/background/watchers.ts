@@ -11,7 +11,11 @@ import {
 	type WatcherApi,
 	type WatcherEvent,
 } from "../core/watcherRun";
-import { nextDueInMinutes, type Watcher } from "../core/watchers";
+import {
+	mergeCheckResults,
+	nextDueInMinutes,
+	type Watcher,
+} from "../core/watchers";
 import { browserWatchers } from "../storage/watcherStore";
 import {
 	hasTradeAccess,
@@ -126,9 +130,8 @@ export async function runWatchers(
 			Date.now,
 			deadline,
 		);
-		const byId = new Map(checked.map((w) => [w.id, w]));
 		const stored = await browserWatchers.update((current) =>
-			current.map((w) => byId.get(w.id) ?? w),
+			mergeCheckResults(watchers, checked, current),
 		);
 		await browser.alarms.clear(WATCHER_ALARM);
 		await schedule(stored);

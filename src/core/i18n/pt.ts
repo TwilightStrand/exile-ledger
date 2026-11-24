@@ -440,6 +440,8 @@ export const pt: Messages = {
 			notify: "Notificações",
 			notifyHint:
 				"Uma notificação do navegador quando um anúncio monitorado é vendido, volta ou muda de preço, ou quando uma busca monitorada tem novos resultados. Ao ativar, a permissão é pedida uma vez.",
+			notifyMissingAccess:
+				"As notificações estão ativadas em outro navegador, mas este não as permitiu. Ative-as para permiti-las aqui.",
 			notifyDenied:
 				"As notificações precisam da permissão do seu navegador. Nada foi alterado.",
 		},

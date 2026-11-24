@@ -177,3 +177,9 @@ describe("wikiUrl", () => {
 		);
 	});
 });
+
+describe("countAffixes without P or S tiers", () => {
+	it("gives nothing rather than zero and zero", () => {
+		expect(countAffixes([{ mods: [{ name: "Odd", tier: "U1" }] }])).toBeNull();
+	});
+});

@@ -14,10 +14,6 @@ export const NINJA_ORIGIN = "https://poe.ninja/*";
 
 const cacheKey = (game: Game, league: string) => `ninja:${game}:${league}`;
 
-/**
- * Rates from poe.ninja, cached in storage.local for 30 minutes. Stale rates are
- * returned when poe.ninja is unreachable: a slightly old price beats none.
- */
 /** PoE1 only; a failed card lookup leaves currency prices working. */
 async function cardValues(
 	game: Game,
@@ -32,6 +28,10 @@ async function cardValues(
 	}
 }
 
+/**
+ * Rates from poe.ninja, cached in storage.local for 30 minutes. Stale rates are
+ * returned when poe.ninja is unreachable: a slightly old price beats none.
+ */
 export async function getRates(
 	game: Game,
 	league: string,

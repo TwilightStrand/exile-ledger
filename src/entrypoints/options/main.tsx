@@ -40,6 +40,8 @@ const hasTradeAccess = () =>
 
 const requestNotifications = () =>
 	browser.permissions.request({ permissions: ["notifications"] });
+const hasNotifications = () =>
+	browser.permissions.contains({ permissions: ["notifications"] });
 
 const root = document.getElementById("app");
 // Loaded before the first render so a light theme does not flash dark.
@@ -68,6 +70,7 @@ if (root) {
 				requestTradeAccess={requestTradeAccess}
 				hasTradeAccess={hasTradeAccess}
 				requestNotifications={requestNotifications}
+				hasNotifications={hasNotifications}
 				watchers={browserWatchers}
 				version={browser.runtime.getManifest().version}
 				download={download}
