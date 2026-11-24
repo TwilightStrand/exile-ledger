@@ -275,3 +275,24 @@ describe("parseTft edge cases", () => {
 		expect(payload?.folders).toHaveLength(2);
 	});
 });
+
+describe("parseTft null league", () => {
+	it("reads a null league as Auto", () => {
+		const payload = parseTft(
+			tftCode({
+				folders: [
+					{
+						id: "f",
+						parentId: null,
+						name: "N",
+						bookmarks: [
+							{ name: "a", endpoint: "a", league: null, poeVersion: "Poe1" },
+						],
+					},
+				],
+			}),
+			1,
+		);
+		expect(payload?.bookmarks[0]?.league).toBe("");
+	});
+});

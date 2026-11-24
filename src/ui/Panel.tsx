@@ -421,6 +421,11 @@ export function Panel({
 			if (!bookmark?.query || !currentPage) return;
 			const sameGame = currentPage.location.game === bookmark.game;
 			const league = sameGame ? currentPage.location.league : bookmark.league;
+			const watching = watchers.some(
+				(w) => w.kind === "search" && w.bookmarkId === bookmark.id,
+			);
+			// A league-less bookmark cannot be searched; unwatching still works.
+			if (!league && !watching) return;
 			const watcher = searchWatcherFrom(
 				{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
 				{

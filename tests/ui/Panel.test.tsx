@@ -870,3 +870,35 @@ describe("deleting watched bookmarks", () => {
 		expect(await watchers.load()).toEqual([]);
 	});
 });
+
+describe("folder menu focus", () => {
+	it("returns focus to the menu button after Enter or Escape in the league field", async () => {
+		for (const key of ["Enter", "Escape"]) {
+			document.body.innerHTML = "";
+			const { library } = saveSearch(
+				emptyLibrary(),
+				{
+					game: "poe2",
+					league: "Standard",
+					name: "Rings",
+					query: { query: { term: "ring" } },
+					searchId: "r",
+					live: false,
+				},
+				{ now: 1, newId: () => `fm${++n}` },
+			);
+			const root = await mount({ library: createMemoryLibrary(library) });
+			const more = button(root, `More for ${DEFAULT_FOLDER_NAME}`);
+			await act(async () => more?.click());
+			await act(async () => button(root, "Change league")?.click());
+			const input = root.querySelector<HTMLInputElement>(
+				"input[aria-label='League']",
+			);
+			if (!input) throw new Error("no league field");
+			await act(async () => {
+				input.dispatchEvent(new KeyboardEvent("keydown", { key }));
+			});
+			expect(document.activeElement, key).toBe(more);
+		}
+	});
+});

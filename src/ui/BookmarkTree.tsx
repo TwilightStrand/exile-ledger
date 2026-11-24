@@ -239,15 +239,16 @@ function NameField({
 	initial: string;
 	label: string;
 	placeholder?: string;
-	onDone: (name: string | null) => void;
+	/** `byKey` is false when focus left the field, so callers do not pull it back. */
+	onDone: (name: string | null, byKey: boolean) => void;
 }) {
 	const input = useRef<HTMLInputElement>(null);
 	// Enter unmounts the field, which then fires blur; finish only once.
 	const finished = useRef(false);
-	const finish = (name: string | null) => {
+	const finish = (name: string | null, byKey: boolean) => {
 		if (finished.current) return;
 		finished.current = true;
-		onDone(name);
+		onDone(name, byKey);
 	};
 	// Layout effect so keys typed right after the click land in the field.
 	useLayoutEffect(() => {
@@ -263,10 +264,10 @@ function NameField({
 				class="h-7 w-full rounded border border-ledger-gold/60 bg-ledger-bg px-2 text-[13px] text-ledger-text outline-none placeholder:text-ledger-muted"
 				defaultValue={initial}
 				onKeyDown={(e) => {
-					if (e.key === "Enter") finish(e.currentTarget.value);
-					if (e.key === "Escape") finish(null);
+					if (e.key === "Enter") finish(e.currentTarget.value, true);
+					if (e.key === "Escape") finish(null, true);
 				}}
-				onBlur={(e) => finish(e.currentTarget.value)}
+				onBlur={(e) => finish(e.currentTarget.value, false)}
 			/>
 		</div>
 	);
@@ -738,7 +739,8 @@ function FolderRow({
 						initial=""
 						label={t.bookmarks.league}
 						placeholder={t.bookmarks.leaguePlaceholder}
-						onDone={(league) => {
+						onDone={(league, byKey) => {
+							refocus.current = byKey;
 							setMode("view");
 							const target = league?.trim();
 							if (!target) return;
