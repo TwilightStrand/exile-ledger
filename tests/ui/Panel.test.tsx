@@ -107,6 +107,44 @@ describe("Panel current search", () => {
 		const root = await mount({ feed: capturedFeed() });
 		expect(searchCard(root)?.textContent).toContain("Body Armour");
 		expect(searchCard(root)?.textContent).toContain("10,000 results");
+		expect(
+			searchCard(root)?.querySelector("[aria-label='Search problems']"),
+		).toBeNull();
+	});
+
+	it("warns about a search that cannot match", async () => {
+		const feed = createCaptureFeed();
+		feed.push({
+			kind: "search",
+			game: "poe1",
+			realm: null,
+			league: "Standard",
+			search: {
+				query: {
+					query: {
+						type: "Empower Support",
+						filters: {
+							misc_filters: {
+								filters: {
+									gem_level: { min: 4 },
+									corrupted: { option: "false" },
+								},
+							},
+						},
+					},
+				},
+				searchId: "q1",
+				total: 0,
+				resultIds: [],
+			},
+		});
+		const root = await mount({ feed });
+		const problems = searchCard(root)?.querySelector(
+			"[aria-label='Search problems']",
+		);
+		expect(problems?.textContent).toContain(
+			"Empower gems only go above level 3",
+		);
 	});
 });
 

@@ -151,3 +151,11 @@ export const Share = (p: IconProps) => (
 		<path d="M14 4h6v6M20 4l-8.5 8.5M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" />
 	</Svg>
 );
+
+export const Warning = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+		<path d="M12 9v4" />
+		<path d="M12 17h.01" />
+	</Svg>
+);

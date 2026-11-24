@@ -36,8 +36,35 @@ const page = () => parseTradeUrl(pageUrl);
 const search = parseSearch(searchRequest, searchResponse);
 const items = parseFetchResponse(fetchResponse) ?? [];
 
+// ?search=empower shows a search the checks flag: an uncorrupted level 4 Empower.
+const EMPOWER_SEARCH = {
+	query: {
+		query: {
+			type: "Empower Support",
+			filters: {
+				misc_filters: {
+					filters: { gem_level: { min: 4 }, corrupted: { option: "false" } },
+				},
+			},
+		},
+	},
+	searchId: "empower",
+	total: 0,
+	resultIds: [],
+};
+
 function feedFor(withSearch: boolean) {
 	const feed = createCaptureFeed();
+	if (withSearch && params.get("search") === "empower") {
+		feed.push({
+			kind: "search",
+			game: "poe1",
+			realm: null,
+			league: "Standard",
+			search: EMPOWER_SEARCH,
+		});
+		return feed;
+	}
 	if (withSearch && search) {
 		feed.push({
 			kind: "search",
@@ -164,7 +191,9 @@ function Preview() {
 		() => createMemorySettings({ panelSide: startSide, panelMode: startMode }),
 		[],
 	);
-	const [withSearch, setWithSearch] = useState(params.get("search") === "1");
+	const [withSearch, setWithSearch] = useState(
+		params.get("search") === "1" || params.get("search") === "empower",
+	);
 	const [withData, setWithData] = useState(params.get("data") === "1");
 	const [reserve, setReserve] = useState<Reserve>({
 		side: "left",

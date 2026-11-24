@@ -1,6 +1,7 @@
 import { formatCount, titleOfQuery } from "../core/describe";
+import { checkSearch } from "../core/searchChecks";
 import type { CaptureState } from "../trade/captureFeed";
-import { Bookmark, Check, Search } from "./icons";
+import { Bookmark, Check, Search, Warning } from "./icons";
 import { Chip, Eyebrow, GameTag } from "./parts";
 
 export function CurrentSearch({
@@ -14,6 +15,7 @@ export function CurrentSearch({
 	onSave?: (() => void) | undefined;
 }) {
 	const event = capture.search;
+	const warnings = event ? checkSearch(event.game, event.search.query) : [];
 
 	return (
 		<section
@@ -31,6 +33,19 @@ export function CurrentSearch({
 						<Chip>{event.league}</Chip>
 						<Chip>{formatCount(event.search.total)} results</Chip>
 					</div>
+					{warnings.length > 0 && (
+						<ul class="mt-2.5 space-y-1.5" aria-label="Search problems">
+							{warnings.map((warning) => (
+								<li
+									key={warning.id}
+									class="flex animate-fade-in items-start gap-2 rounded border border-[#c9824a]/40 bg-[#c9824a]/10 px-2 py-1.5 text-[12px] leading-[18px] text-[#efc39a]"
+								>
+									<Warning class="mt-px size-3.5 shrink-0 text-[#e0985a]" />
+									{warning.message}
+								</li>
+							))}
+						</ul>
+					)}
 					{onSave && saved && (
 						<p class="mt-3 flex animate-pop-in items-center justify-center gap-1.5 rounded border border-ledger-border py-1.5 text-[12px] text-ledger-muted">
 							<Check class="size-3.5 text-ledger-live" />
