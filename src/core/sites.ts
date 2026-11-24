@@ -18,6 +18,18 @@ export const TRADE_MATCHES: string[] = TRADE_HOSTS.flatMap(
 			: [`https://${domain}/trade*`],
 );
 
+/**
+ * Host access the background needs to call the trade API for watchers. Kept
+ * optional and asked for on first use, so installing still only shows the
+ * content-script sites.
+ */
+export const TRADE_ORIGINS: string[] = TRADE_HOSTS.flatMap(
+	({ domain, subdomains }) =>
+		subdomains
+			? [`https://${domain}/*`, `https://*.${domain}/*`]
+			: [`https://${domain}/*`],
+);
+
 export function isTradeHost(hostname: string): boolean {
 	return TRADE_HOSTS.some(
 		({ domain, subdomains }) =>

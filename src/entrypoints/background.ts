@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { startWatchers } from "../background/watchers";
 import { PRICING_ACCESS_KEY, RatesRequestSchema } from "../core/messages";
 import { OFF_STATUS, type SyncStatus, syncOnce } from "../core/syncEngine";
 import { getRates, NINJA_ORIGIN } from "../pricing/ratesService";
@@ -30,6 +31,8 @@ const MAX_WAITS = 5;
 
 export default defineBackground(() => {
 	listenForLibraryWrites();
+	// Notifications for these events arrive with the notifications permission.
+	startWatchers(() => {});
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let running = false;
 	let rerun = false;

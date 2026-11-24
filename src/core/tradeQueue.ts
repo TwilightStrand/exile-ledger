@@ -14,7 +14,11 @@ export interface QueuePorts {
 
 export type QueueResult =
 	| { ok: true; status: number; body: unknown }
-	| { ok: false; status: number; reason: "rate-limited" | "http" | "network" };
+	| {
+			ok: false;
+			status: number;
+			reason: "rate-limited" | "deferred" | "http" | "network";
+	  };
 
 /**
  * Runs the extension's own trade requests one at a time, each after the rate
@@ -28,8 +32,12 @@ export function createTradeQueue(limiter: RateLimiter, ports: QueuePorts) {
 		kind: RequestKind,
 		url: string,
 		init: RequestInit,
+		maxWaitMs: number,
 	): Promise<QueueResult> => {
 		const wait = limiter.delayFor(kind, ports.now());
+		// A background that waits too long is stopped by the browser mid-sleep;
+		// the caller's next alarm tries again instead.
+		if (wait > maxWaitMs) return { ok: false, status: 0, reason: "deferred" };
 		if (wait > 0) await ports.sleep(wait);
 		limiter.record(kind, ports.now());
 		let response: QueueResponse;
@@ -55,8 +63,9 @@ export function createTradeQueue(limiter: RateLimiter, ports: QueuePorts) {
 			kind: RequestKind,
 			url: string,
 			init: RequestInit = {},
+			maxWaitMs = Number.POSITIVE_INFINITY,
 		): Promise<QueueResult> {
-			const result = tail.then(() => run(kind, url, init));
+			const result = tail.then(() => run(kind, url, init, maxWaitMs));
 			tail = result.catch(() => {});
 			return result;
 		},

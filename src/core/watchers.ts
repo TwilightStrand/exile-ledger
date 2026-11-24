@@ -1,0 +1,161 @@
+import * as v from "valibot";
+import { TradeQuerySchema } from "./query";
+
+/** Default and floor for how often a watcher checks, in minutes. */
+export const WATCH_INTERVAL: { min: number; default: number } = {
+	min: 1,
+	default: 5,
+};
+/**
+ * Result ids a search watcher remembers. A search returns at most 100 ids per
+ * call, so a few hundred is enough to tell new listings from ones already seen
+ * while keeping storage bounded.
+ */
+export const SEEN_CAP = 500;
+
+const GameSchema = v.picklist(["poe1", "poe2"]);
+const PriceSchema = v.object({ amount: v.number(), currency: v.string() });
+
+const Common = {
+	id: v.string(),
+	/** The trade site the watcher was made on; regional sites have their own API host. */
+	origin: v.string(),
+	game: GameSchema,
+	realm: v.nullable(v.string()),
+	league: v.string(),
+	intervalMin: v.pipe(v.number(), v.integer(), v.minValue(WATCH_INTERVAL.min)),
+	createdAt: v.number(),
+	lastCheckedAt: v.nullable(v.number()),
+};
+
+export const ListingWatcherSchema = v.object({
+	...Common,
+	kind: v.literal("listing"),
+	/** The search the item was found in; the fetch API wants it alongside the id. */
+	searchId: v.string(),
+	itemId: v.string(),
+	name: v.string(),
+	seller: v.string(),
+	price: v.nullable(PriceSchema),
+	previousPrice: v.nullable(PriceSchema),
+	status: v.picklist(["listed", "gone", "back"]),
+	changedAt: v.nullable(v.number()),
+});
+
+export const SearchWatcherSchema = v.object({
+	...Common,
+	kind: v.literal("search"),
+	bookmarkId: v.nullable(v.string()),
+	name: v.string(),
+	query: TradeQuerySchema,
+	seenIds: v.array(v.string()),
+	newIds: v.array(v.string()),
+	total: v.nullable(v.number()),
+});
+
+export const WatcherSchema = v.variant("kind", [
+	ListingWatcherSchema,
+	SearchWatcherSchema,
+]);
+
+export type ListingWatcher = v.InferOutput<typeof ListingWatcherSchema>;
+export type SearchWatcher = v.InferOutput<typeof SearchWatcherSchema>;
+export type Watcher = v.InferOutput<typeof WatcherSchema>;
+export type Price = v.InferOutput<typeof PriceSchema>;
+
+/** Keeps every watcher that validates, so one bad entry does not cost the rest. */
+export function parseWatchers(raw: unknown): Watcher[] {
+	if (!Array.isArray(raw)) return [];
+	return raw.flatMap((item) => {
+		const parsed = v.safeParse(WatcherSchema, item);
+		return parsed.success ? [parsed.output] : [];
+	});
+}
+
+export function isDue(watcher: Watcher, now: number): boolean {
+	return (
+		watcher.lastCheckedAt === null ||
+		now >= watcher.lastCheckedAt + watcher.intervalMin * 60_000
+	);
+}
+
+/** Minutes until the soonest watcher is due, for the next alarm. */
+export function nextDueInMinutes(
+	watchers: readonly Watcher[],
+	now: number,
+): number | null {
+	let soonest: number | null = null;
+	for (const w of watchers) {
+		const due =
+			w.lastCheckedAt === null ? now : w.lastCheckedAt + w.intervalMin * 60_000;
+		soonest = soonest === null ? due : Math.min(soonest, due);
+	}
+	if (soonest === null) return null;
+	return Math.max(WATCH_INTERVAL.min, (soonest - now) / 60_000);
+}
+
+const samePrice = (a: Price | null, b: Price | null) =>
+	a?.amount === b?.amount && a?.currency === b?.currency;
+
+/** What one fetch said about a watched listing: still listed (with its price) or gone. */
+export type ListingCheck =
+	| { listed: true; price: Price | null }
+	| { listed: false };
+
+export function applyListingCheck(
+	watcher: ListingWatcher,
+	check: ListingCheck,
+	now: number,
+): ListingWatcher {
+	if (!check.listed) {
+		return {
+			...watcher,
+			lastCheckedAt: now,
+			status: "gone",
+			changedAt: watcher.status === "gone" ? watcher.changedAt : now,
+		};
+	}
+	const back = watcher.status === "gone";
+	const repriced = !samePrice(watcher.price, check.price);
+	return {
+		...watcher,
+		lastCheckedAt: now,
+		status: back ? "back" : watcher.status,
+		price: check.price,
+		previousPrice: repriced ? watcher.price : watcher.previousPrice,
+		changedAt: back || repriced ? now : watcher.changedAt,
+	};
+}
+
+/**
+ * Records a search's current result ids. The first check only learns what is
+ * already there; later checks add ids not seen before to the new list, which
+ * the user clears by opening the search.
+ */
+export function applySearchCheck(
+	watcher: SearchWatcher,
+	result: { ids: readonly string[]; total: number },
+	now: number,
+): SearchWatcher {
+	const seen = new Set(watcher.seenIds);
+	const fresh =
+		watcher.lastCheckedAt === null
+			? []
+			: result.ids.filter((id) => !seen.has(id));
+	const known = new Set(watcher.newIds);
+	return {
+		...watcher,
+		lastCheckedAt: now,
+		total: result.total,
+		newIds: [...watcher.newIds, ...fresh.filter((id) => !known.has(id))],
+		// Newest first, so the cap drops the ids seen longest ago.
+		seenIds: (watcher.lastCheckedAt === null
+			? [...result.ids]
+			: [...fresh, ...watcher.seenIds]
+		).slice(0, SEEN_CAP),
+	};
+}
+
+export function markSeen(watcher: SearchWatcher): SearchWatcher {
+	return { ...watcher, newIds: [] };
+}

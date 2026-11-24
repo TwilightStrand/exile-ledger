@@ -152,4 +152,22 @@ describe("trade queue with the rate limiter", () => {
 			false,
 		);
 	});
+
+	it("defers instead of sleeping past the caller's limit", async () => {
+		const limiter = createRateLimiter();
+		limiter.observe("fetch", 429, headers({ "Retry-After": "120" }), 0);
+		let fetched = false;
+		const queue = createTradeQueue(limiter, {
+			now: () => 0,
+			sleep: async () => {},
+			fetch: async () => {
+				fetched = true;
+				return { status: 200, headers: headers({}), json: async () => ({}) };
+			},
+		});
+		expect(
+			await queue.enqueue("fetch", "https://example.test", {}, 20_000),
+		).toEqual({ ok: false, status: 0, reason: "deferred" });
+		expect(fetched).toBe(false);
+	});
 });

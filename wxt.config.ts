@@ -2,6 +2,7 @@ import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import type { Plugin } from "vite";
 import { defineConfig } from "wxt";
+import { TRADE_ORIGINS } from "./src/core/sites";
 
 const PREACT_INNER_HTML = /\((\w+)\.innerHTML=(\w+)\.__html\)/;
 
@@ -41,10 +42,17 @@ export default defineConfig({
 		name: "Exile Ledger",
 		description:
 			"Bookmarks, history and price tools for the Path of Exile trade site, synced across machines.",
-		permissions: ["storage"],
-		// Asked for only when the user turns on equivalent prices; poe.ninja sends
-		// no CORS headers, so the fetch needs host access.
-		optional_host_permissions: ["https://poe.ninja/*"],
+		// alarms lets watchers run with no trade tab open; it shows no install
+		// warning.
+		permissions: ["storage", "alarms"],
+		optional_host_permissions: [
+			// Asked for only when the user turns on equivalent prices; poe.ninja
+			// sends no CORS headers, so the fetch needs host access.
+			"https://poe.ninja/*",
+			// Asked for when the first watcher is created: the background calls
+			// the trade API itself.
+			...TRADE_ORIGINS,
+		],
 		browser_specific_settings: {
 			gecko: {
 				id: "exile-ledger@twilightstrand",
