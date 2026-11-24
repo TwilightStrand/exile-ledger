@@ -3,6 +3,7 @@ import {
 	applyListingCheck,
 	applySearchCheck,
 	forgetBookmark,
+	forgetBookmarks,
 	isDue,
 	type ListingWatcher,
 	listingWatcherFrom,
@@ -256,7 +257,11 @@ describe("mergeCheckResults", () => {
 
 	it("keeps results a tab marked seen during the pass seen", () => {
 		const current = [{ ...before, newIds: [] }];
-		const [merged] = mergeCheckResults([before], [checked], current);
+		const {
+			watchers: [merged],
+			applied,
+		} = mergeCheckResults([before], [checked], current);
+		expect(applied.has(before.id)).toBe(true);
 		expect(merged?.kind === "search" && merged.newIds).toEqual(["n2"]);
 		expect(merged?.lastCheckedAt).toBe(50);
 	});
@@ -268,11 +273,23 @@ describe("mergeCheckResults", () => {
 			league: "Dawn",
 		});
 		const merged = mergeCheckResults([before], [checked], retargeted);
-		expect(merged).toEqual(retargeted);
+		expect(merged.watchers).toEqual(retargeted);
+		expect(merged.applied.size).toBe(0);
+	});
+
+	it("drops the pass's results for a watcher moved to another league meanwhile", () => {
+		const moved = retargetSearchWatch([before], "bm1", {
+			query: before.query,
+			name: before.name,
+			league: "Dawn",
+		});
+		const merged = mergeCheckResults([before], [checked], moved);
+		expect(merged.watchers[0]?.league).toBe("Dawn");
+		expect(merged.applied.size).toBe(0);
 	});
 
 	it("keeps watchers a tab removed removed, and ones it added", () => {
-		expect(mergeCheckResults([before], [checked], [listing])).toEqual([
+		expect(mergeCheckResults([before], [checked], [listing]).watchers).toEqual([
 			listing,
 		]);
 	});
@@ -299,5 +316,8 @@ describe("bookmark links", () => {
 
 	it("forgets the watcher of a deleted bookmark only", () => {
 		expect(forgetBookmark([linked, listing], "bm9")).toEqual([listing]);
+		expect(forgetBookmarks([linked, listing], new Set(["bm9"]))).toEqual([
+			listing,
+		]);
 	});
 });

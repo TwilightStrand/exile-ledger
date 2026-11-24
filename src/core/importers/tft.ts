@@ -15,7 +15,7 @@ const TftBookmark = v.looseObject({
 	type: v.optional(v.string()),
 	isDone: v.optional(v.boolean(), false),
 	poeVersion: v.optional(v.string()),
-	league: v.optional(v.string(), "Auto"),
+	league: v.nullish(v.string(), "Auto"),
 	idx: v.optional(v.number()),
 });
 

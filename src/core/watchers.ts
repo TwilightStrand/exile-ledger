@@ -366,20 +366,28 @@ export function mergeCheckResults(
 	before: readonly Watcher[],
 	checked: readonly Watcher[],
 	current: readonly Watcher[],
-): Watcher[] {
+): { watchers: Watcher[]; applied: Set<string> } {
 	const was = new Map(before.map((w) => [w.id, w]));
 	const now = new Map(checked.map((w) => [w.id, w]));
-	return current.map((stored) => {
+	const applied = new Set<string>();
+	const watchers = current.map((stored): Watcher => {
 		const result = now.get(stored.id);
 		const start = was.get(stored.id);
-		if (!result || !start) return stored;
+		if (!result || !start || result.kind !== stored.kind) return stored;
+		// Pointed at another search or league meanwhile: the pass checked the old one.
+		if (
+			stored.league !== start.league ||
+			(stored.kind === "search" &&
+				start.kind === "search" &&
+				JSON.stringify(stored.query) !== JSON.stringify(start.query))
+		)
+			return stored;
+		applied.add(stored.id);
 		if (
 			result.kind === "search" &&
 			stored.kind === "search" &&
 			start.kind === "search"
 		) {
-			if (JSON.stringify(stored.query) !== JSON.stringify(start.query))
-				return stored;
 			return {
 				...result,
 				name: stored.name,
@@ -389,8 +397,18 @@ export function mergeCheckResults(
 				),
 			};
 		}
-		return result.kind === stored.kind
-			? { ...result, intervalMin: stored.intervalMin }
-			: stored;
+		return { ...result, intervalMin: stored.intervalMin };
 	});
+	return { watchers, applied };
+}
+
+/** Search watchers of the given bookmarks removed, for a deleted folder. */
+export function forgetBookmarks(
+	watchers: readonly Watcher[],
+	bookmarkIds: ReadonlySet<string>,
+): Watcher[] {
+	return watchers.filter(
+		(w) =>
+			!(w.kind === "search" && w.bookmarkId && bookmarkIds.has(w.bookmarkId)),
+	);
 }

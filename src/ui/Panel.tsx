@@ -41,10 +41,12 @@ import {
 	setArchived,
 	setFolderDone,
 	setFolderIcon,
+	subtreeIds,
 } from "../core/tree";
 import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
 import {
 	forgetBookmark,
+	forgetBookmarks,
 	markSeen,
 	removeWatcher,
 	retargetSearchWatch,
@@ -419,8 +421,6 @@ export function Panel({
 			if (!bookmark?.query || !currentPage) return;
 			const sameGame = currentPage.location.game === bookmark.game;
 			const league = sameGame ? currentPage.location.league : bookmark.league;
-			// League-less imports only have a league on their own game's page.
-			if (!league) return;
 			const watcher = searchWatcherFrom(
 				{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
 				{
@@ -464,8 +464,22 @@ export function Panel({
 			librarySource.update((lib) => renameFolder(lib, id, name, now())),
 		onArchiveFolder: (id, isArchived) =>
 			librarySource.update((lib) => setArchived(lib, id, isArchived, now())),
-		onDeleteFolder: (id) =>
-			librarySource.update((lib) => deleteFolder(lib, id, now())),
+		onDeleteFolder: (id) => {
+			const folders = subtreeIds(library.folders, id);
+			const removed = new Set(
+				library.bookmarks
+					.filter((b) => folders.has(b.folderId))
+					.map((b) => b.id),
+			);
+			librarySource.update((lib) => deleteFolder(lib, id, now()));
+			if (
+				watchers.some(
+					(w) =>
+						w.kind === "search" && w.bookmarkId && removed.has(w.bookmarkId),
+				)
+			)
+				watcherStore.update((ws) => forgetBookmarks(ws, removed));
+		},
 		onSetIcon: (id, icon) =>
 			librarySource.update((lib) => setFolderIcon(lib, id, icon, now())),
 		onShareFolder: async (id) => {

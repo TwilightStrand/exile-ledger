@@ -370,7 +370,7 @@ export function SettingsPage({
 	const [notifyDenied, setNotifyDenied] = useState(false);
 	const [notifyAccess, setNotifyAccess] = useState<boolean | null>(null);
 	useEffect(() => {
-		hasNotifications().then(setNotifyAccess);
+		hasNotifications().then(setNotifyAccess, () => setNotifyAccess(null));
 	}, [hasNotifications]);
 	// Like prices: the setting syncs and backups restore it, permissions do not.
 	const notifyMissingAccess = prefs.notifications && notifyAccess === false;

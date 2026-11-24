@@ -534,15 +534,19 @@ function FolderRow({
 	const [status, setStatus] = useState<string | null>(null);
 	const moreButton = useRef<HTMLButtonElement>(null);
 	const firstMenuItem = useRef<HTMLButtonElement>(null);
-	const lastMode = useRef<FolderMode>(mode);
+	// Set when the menu closes from inside it (Escape or a choice). A league
+	// field closed by clicking elsewhere leaves focus where the click put it.
+	const refocus = useRef(false);
 	// Focus goes into the menu when it opens and back to its button when it closes.
 	useLayoutEffect(() => {
-		const from = lastMode.current;
-		lastMode.current = mode;
 		if (mode === "more") firstMenuItem.current?.focus();
-		else if (mode === "view" && (from === "more" || from === "league"))
-			moreButton.current?.focus();
+		else if (mode === "view" && refocus.current) moreButton.current?.focus();
+		refocus.current = false;
 	}, [mode]);
+	const closeMenu = () => {
+		refocus.current = true;
+		setMode("view");
+	};
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
 	const count = countBookmarks(folder.children);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
@@ -689,7 +693,7 @@ function FolderRow({
 				<ul
 					class="ml-[15px] animate-fade-in border-l border-ledger-border py-1 pl-2"
 					onKeyDown={(e) => {
-						if (e.key === "Escape") setMode("view");
+						if (e.key === "Escape") closeMenu();
 					}}
 				>
 					<li>
@@ -699,7 +703,7 @@ function FolderRow({
 							class={MENU_ITEM}
 							onClick={() => {
 								actions.onSetFolderDone(folder.id, true);
-								setMode("view");
+								closeMenu();
 							}}
 						>
 							{t.bookmarks.allDone}
@@ -711,7 +715,7 @@ function FolderRow({
 							class={MENU_ITEM}
 							onClick={() => {
 								actions.onSetFolderDone(folder.id, false);
-								setMode("view");
+								closeMenu();
 							}}
 						>
 							{t.bookmarks.allNotDone}

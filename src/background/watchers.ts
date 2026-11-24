@@ -130,12 +130,17 @@ export async function runWatchers(
 			Date.now,
 			deadline,
 		);
-		const stored = await browserWatchers.update((current) =>
-			mergeCheckResults(watchers, checked, current),
-		);
+		let applied = new Set<string>();
+		const stored = await browserWatchers.update((current) => {
+			const merged = mergeCheckResults(watchers, checked, current);
+			applied = merged.applied;
+			return merged.watchers;
+		});
 		await browser.alarms.clear(WATCHER_ALARM);
 		await schedule(stored);
-		if (events.length > 0) onEvents(events);
+		// Events for a watcher a tab changed or removed meanwhile are about a search it no longer watches.
+		const current = events.filter((e) => applied.has(e.watcher.id));
+		if (current.length > 0) onEvents(current);
 	} finally {
 		running = false;
 	}

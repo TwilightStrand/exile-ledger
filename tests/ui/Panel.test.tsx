@@ -837,3 +837,36 @@ describe("search watchers from bookmarks", () => {
 		expect(await watchers.load()).toEqual([]);
 	});
 });
+
+describe("deleting watched bookmarks", () => {
+	it("stops the search watchers of every bookmark in a deleted folder", async () => {
+		const { library, bookmark } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Standard",
+				name: "Life rings",
+				query: { query: { term: "ring" } },
+				searchId: "r1",
+				live: false,
+			},
+			{ now: 1, newId: () => `del${++n}` },
+		);
+		const watchers = createMemorySource<Watcher[]>([]);
+		const root = await mount({
+			library: createMemoryLibrary(library),
+			watchers,
+		});
+		await act(async () =>
+			button(root, "Watch Life rings for new results")?.click(),
+		);
+		expect((await watchers.load())[0]).toMatchObject({
+			bookmarkId: bookmark.id,
+		});
+		await act(async () =>
+			button(root, `Delete ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		await act(async () => button(root, "Delete")?.click());
+		expect(await watchers.load()).toEqual([]);
+	});
+});
