@@ -9,6 +9,7 @@ export interface BookmarkView {
 	game: Game;
 	league: string;
 	live: boolean;
+	done: boolean;
 	href: string;
 }
 

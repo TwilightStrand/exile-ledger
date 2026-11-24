@@ -625,3 +625,81 @@ describe("Panel tabs and collapse", () => {
 		expect(root.querySelector("#exile-ledger-panel")).not.toBeNull();
 	});
 });
+
+describe("bookmark extras", () => {
+	const savedBookmark = (league = "Standard") =>
+		saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league,
+				name: "Old search",
+				query: { query: { term: "old" } },
+				searchId: "old-id",
+				live: false,
+			},
+			{ now: 1, newId: () => `b${++n}` },
+		).library;
+
+	it("marks a bookmark done and back", async () => {
+		const library = createMemoryLibrary(savedBookmark());
+		const root = await mount({ library });
+		await act(async () => button(root, "Mark Old search done")?.click());
+		expect((await library.load()).bookmarks[0]?.done).toBe(true);
+		expect(root.querySelector("nav a .line-through")).not.toBeNull();
+		await act(async () => button(root, "Mark Old search not done")?.click());
+		expect((await library.load()).bookmarks[0]?.done).toBe(false);
+	});
+
+	it("overwrites only after confirming, and only with a search open", async () => {
+		const without = await mount({
+			library: createMemoryLibrary(savedBookmark()),
+		});
+		expect(
+			button(without, "Replace Old search with the current search"),
+		).toBeUndefined();
+
+		const library = createMemoryLibrary(savedBookmark());
+		const root = await mount({ feed: capturedFeed(), library });
+		await act(async () =>
+			button(root, "Replace Old search with the current search")?.click(),
+		);
+		expect((await library.load()).bookmarks[0]?.searchId).toBe("old-id");
+		await act(async () => button(root, "Replace")?.click());
+		const after = (await library.load()).bookmarks[0];
+		expect(after?.name).toBe("Old search");
+		expect(after?.query).toEqual(searchRequest);
+		expect(after?.searchId).not.toBe("old-id");
+	});
+
+	it("moves a folder to another league and says how many moved", async () => {
+		const library = createMemoryLibrary(savedBookmark());
+		const root = await mount({ library });
+		await act(async () =>
+			button(root, `More for ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		await act(async () => button(root, "Change league")?.click());
+		const input = root.querySelector<HTMLInputElement>(
+			"input[aria-label='League']",
+		);
+		if (!input) throw new Error("no league field");
+		input.value = "Dawn";
+		await act(async () => {
+			input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+		});
+		expect((await library.load()).bookmarks[0]?.league).toBe("Dawn");
+		expect(root.querySelector("[role=status]")?.textContent).toBe(
+			"Moved 1 bookmark to Dawn.",
+		);
+	});
+
+	it("marks a whole folder done", async () => {
+		const library = createMemoryLibrary(savedBookmark());
+		const root = await mount({ library });
+		await act(async () =>
+			button(root, `More for ${DEFAULT_FOLDER_NAME}`)?.click(),
+		);
+		await act(async () => button(root, "Mark all done")?.click());
+		expect((await library.load()).bookmarks.every((b) => b.done)).toBe(true);
+	});
+});

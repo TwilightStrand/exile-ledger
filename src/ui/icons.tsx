@@ -159,3 +159,17 @@ export const Warning = (p: IconProps) => (
 		<path d="M12 17h.01" />
 	</Svg>
 );
+
+export const Ellipsis = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="2.5" />
+	</Svg>
+);
+
+export const Replace = (p: IconProps) => (
+	<Svg {...p}>
+		<path d="M20 12a8 8 0 0 1-13.7 5.6" />
+		<path d="M4 12a8 8 0 0 1 13.7-5.6" />
+		<path d="M18 3v4h-4M6 21v-4h4" />
+	</Svg>
+);

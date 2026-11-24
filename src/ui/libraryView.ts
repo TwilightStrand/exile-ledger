@@ -34,6 +34,7 @@ export function libraryView(
 					game: b.game,
 					league: b.league,
 					live: b.live,
+					done: b.done ?? false,
 					href: page ? bookmarkHref(b, page) : "#",
 				}),
 			),

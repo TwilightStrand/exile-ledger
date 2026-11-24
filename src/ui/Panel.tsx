@@ -13,8 +13,10 @@ import {
 	deleteBookmark,
 	emptyLibrary,
 	type LibrarySource,
+	overwriteBookmark,
 	renameBookmark,
 	saveSearch,
+	setBookmarkDone,
 } from "../core/library";
 import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
@@ -31,10 +33,12 @@ import { createMemorySource, type Source } from "../core/source";
 import { OFF_STATUS, type SyncStatus } from "../core/syncEngine";
 import type { Game, ParsedTradeUrl } from "../core/tradeUrl";
 import {
+	changeFolderLeague,
 	createFolder,
 	deleteFolder,
 	renameFolder,
 	setArchived,
+	setFolderDone,
 	setFolderIcon,
 } from "../core/tree";
 import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
@@ -342,6 +346,39 @@ export function Panel({
 			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
 		onDelete: (id) =>
 			librarySource.update((lib) => deleteBookmark(lib, id, now())),
+		onOverwrite:
+			capture.search && capture.search.game === game
+				? (id) => {
+						const event = capture.search;
+						if (!event) return;
+						librarySource.update((lib) =>
+							overwriteBookmark(
+								lib,
+								id,
+								{
+									query: event.search.query,
+									searchId: event.search.searchId,
+									league: event.league,
+									live: currentPage?.location.live ?? false,
+								},
+								now(),
+							),
+						);
+					}
+				: undefined,
+		onSetDone: (id, done) =>
+			librarySource.update((lib) => setBookmarkDone(lib, id, done, now())),
+		onSetFolderDone: (id, done) =>
+			librarySource.update((lib) => setFolderDone(lib, id, done, now())),
+		onChangeLeague: async (id, league) => {
+			let changed = 0;
+			await librarySource.update((lib) => {
+				const result = changeFolderLeague(lib, id, league, now());
+				changed = result.changed;
+				return result.library;
+			});
+			return changed;
+		},
 		onCreateFolder: (parentId, name) => {
 			if (!game) return;
 			librarySource.update((lib) => {

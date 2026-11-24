@@ -1,4 +1,4 @@
-import type { Clock } from "./library";
+import { type Clock, markDone } from "./library";
 import type { Folder, FolderIcon, Library, Tombstone } from "./model";
 import type { Game } from "./tradeUrl";
 
@@ -222,4 +222,43 @@ export function setFolderIcon(
 			f.id === id ? { ...f, icon, updatedAt: now } : f,
 		),
 	};
+}
+
+const bookmarkIdsUnder = (library: Library, folderId: string): Set<string> => {
+	const folders = subtreeIds(library.folders, folderId);
+	return new Set(
+		library.bookmarks.filter((b) => folders.has(b.folderId)).map((b) => b.id),
+	);
+};
+
+/** Ticks every bookmark in the folder and its subfolders. */
+export function setFolderDone(
+	library: Library,
+	folderId: string,
+	done: boolean,
+	now: number,
+): Library {
+	return markDone(library, bookmarkIdsUnder(library, folderId), done, now);
+}
+
+/**
+ * Moves every bookmark under the folder to another league, for when a new
+ * league starts. Returns how many changed, so the panel can say so.
+ */
+export function changeFolderLeague(
+	library: Library,
+	folderId: string,
+	league: string,
+	now: number,
+): { library: Library; changed: number } {
+	const target = league.trim();
+	if (!target) return { library, changed: 0 };
+	const ids = bookmarkIdsUnder(library, folderId);
+	let changed = 0;
+	const bookmarks = library.bookmarks.map((b) => {
+		if (!ids.has(b.id) || b.league === target) return b;
+		changed++;
+		return { ...b, league: target, updatedAt: now };
+	});
+	return { library: { ...library, bookmarks }, changed };
 }

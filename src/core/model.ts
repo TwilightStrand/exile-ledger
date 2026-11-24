@@ -45,6 +45,8 @@ export const BookmarkSchema = v.object({
 	// Bulk exchange bookmarks come from Better Trading imports; saving here is search only.
 	tradeType: v.optional(v.picklist(["search", "exchange"])),
 	live: v.boolean(),
+	/** Ticked off by the user, e.g. an item already bought; absent means not done. */
+	done: v.optional(v.boolean()),
 	order: v.number(),
 	createdAt: v.number(),
 	updatedAt: v.number(),

@@ -15,9 +15,11 @@ import {
 	Bolt,
 	Check,
 	ChevronRight,
+	Ellipsis,
 	FolderPlus,
 	Pencil,
 	Plus,
+	Replace,
 	Restore,
 	Share,
 	Trash,
@@ -47,6 +49,12 @@ export interface TreeActions {
 	highlightId?: string | null;
 	onRename: (id: string, name: string) => void;
 	onDelete: (id: string) => void;
+	/** Present only while a search of this game is on the page to overwrite with. */
+	onOverwrite?: ((id: string) => void) | undefined;
+	onSetDone: (id: string, done: boolean) => void;
+	onSetFolderDone: (id: string, done: boolean) => void;
+	/** Resolves to how many bookmarks moved. */
+	onChangeLeague: (id: string, league: string) => Promise<number>;
 	onCreateFolder: (parentId: string | null, name: string) => void;
 	onRenameFolder: (id: string, name: string) => void;
 	onArchiveFolder: (id: string, archived: boolean) => void;
@@ -262,10 +270,12 @@ function NameField({
 
 function ConfirmRow({
 	message,
+	confirmLabel,
 	onConfirm,
 	onCancel,
 }: {
 	message: string;
+	confirmLabel?: string;
 	onConfirm: () => void;
 	onCancel: () => void;
 }) {
@@ -278,7 +288,7 @@ function ConfirmRow({
 				class="rounded px-2 py-0.5 font-semibold text-ledger-danger hover:bg-ledger-danger-mark/20"
 				onClick={onConfirm}
 			>
-				{t.common.delete}
+				{confirmLabel ?? t.common.delete}
 			</button>
 			<button
 				type="button"
@@ -342,9 +352,9 @@ function BookmarkRow({
 	actions: TreeActions | undefined;
 }) {
 	const t = useMessages();
-	const [mode, setMode] = useState<"view" | "rename" | "confirm-delete">(
-		"view",
-	);
+	const [mode, setMode] = useState<
+		"view" | "rename" | "confirm-delete" | "confirm-overwrite"
+	>("view");
 	const { props, onKeyDown, stateClass } = useDragRow(
 		{ kind: "bookmark", id: bookmark.id },
 		place,
@@ -376,6 +386,21 @@ function BookmarkRow({
 		);
 	}
 
+	const overwrite = actions?.onOverwrite;
+	if (mode === "confirm-overwrite" && overwrite) {
+		return (
+			<ConfirmRow
+				message={t.bookmarks.confirmOverwrite(bookmark.title)}
+				confirmLabel={t.bookmarks.replace}
+				onConfirm={() => {
+					overwrite(bookmark.id);
+					setMode("view");
+				}}
+				onCancel={() => setMode("view")}
+			/>
+		);
+	}
+
 	return (
 		<div class={`group relative rounded ${stateClass}`} {...props}>
 			<a
@@ -386,7 +411,17 @@ function BookmarkRow({
 				aria-keyshortcuts={actions ? KEY_HINT : undefined}
 				onKeyDown={onKeyDown}
 			>
-				<span class="min-w-0 flex-1 truncate">{bookmark.title}</span>
+				<span
+					class={`min-w-0 flex-1 truncate ${bookmark.done ? "text-ledger-muted line-through decoration-ledger-faint" : ""}`}
+				>
+					{bookmark.title}
+				</span>
+				{bookmark.done && (
+					<span class="shrink-0 text-ledger-live" title={t.bookmarks.done}>
+						<Check class="size-3.5" />
+						<span class="sr-only">{t.bookmarks.done}</span>
+					</span>
+				)}
 				{bookmark.live && (
 					<span class="shrink-0 text-ledger-live" title={t.common.liveSearch}>
 						<Bolt class="size-3.5" />
@@ -397,6 +432,30 @@ function BookmarkRow({
 			</a>
 			{actions && (
 				<div class={HOVER_ACTIONS}>
+					{overwrite && (
+						<button
+							type="button"
+							class={ICON_BUTTON}
+							aria-label={t.bookmarks.overwrite(bookmark.title)}
+							title={t.bookmarks.overwrite(bookmark.title)}
+							onClick={() => setMode("confirm-overwrite")}
+						>
+							<Replace class="size-3.5" />
+						</button>
+					)}
+					<button
+						type="button"
+						class={`${ICON_BUTTON} ${bookmark.done ? "text-ledger-live" : ""}`}
+						aria-label={
+							bookmark.done
+								? t.bookmarks.markNotDone(bookmark.title)
+								: t.bookmarks.markDone(bookmark.title)
+						}
+						aria-pressed={bookmark.done}
+						onClick={() => actions.onSetDone(bookmark.id, !bookmark.done)}
+					>
+						<Check class="size-3.5" />
+					</button>
 					<button
 						type="button"
 						class={ICON_BUTTON}
@@ -419,7 +478,17 @@ function BookmarkRow({
 	);
 }
 
-type FolderMode = "view" | "rename" | "new-child" | "confirm-delete" | "icon";
+type FolderMode =
+	| "view"
+	| "rename"
+	| "new-child"
+	| "confirm-delete"
+	| "icon"
+	| "more"
+	| "league";
+
+const MENU_ITEM =
+	"w-full rounded px-2 py-1 text-left text-[12px] text-ledger-text transition-colors hover:bg-ledger-raised hover:text-ledger-gold-bright focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
 function FolderRow({
 	folder,
@@ -433,6 +502,7 @@ function FolderRow({
 	const t = useMessages();
 	const [mode, setMode] = useState<FolderMode>("view");
 	const [copied, setCopied] = useState(false);
+	const [status, setStatus] = useState<string | null>(null);
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
 	const count = countBookmarks(folder.children);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
@@ -513,6 +583,18 @@ function FolderRow({
 					<button
 						type="button"
 						class={ICON_BUTTON}
+						aria-label={t.bookmarks.more(folder.name)}
+						aria-expanded={mode === "more"}
+						onClick={() => {
+							setStatus(null);
+							setMode(mode === "more" ? "view" : "more");
+						}}
+					>
+						<Ellipsis class="size-3.5" />
+					</button>
+					<button
+						type="button"
+						class={ICON_BUTTON}
 						aria-label={t.bookmarks.archive(folder.name)}
 						onClick={() => actions.onArchiveFolder(folder.id, true)}
 					>
@@ -562,6 +644,73 @@ function FolderRow({
 	return (
 		<li>
 			{row}
+			{mode === "more" && actions && (
+				<ul
+					class="ml-[15px] animate-fade-in border-l border-ledger-border py-1 pl-2"
+					onKeyDown={(e) => {
+						if (e.key === "Escape") setMode("view");
+					}}
+				>
+					<li>
+						<button
+							type="button"
+							class={MENU_ITEM}
+							onClick={() => {
+								actions.onSetFolderDone(folder.id, true);
+								setMode("view");
+							}}
+						>
+							{t.bookmarks.allDone}
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							class={MENU_ITEM}
+							onClick={() => {
+								actions.onSetFolderDone(folder.id, false);
+								setMode("view");
+							}}
+						>
+							{t.bookmarks.allNotDone}
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							class={MENU_ITEM}
+							onClick={() => setMode("league")}
+						>
+							{t.bookmarks.changeLeague}
+						</button>
+					</li>
+				</ul>
+			)}
+			{mode === "league" && actions && (
+				<div class="ml-[15px] border-l border-ledger-border pl-1.5">
+					<NameField
+						initial=""
+						label={t.bookmarks.league}
+						placeholder={t.bookmarks.leaguePlaceholder}
+						onDone={(league) => {
+							setMode("view");
+							const target = league?.trim();
+							if (!target) return;
+							actions
+								.onChangeLeague(folder.id, target)
+								.then((n) => setStatus(t.bookmarks.leagueChanged(n, target)));
+						}}
+					/>
+				</div>
+			)}
+			{status && mode === "view" && (
+				<p
+					role="status"
+					class="ml-[15px] animate-fade-in border-l border-ledger-border py-1 pl-2 text-[12px] text-ledger-muted"
+				>
+					{status}
+				</p>
+			)}
 			{mode === "icon" && actions && (
 				<IconPicker
 					current={folder.icon}

@@ -114,6 +114,23 @@ export const en = {
 		copyShare: "Copy share string",
 		shareCopied: "Share string copied",
 		copied: "Copied",
+		overwrite: (name: string) => `Replace ${name} with the current search`,
+		confirmOverwrite: (name: string) =>
+			`Replace “${name}” with the current search?`,
+		replace: "Replace",
+		markDone: (name: string) => `Mark ${name} done`,
+		markNotDone: (name: string) => `Mark ${name} not done`,
+		done: "Done",
+		more: (name: string) => `More for ${name}`,
+		allDone: "Mark all done",
+		allNotDone: "Mark all not done",
+		changeLeague: "Change league",
+		league: "League",
+		leaguePlaceholder: "League name, e.g. Standard",
+		leagueChanged: (n: number, league: string) =>
+			n === 0
+				? `Everything here was already in ${league}.`
+				: `Moved ${bookmarks(n)} to ${league}.`,
 		confirmDeleteBookmark: (name: string) => `Delete “${name}”?`,
 		confirmDeleteFolder: (
 			name: string,

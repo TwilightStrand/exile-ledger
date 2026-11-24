@@ -129,6 +129,64 @@ export function renameBookmark(
 	};
 }
 
+/**
+ * Points a bookmark at a new search. Id, name, folder and order stay, so it
+ * keeps its place; the new updatedAt carries the change to other machines.
+ */
+export function overwriteBookmark(
+	library: Library,
+	id: string,
+	search: {
+		query: TradeQuery;
+		searchId: string | null;
+		league: string;
+		live: boolean;
+	},
+	now: number,
+): Library {
+	return {
+		...library,
+		bookmarks: library.bookmarks.map((b) => {
+			if (b.id !== id) return b;
+			const { searchId: _stale, tradeType: _type, ...rest } = b;
+			return {
+				...rest,
+				query: search.query,
+				...(search.searchId ? { searchId: search.searchId } : {}),
+				league: search.league,
+				live: search.live,
+				updatedAt: now,
+			};
+		}),
+	};
+}
+
+/** Sets `done` on the given bookmarks, skipping ones already there so sync is not churned. */
+export function markDone(
+	library: Library,
+	ids: ReadonlySet<string>,
+	done: boolean,
+	now: number,
+): Library {
+	return {
+		...library,
+		bookmarks: library.bookmarks.map((b) =>
+			ids.has(b.id) && (b.done ?? false) !== done
+				? { ...b, done, updatedAt: now }
+				: b,
+		),
+	};
+}
+
+export function setBookmarkDone(
+	library: Library,
+	id: string,
+	done: boolean,
+	now: number,
+): Library {
+	return markDone(library, new Set([id]), done, now);
+}
+
 export function deleteBookmark(
 	library: Library,
 	id: string,
