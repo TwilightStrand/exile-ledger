@@ -75,6 +75,8 @@ export default defineConfig({
 			"wxt.config.ts",
 			"biome.json",
 			"README.md",
+			"BUILDING.md",
+			"scripts/build-firefox.sh",
 			"LICENSE",
 			"PRIVACY.md",
 			"THIRD_PARTY_NOTICES.md",

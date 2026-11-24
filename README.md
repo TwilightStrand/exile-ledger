@@ -64,16 +64,7 @@ Requires Node.js 24+ and pnpm.
 
 Every pull request carries a changeset (`changesetter add`). Merges to `main` keep a **Next Release** pull request up to date; merging it bumps the version, writes `CHANGELOG.md`, tags the release, attaches the store zips and submits them to the Chrome Web Store and addons.mozilla.org.
 
-To build the store zips by hand:
-
-```bash
-corepack enable
-pnpm install --frozen-lockfile
-pnpm zip              # .output/exile-ledger-<version>-chrome.zip
-pnpm zip:firefox      # .output/exile-ledger-<version>-firefox.zip and -sources.zip
-```
-
-Rebuilding from the sources zip with `pnpm install --frozen-lockfile` and `pnpm build:firefox` gives a byte-for-byte copy of the Firefox add-on; CI checks this on every run.
+To build the Firefox add-on exactly as submitted, see [BUILDING.md](BUILDING.md).
 
 ## License
 

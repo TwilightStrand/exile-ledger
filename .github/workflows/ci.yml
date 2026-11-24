@@ -27,8 +27,8 @@ jobs:
       # The linter addons.mozilla.org runs on upload; warnings fail here so they
       # are fixed before submission instead of explained to reviewers.
       - run: npx --yes addons-linter@10.16.0 --warnings-as-errors .output/firefox-mv3
-      # AMO reviewers rebuild from the sources zip; this proves their build
-      # matches the uploaded add-on byte for byte.
+      # AMO reviewers rebuild from the sources zip with BUILDING.md's script;
+      # this proves their build matches the uploaded add-on byte for byte.
       - run: pnpm zip:firefox
       - name: Rebuild the Firefox add-on from its sources zip
         run: |
@@ -36,6 +36,5 @@ jobs:
           unzip -q .output/*-sources.zip -d "$dir/src"
           unzip -q .output/*-firefox.zip -d "$dir/upload"
           cd "$dir/src"
-          pnpm install --frozen-lockfile
-          pnpm build:firefox
+          bash scripts/build-firefox.sh
           diff -r .output/firefox-mv3 "$dir/upload"
