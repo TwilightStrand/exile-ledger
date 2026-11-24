@@ -3,11 +3,17 @@ import { browser } from "wxt/browser";
 import { fakeBrowser } from "wxt/testing/fake-browser";
 import { saveSearch } from "../../src/core/library";
 import { META_KEY, syncOnce } from "../../src/core/syncEngine";
-import { browserLibrary } from "../../src/storage/libraryStore";
+import {
+	browserLibrary,
+	listenForLibraryWrites,
+} from "../../src/storage/libraryStore";
 import { browserSyncPorts } from "../../src/storage/syncPorts";
 
 describe("browserSyncPorts", () => {
-	beforeEach(() => fakeBrowser.reset());
+	beforeEach(() => {
+		fakeBrowser.reset();
+		listenForLibraryWrites();
+	});
 
 	it("pushes the local library into storage.sync and pulls it back into an empty install", async () => {
 		let n = 0;

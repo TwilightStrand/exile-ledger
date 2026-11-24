@@ -25,7 +25,11 @@ export function createRatesClient(onArrive: () => void) {
 					.sendMessage(request)
 					.then((reply: unknown) => {
 						const parsed = v.safeParse(RatesSchema, reply);
-						if (!parsed.success) return;
+						// No rates yet (no access, poe.ninja down): ask again on a later pass.
+						if (!parsed.success) {
+							cache.delete(key);
+							return;
+						}
 						cache.set(key, parsed.output);
 						onArrive();
 					})

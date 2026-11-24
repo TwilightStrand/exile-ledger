@@ -157,6 +157,35 @@ describe("syncOnce with two installs sharing storage.sync", () => {
 		expect(a.writes.sync).toBe(0);
 	});
 
+	it("replaces a remote that stays half-written, and both machines recover", async () => {
+		const shared = new Map<string, unknown>([
+			[META_KEY, { version: 1, chunks: 2, writeId: "new" }],
+			[chunkKey(0), "new|AAAA"],
+			[chunkKey(1), "old|BBBB"],
+		]);
+		const clock = { now: 1 };
+		const a = install(shared, clock);
+		const b = install(shared, clock);
+		a.edit(save("Bow", 1));
+		b.edit(save("Ring", 1));
+		expect((await syncOnce(a.ports, { replaceDamaged: true })).state).toBe(
+			"on",
+		);
+		expect((await syncOnce(b.ports)).state).toBe("on");
+		expect((await syncOnce(a.ports)).state).toBe("on");
+		const names = (lib: Library) => lib.bookmarks.map((x) => x.name).sort();
+		expect(names(a.get())).toEqual(["Bow", "Ring"]);
+		expect(names(b.get())).toEqual(["Bow", "Ring"]);
+	});
+
+	it("treats a meta with a nonsense chunk count as damaged", async () => {
+		const shared = new Map<string, unknown>([
+			[META_KEY, { version: 1, chunks: 0, writeId: "x" }],
+		]);
+		const a = install(shared, { now: 1 });
+		expect((await syncOnce(a.ports)).state).toBe("waiting");
+	});
+
 	it("stops writing when the library outgrows the sync budget, keeping local data", async () => {
 		const shared = new Map<string, unknown>();
 		const a = install(shared, { now: 1 });

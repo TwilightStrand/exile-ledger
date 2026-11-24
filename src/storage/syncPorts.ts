@@ -1,7 +1,6 @@
 import { browser } from "wxt/browser";
-import { mergeLibraries } from "../core/merge";
 import { parseSyncStatus, type SyncPorts } from "../core/syncEngine";
-import { browserLibrary } from "./libraryStore";
+import { browserLibrary, writeLibrary } from "./libraryStore";
 import { localSource } from "./localSource";
 
 export const browserSyncStatus = localSource(
@@ -11,12 +10,10 @@ export const browserSyncStatus = localSource(
 
 export const browserSyncPorts: SyncPorts = {
 	readLocal: () => browserLibrary.load(),
-	// Merged again with whatever is stored now, so an edit made while the sync
-	// pass ran is kept rather than overwritten.
+	// Through the same queue as tab edits, so an edit made while the sync pass
+	// ran is merged in rather than overwritten.
 	writeLocal: async (library) => {
-		await browserLibrary.update((current) =>
-			mergeLibraries(current, library, Date.now()),
-		);
+		await writeLibrary(library);
 	},
 	readSync: () => browser.storage.sync.get(null),
 	writeSync: (items) => browser.storage.sync.set(items),

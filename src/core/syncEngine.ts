@@ -45,9 +45,11 @@ export const OFF_STATUS: SyncStatus = {
 
 const MetaSchema = v.object({
 	version: v.literal(1),
-	chunks: v.number(),
+	chunks: v.pipe(v.number(), v.integer(), v.minValue(1)),
 	writeId: v.string(),
 });
+
+const MetaShape = v.object({ version: v.literal(1) });
 
 type Remote =
 	| { kind: "empty" }
@@ -61,7 +63,12 @@ type Remote =
  */
 async function readRemote(items: Record<string, unknown>): Promise<Remote> {
 	const meta = v.safeParse(MetaSchema, items[META_KEY]);
-	if (!meta.success) return { kind: "empty" };
+	if (!meta.success) {
+		// A meta we wrote but cannot read is damage, not an empty sync area.
+		return v.is(MetaShape, items[META_KEY])
+			? { kind: "partial" }
+			: { kind: "empty" };
+	}
 	const parts: string[] = [];
 	for (let i = 0; i < meta.output.chunks; i++) {
 		const raw = items[chunkKey(i)];
@@ -79,12 +86,29 @@ async function readRemote(items: Record<string, unknown>): Promise<Remote> {
 const same = (a: Library, b: Library) =>
 	JSON.stringify(a) === JSON.stringify(b);
 
+export interface SyncOptions {
+	/**
+	 * Overwrite a remote that keeps reading as half-written. That happens when a
+	 * write was cut off between chunks and meta (a quota error, or two machines
+	 * interleaving), and no reader would ever rewrite it otherwise. Nothing is
+	 * lost: every machine still holds its own edits and merges them back in.
+	 */
+	replaceDamaged?: boolean;
+}
+
 /** One pull-merge-push pass. Writes each side only when it actually changed. */
-export async function syncOnce(ports: SyncPorts): Promise<SyncStatus> {
+export async function syncOnce(
+	ports: SyncPorts,
+	options: SyncOptions = {},
+): Promise<SyncStatus> {
 	const now = ports.now();
 	try {
 		const items = await ports.readSync();
-		const remote = await readRemote(items);
+		const read = await readRemote(items);
+		const remote: Remote =
+			read.kind === "partial" && options.replaceDamaged
+				? { kind: "empty" }
+				: read;
 		if (remote.kind === "partial") {
 			return {
 				state: "waiting",

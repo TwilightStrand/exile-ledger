@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "../../src/core/history";
 import {
 	createMemoryLibrary,
@@ -494,12 +494,19 @@ describe("Panel layout and sharing", () => {
 		});
 		const root = await mount({ settings, uiState });
 		const handle = root.querySelector("[role=separator]");
-		await act(async () => {
-			handle?.dispatchEvent(
-				new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
-			);
-		});
-		expect((await settings.load()).panelWidth).toBe(21);
+		const saves = vi.spyOn(settings, "save");
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				handle?.dispatchEvent(
+					new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+				);
+			});
+		}
+		expect(handle?.getAttribute("aria-valuenow")).toBe("23");
+		await vi.waitFor(async () =>
+			expect((await settings.load()).panelWidth).toBe(23),
+		);
+		expect(saves).toHaveBeenCalledTimes(1);
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
 		expect((await uiState.load()).panelOpen).toBe(false);
 	});

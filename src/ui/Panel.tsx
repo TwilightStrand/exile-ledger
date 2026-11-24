@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { titleOfQuery } from "../core/describe";
 import { encodeShare } from "../core/exchange";
 import { clearHistory, type HistoryEntry } from "../core/history";
@@ -86,6 +86,8 @@ function useSettings(settings: SettingsSource): Settings {
 	return value;
 }
 
+const KEY_RESIZE_SAVE_MS = 400;
+
 /**
  * Drag the panel's inner edge to resize; saved once, when the drag ends.
  * Tracks pixels from the rendered width so the edge stays under the pointer
@@ -98,6 +100,7 @@ function useResize(
 ): {
 	width: number;
 	onPointerDown: (e: PointerEvent) => void;
+	nudge: (delta: number) => void;
 	resizing: boolean;
 } {
 	const [dragWidth, setDragWidth] = useState<number | null>(null);
@@ -134,9 +137,25 @@ function useResize(
 		window.addEventListener("pointermove", move);
 		window.addEventListener("pointerup", up);
 	};
+	// Arrow keys repeat about 30 times a second while held; saving each step
+	// would burn through Chrome's 120 storage.sync writes a minute.
+	const nudgeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+		undefined,
+	);
+	useEffect(() => () => clearTimeout(nudgeTimer.current), []);
+	const nudge = (delta: number) => {
+		const next = clampWidth((dragWidth ?? width) + delta);
+		setDragWidth(next);
+		clearTimeout(nudgeTimer.current);
+		nudgeTimer.current = setTimeout(() => {
+			setDragWidth(null);
+			if (next !== width) onDone(next);
+		}, KEY_RESIZE_SAVE_MS);
+	};
 	return {
 		width: dragWidth ?? width,
 		onPointerDown,
+		nudge,
 		resizing: dragWidth !== null,
 	};
 }
@@ -390,8 +409,7 @@ export function Panel({
 							const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
 							if (e.key !== grow && e.key !== shrink) return;
 							e.preventDefault();
-							const delta = e.key === grow ? step : -step;
-							settings.save({ panelWidth: clampWidth(resize.width + delta) });
+							resize.nudge(e.key === grow ? step : -step);
 						}}
 					>
 						<span class="mx-auto block h-full w-px bg-transparent transition-colors group-hover/handle:bg-ledger-gold/60 group-focus-visible/handle:bg-ledger-gold" />

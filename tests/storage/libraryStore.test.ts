@@ -5,7 +5,10 @@ import {
 	type SaveInput,
 	saveSearch,
 } from "../../src/core/library";
-import { browserLibrary } from "../../src/storage/libraryStore";
+import {
+	browserLibrary,
+	listenForLibraryWrites,
+} from "../../src/storage/libraryStore";
 
 const input: SaveInput = {
 	game: "poe2",
@@ -17,7 +20,10 @@ const input: SaveInput = {
 };
 
 describe("browserLibrary", () => {
-	beforeEach(() => fakeBrowser.reset());
+	beforeEach(() => {
+		fakeBrowser.reset();
+		listenForLibraryWrites();
+	});
 
 	it("starts empty", async () => {
 		expect(await browserLibrary.load()).toEqual(emptyLibrary());
@@ -45,5 +51,24 @@ describe("browserLibrary", () => {
 		);
 		await vi.waitFor(() => expect(seen).toHaveBeenCalled());
 		stop();
+	});
+
+	it("keeps both edits when two contexts save at the same time", async () => {
+		let n = 0;
+		const save = (name: string, searchId: string) =>
+			browserLibrary.update(
+				(lib) =>
+					saveSearch(
+						lib,
+						{ ...input, name, searchId },
+						{ now: 2, newId: () => `id${++n}` },
+					).library,
+			);
+		await save("First", "a");
+		await Promise.all([save("Bow", "b"), save("Ring", "c")]);
+		const names = (await browserLibrary.load()).bookmarks
+			.map((b) => b.name)
+			.sort();
+		expect(names).toEqual(["Bow", "First", "Ring"]);
 	});
 });

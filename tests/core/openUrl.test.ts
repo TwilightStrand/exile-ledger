@@ -75,6 +75,23 @@ describe("bookmarkHref", () => {
 			),
 		).toBe("https://www.pathofexile.com/trade2/search/poe2/Standard/abc");
 	});
+
+	it("opens a league-less import in the page's league", () => {
+		const { query: _omit, ...legacy } = bookmark;
+		const imported: typeof legacy = { ...legacy, game: "poe1", league: "" };
+		expect(
+			bookmarkHref(
+				imported,
+				page("https://www.pathofexile.com/trade/search/Settlers/xyz"),
+			),
+		).toBe("https://www.pathofexile.com/trade/search/Settlers/abc");
+		expect(
+			bookmarkHref(
+				{ ...imported, tradeType: "exchange" },
+				page("https://www.pathofexile.com/trade/search/Settlers/xyz"),
+			),
+		).toBe("https://www.pathofexile.com/trade/exchange/Settlers/abc");
+	});
 });
 
 describe("bookmarkHref across games", () => {

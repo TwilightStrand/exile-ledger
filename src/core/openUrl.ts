@@ -41,9 +41,10 @@ export function bookmarkHref(
 	if (bookmark.query) {
 		return buildTradeUrl(origin, target, { query: bookmark.query });
 	}
+	// Better Trading exports carry no league; their search IDs open in the page's.
 	return buildTradeUrl(origin, {
 		...target,
-		league: bookmark.league,
+		league: bookmark.league || league,
 		live: false,
 	});
 }
