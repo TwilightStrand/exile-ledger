@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Opens or updates the "Next Release" PR from pending changesets; merging it
+  # bumps package.json (which WXT turns into the manifest version), writes
+  # CHANGELOG.md and tags the release.
+  release:
+    # Every push gets a turn: a later push replacing the pending job could drop
+    # the version-PR merge, and changesetter only cuts when HEAD is that merge.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+      queue: max
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.changesetter.outputs.released }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      # An app token, because tags and PRs pushed with GITHUB_TOKEN do not
+      # trigger CI on the Next Release PR.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: saturate/changesetter/actions/release@v1
+        id: changesetter
+        with:
+          version-pr: true
+          version-pr-title: "Next Release"
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Extract version
+        id: version
+        if: steps.changesetter.outputs.released == 'true'
+        env:
+          RELEASES_JSON: ${{ steps.changesetter.outputs.releases }}
+        run: |
+          VERSION=$(echo "$RELEASES_JSON" | jq -r '.[0].version')
+          # The tag changesetter pushed, so later steps don't assume its format.
+          TAG=$(echo "$RELEASES_JSON" | jq -r '.[0].tag // ("v" + .[0].version)')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    concurrency:
+      group: publish-${{ needs.release.outputs.version }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    # Step conditions cannot read secrets directly, so expose only whether each
+    # store is configured.
+    env:
+      HAS_CHROME: ${{ secrets.CHROME_EXTENSION_ID != '' }}
+      HAS_FIREFOX: ${{ secrets.FIREFOX_JWT_ISSUER != '' }}
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm zip
+      - run: pnpm zip:firefox
+
+      - name: Attach the store zips to the GitHub release
+        run: gh release upload "${{ needs.release.outputs.tag }}" .output/*.zip --clobber
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      # Each store is skipped until its secrets exist, so releases work before
+      # the store listings do. The first upload to each store is made by hand.
+      - name: Submit to the Chrome Web Store
+        if: env.HAS_CHROME == 'true'
+        run: >-
+          pnpm wxt submit
+          --chrome-api-version v2
+          --chrome-zip .output/*-chrome.zip
+          --chrome-extension-id "$CHROME_EXTENSION_ID"
+          --chrome-publisher-id "$CHROME_PUBLISHER_ID"
+          --chrome-service-account-client-email "$CHROME_SA_EMAIL"
+          --chrome-service-account-private-key "$CHROME_SA_KEY"
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CHROME_SA_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
+          CHROME_SA_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
+
+      - name: Submit to addons.mozilla.org
+        if: env.HAS_FIREFOX == 'true'
+        run: >-
+          pnpm wxt submit
+          --firefox-zip .output/*-firefox.zip
+          --firefox-sources-zip .output/*-sources.zip
+          --firefox-extension-id exile-ledger@twilightstrand
+          --firefox-compatibility firefox
+          --firefox-jwt-issuer "$FIREFOX_JWT_ISSUER"
+          --firefox-jwt-secret "$FIREFOX_JWT_SECRET"
+        env:
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

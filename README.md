@@ -44,6 +44,10 @@ The Firefox add-on is built from the sources zip with the same two commands: `pn
 
 See `PRIVACY.md` for the privacy policy.
 
+## Releases
+
+Every pull request carries a changeset (`changesetter add`). Merges to `main` keep a "Next Release" pull request up to date; merging that bumps the version, writes `CHANGELOG.md`, tags the release, attaches the store zips to it and submits them to the Chrome Web Store and addons.mozilla.org.
+
 ## License
 
 MIT. See `THIRD_PARTY_NOTICES.md` for the projects whose formats it reads.

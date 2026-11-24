@@ -1,0 +1,25 @@
+name: Changeset Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: saturate/changesetter/actions/check@v1
+        with:
+          # Fork PRs get a read-only token, so commenting would fail the check.
+          comment: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      # `check` only looks for a changeset; a malformed one still passes it and
+      # then breaks the release job on main. `status` parses every pending one.
+      - name: Changesets parse
+        run: changesetter status
