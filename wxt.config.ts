@@ -23,9 +23,6 @@ export default defineConfig({
 				// browser's own sync, which Firefox does not count as collection.
 				data_collection_permissions: { required: ["none"] },
 			},
-			gecko_android: {
-				strict_min_version: "142.0",
-			},
 		},
 	},
 	vite: () => ({

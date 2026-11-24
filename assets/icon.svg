@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Exile Ledger</title>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0cd8a"/>
+      <stop offset="1" stop-color="#c8994a"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="#12100d" stroke="#4a3b27" stroke-width="4"/>
+  <g stroke="#2e261d" stroke-width="6" stroke-linecap="round">
+    <line x1="22" y1="44" x2="106" y2="44"/>
+    <line x1="22" y1="64" x2="106" y2="64"/>
+    <line x1="22" y1="84" x2="106" y2="84"/>
+  </g>
+  <path d="M44 18 H84 V108 L64 90 L44 108 Z" fill="url(#gold)"/>
+</svg>
