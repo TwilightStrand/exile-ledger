@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { TradeQuerySchema } from "./query";
+import { type TradeQuery, TradeQuerySchema } from "./query";
 import { isTradeHost } from "./sites";
 
 /** Default and floor for how often a watcher checks, in minutes. */
@@ -271,4 +271,49 @@ export function removeWatcher(
 	id: string,
 ): Watcher[] {
 	return watchers.filter((w) => w.id !== id);
+}
+
+/**
+ * Watches a saved search for new results. The first check only learns what
+ * is already listed (see applySearchCheck).
+ */
+export function searchWatcherFrom(
+	bookmark: { id: string; name: string; query: TradeQuery },
+	site: WatchSite,
+	intervalMin: number,
+	now: number,
+	id: string,
+): SearchWatcher {
+	return {
+		kind: "search",
+		id,
+		origin: site.origin,
+		game: site.game,
+		realm: site.realm,
+		league: site.league,
+		intervalMin,
+		createdAt: now,
+		lastCheckedAt: null,
+		failures: 0,
+		retryAt: null,
+		bookmarkId: bookmark.id,
+		name: bookmark.name,
+		query: bookmark.query,
+		seenIds: [],
+		newIds: [],
+		total: null,
+	};
+}
+
+/** Adds the watcher, or removes the one already watching that bookmark. */
+export function toggleSearchWatch(
+	watchers: readonly Watcher[],
+	watcher: SearchWatcher,
+): Watcher[] {
+	const existing = watchers.find(
+		(w) => w.kind === "search" && w.bookmarkId === watcher.bookmarkId,
+	);
+	return existing
+		? watchers.filter((w) => w !== existing)
+		: [...watchers, watcher];
 }

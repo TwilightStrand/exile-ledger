@@ -43,7 +43,13 @@ import {
 	setFolderIcon,
 } from "../core/tree";
 import { DEFAULT_UI_STATE, setCollapsed, type UiState } from "../core/uiState";
-import { markSeen, removeWatcher, type Watcher } from "../core/watchers";
+import {
+	markSeen,
+	removeWatcher,
+	searchWatcherFrom,
+	toggleSearchWatch,
+	type Watcher,
+} from "../core/watchers";
 import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
@@ -386,6 +392,34 @@ export function Panel({
 						);
 					}
 				: undefined,
+		watched: new Set(
+			watchers.flatMap((w) =>
+				w.kind === "search" && w.bookmarkId ? [w.bookmarkId] : [],
+			),
+		),
+		onToggleWatch: (id) => {
+			const bookmark = library.bookmarks.find((b) => b.id === id);
+			if (!bookmark?.query || !currentPage) return;
+			const sameGame = currentPage.location.game === bookmark.game;
+			const watcher = searchWatcherFrom(
+				{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
+				{
+					origin: currentPage.origin,
+					game: bookmark.game,
+					// Bookmarks open in the page's league (see bookmarkHref), so they are watched there too.
+					realm: sameGame
+						? currentPage.location.realm
+						: bookmark.game === "poe2"
+							? "poe2"
+							: null,
+					league: sameGame ? currentPage.location.league : bookmark.league,
+				},
+				prefs.watchInterval,
+				now(),
+				newId(),
+			);
+			watcherStore.update((ws) => toggleSearchWatch(ws, watcher));
+		},
 		onSetDone: (id, done) =>
 			librarySource.update((lib) => setBookmarkDone(lib, id, done, now())),
 		onSetFolderDone: (id, done) =>

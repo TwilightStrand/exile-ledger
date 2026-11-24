@@ -10,6 +10,8 @@ export interface BookmarkView {
 	league: string;
 	live: boolean;
 	done: boolean;
+	/** Has a stored query, so a search watcher can re-run it. */
+	watchable: boolean;
 	href: string;
 }
 

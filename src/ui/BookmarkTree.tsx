@@ -16,6 +16,7 @@ import {
 	Check,
 	ChevronRight,
 	Ellipsis,
+	Eye,
 	FolderPlus,
 	Pencil,
 	Plus,
@@ -52,6 +53,9 @@ export interface TreeActions {
 	/** Present only while a search of this game is on the page to overwrite with. */
 	onOverwrite?: ((id: string) => void) | undefined;
 	onSetDone: (id: string, done: boolean) => void;
+	/** Bookmarks with a search watcher. */
+	watched?: ReadonlySet<string>;
+	onToggleWatch?: (id: string) => void;
 	onSetFolderDone: (id: string, done: boolean) => void;
 	/** Resolves to how many bookmarks moved. */
 	onChangeLeague: (id: string, league: string) => Promise<number>;
@@ -387,6 +391,7 @@ function BookmarkRow({
 	}
 
 	const overwrite = actions?.onOverwrite;
+	const watched = actions?.watched?.has(bookmark.id) ?? false;
 	if (mode === "confirm-overwrite" && overwrite) {
 		return (
 			<ConfirmRow
@@ -416,6 +421,14 @@ function BookmarkRow({
 				>
 					{bookmark.title}
 				</span>
+				{watched && (
+					<span
+						class="shrink-0 text-ledger-gold"
+						title={t.bookmarks.watch(bookmark.title)}
+					>
+						<Eye class="size-3.5" />
+					</span>
+				)}
 				{bookmark.done && (
 					<span class="shrink-0 text-ledger-live" title={t.bookmarks.done}>
 						<Check class="size-3.5" />
@@ -441,6 +454,21 @@ function BookmarkRow({
 							onClick={() => setMode("confirm-overwrite")}
 						>
 							<Replace class="size-3.5" />
+						</button>
+					)}
+					{bookmark.watchable && actions.onToggleWatch && (
+						<button
+							type="button"
+							class={`${ICON_BUTTON} ${watched ? "text-ledger-gold" : ""}`}
+							aria-label={
+								watched
+									? t.bookmarks.unwatch(bookmark.title)
+									: t.bookmarks.watch(bookmark.title)
+							}
+							aria-pressed={watched}
+							onClick={() => actions.onToggleWatch?.(bookmark.id)}
+						>
+							<Eye class="size-3.5" />
 						</button>
 					)}
 					<button

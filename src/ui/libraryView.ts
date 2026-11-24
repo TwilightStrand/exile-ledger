@@ -35,6 +35,7 @@ export function libraryView(
 					league: b.league,
 					live: b.live,
 					done: b.done ?? false,
+					watchable: b.query !== undefined,
 					href: page ? bookmarkHref(b, page) : "#",
 				}),
 			),

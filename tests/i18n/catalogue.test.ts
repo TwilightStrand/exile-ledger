@@ -61,6 +61,8 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"settings.panel.widthHint": (t) => t.settings.panel.widthHint(280, 640),
 	"bookmarks.overwrite": (t) => t.bookmarks.overwrite("Garb"),
 	"bookmarks.confirmOverwrite": (t) => t.bookmarks.confirmOverwrite("Garb"),
+	"bookmarks.watch": (t) => t.bookmarks.watch("Garb"),
+	"bookmarks.unwatch": (t) => t.bookmarks.unwatch("Garb"),
 	"bookmarks.markDone": (t) => t.bookmarks.markDone("Garb"),
 	"bookmarks.markNotDone": (t) => t.bookmarks.markNotDone("Garb"),
 	"bookmarks.more": (t) => t.bookmarks.more("Rings"),

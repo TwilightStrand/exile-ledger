@@ -799,3 +799,41 @@ describe("watchers tab", () => {
 		expect(await watchers.load()).toEqual([]);
 	});
 });
+
+describe("search watchers from bookmarks", () => {
+	it("watches a bookmark's search in the page's league and toggles off", async () => {
+		const { library } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Standard",
+				name: "Life rings",
+				query: { query: { term: "ring" } },
+				searchId: "r1",
+				live: false,
+			},
+			{ now: 1, newId: () => `sw${++n}` },
+		);
+		const watchers = createMemorySource<Watcher[]>([]);
+		const root = await mount({
+			library: createMemoryLibrary(library),
+			watchers,
+		});
+		await act(async () =>
+			button(root, "Watch Life rings for new results")?.click(),
+		);
+		const [made] = await watchers.load();
+		expect(made).toMatchObject({
+			kind: "search",
+			name: "Life rings",
+			league: "Dawn",
+			realm: "poe2",
+			origin: "https://www.pathofexile.com",
+			intervalMin: 5,
+		});
+		await act(async () =>
+			button(root, "Stop watching Life rings for new results")?.click(),
+		);
+		expect(await watchers.load()).toEqual([]);
+	});
+});

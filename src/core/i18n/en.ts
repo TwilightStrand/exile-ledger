@@ -120,6 +120,8 @@ export const en = {
 		confirmOverwrite: (name: string) =>
 			`Replace “${name}” with the current search?`,
 		replace: "Replace",
+		watch: (name: string) => `Watch ${name} for new results`,
+		unwatch: (name: string) => `Stop watching ${name} for new results`,
 		markDone: (name: string) => `Mark ${name} done`,
 		markNotDone: (name: string) => `Mark ${name} not done`,
 		done: "Done",

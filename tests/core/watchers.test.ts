@@ -11,7 +11,9 @@ import {
 	removeWatcher,
 	SEEN_CAP,
 	type SearchWatcher,
+	searchWatcherFrom,
 	toggleListingWatch,
+	toggleSearchWatch,
 } from "../../src/core/watchers";
 
 const listing: ListingWatcher = {
@@ -201,5 +203,36 @@ describe("listingWatcherFrom", () => {
 		const again = listingWatcherFrom(item, site, 5, 200, "w10");
 		expect(toggleListingWatch(on, again)).toEqual([search]);
 		expect(removeWatcher(on, "w2")).toEqual([made]);
+	});
+});
+
+describe("searchWatcherFrom", () => {
+	const bookmark = {
+		id: "bm1",
+		name: "Life rings",
+		query: { query: { term: "ring" } },
+	};
+	const site = {
+		origin: "https://www.pathofexile.com",
+		game: search.game,
+		realm: "poe2",
+		league: "Dawn",
+	};
+
+	it("starts with nothing seen, so the first check reports nothing new", () => {
+		const made = searchWatcherFrom(bookmark, site, 10, 5, "w7");
+		expect(parseWatchers([made])).toEqual([made]);
+		const first = applySearchCheck(made, { ids: ["a", "b"], total: 2 }, 6);
+		expect(first.newIds).toEqual([]);
+		expect(first.seenIds).toEqual(["a", "b"]);
+	});
+
+	it("toggles by bookmark", () => {
+		const made = searchWatcherFrom(bookmark, site, 10, 5, "w7");
+		const on = toggleSearchWatch([listing], made);
+		expect(on).toEqual([listing, made]);
+		expect(
+			toggleSearchWatch(on, searchWatcherFrom(bookmark, site, 10, 9, "w8")),
+		).toEqual([listing]);
 	});
 });
