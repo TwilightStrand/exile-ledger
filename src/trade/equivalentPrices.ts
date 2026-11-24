@@ -35,7 +35,8 @@ export function annotatePrices(
 		const text = `≈ ${parts.map(formatEquivalent).join(" · ")}`;
 		const el = existing ?? priceEl.ownerDocument.createElement("span");
 		el.setAttribute(PRICE_ATTR, "");
-		el.textContent = text;
+		// Unchanged text is left alone so the results observer does not wake again.
+		if (el.textContent !== text) el.textContent = text;
 		if (!existing) priceEl.append(el);
 		annotated++;
 	}

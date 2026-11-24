@@ -27,7 +27,10 @@ export function syncPinButtons(
 			host.append(button);
 		}
 		const isPinned = pinned.has(id);
-		button.textContent = isPinned ? "Unpin" : "Pin";
+		const label = isPinned ? "Unpin" : "Pin";
+		// Rewriting unchanged text is still a DOM mutation, which would wake the
+		// results observer and re-run this every frame.
+		if (button.textContent !== label) button.textContent = label;
 		button.setAttribute("aria-pressed", String(isPinned));
 		row.toggleAttribute(PINNED_ROW_ATTR, isPinned);
 	}
