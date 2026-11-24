@@ -171,7 +171,7 @@ export const THEMES: Record<ThemeId, Theme> = {
 			muted: "#5c4a33",
 			faint: "#857153",
 			gold: "#5e3911",
-			"gold-bright": "#6a420f",
+			"gold-bright": "#46290a",
 			poe1: "#844815",
 			poe2: "#24577f",
 			live: "#23652b",

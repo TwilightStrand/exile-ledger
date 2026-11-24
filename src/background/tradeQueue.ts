@@ -37,10 +37,15 @@ const queue = createTradeQueue(limiter, {
 const penalties = storage.defineItem<unknown>("session:tradePenalties");
 const PenaltiesSchema = v.record(v.picklist(REQUEST_KINDS), v.number());
 
-const restored = penalties.getValue().then((saved) => {
-	const parsed = v.safeParse(PenaltiesSchema, saved);
-	if (parsed.success) limiter.restore(parsed.output);
-});
+// Storage failures only lose the saved penalty; the request path must go on,
+// or a pass would abort after sending and repeat the request on every alarm.
+const restored = penalties
+	.getValue()
+	.then((saved) => {
+		const parsed = v.safeParse(PenaltiesSchema, saved);
+		if (parsed.success) limiter.restore(parsed.output);
+	})
+	.catch(() => {});
 
 /** The background's single path to the trade API, paced and penalty-aware. */
 export async function tradeRequest(
@@ -51,7 +56,7 @@ export async function tradeRequest(
 ): Promise<QueueResult> {
 	await restored;
 	const result = await queue.enqueue(kind, url, init, maxWaitMs);
-	await penalties.setValue(limiter.snapshot());
+	await penalties.setValue(limiter.snapshot()).catch(() => {});
 	return result;
 }
 

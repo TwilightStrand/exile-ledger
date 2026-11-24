@@ -124,6 +124,19 @@ describe("runDueWatchers", () => {
 		expect(current[0]?.retryAt).toBe(10 ** 9 + 30 * 60_000);
 	});
 
+	it("backs off every listing in a batch the server refused", async () => {
+		const { api } = fakeApi({
+			fetchListings: async () => ({ kind: "refused" }),
+		});
+		const batch = Array.from({ length: 10 }, (_, i) =>
+			listing(`w${i}`, `i${i}`),
+		);
+		const { watchers } = await runDueWatchers(batch, api, () => 1000);
+		expect(watchers.every((w) => w.failures === 1 && w.retryAt !== null)).toBe(
+			true,
+		);
+	});
+
 	it("starts no request after the deadline", async () => {
 		const { api, fetchCalls } = fakeApi();
 		let clock = 0;
