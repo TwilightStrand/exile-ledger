@@ -54,6 +54,11 @@ const CALLS: Record<string, (t: Messages) => string> = {
 		t.imports.fromSource(t.imports.sources["better-trading"], "1 folder"),
 	"settings.versionLine": (t) => t.settings.versionLine("0.2.0"),
 	"settings.panel.widthHint": (t) => t.settings.panel.widthHint(280, 640),
+	"settings.hotkeys.change": (t) => t.settings.hotkeys.change("Clear"),
+	"settings.hotkeys.remove": (t) => t.settings.hotkeys.remove("Clear"),
+	"settings.hotkeys.reserved": (t) => t.settings.hotkeys.reserved("Ctrl+T"),
+	"settings.hotkeys.taken": (t) =>
+		t.settings.hotkeys.taken("Alt+Shift+C", "Clear"),
 	"popup.version": (t) => t.popup.version("0.2.0"),
 };
 

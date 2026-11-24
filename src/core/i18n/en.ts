@@ -1,4 +1,5 @@
 import type { ImportError } from "../exchange";
+import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
@@ -309,6 +310,29 @@ export const en = {
 			backForward: "Back and Forward between searches",
 			backForwardHint:
 				"The browser's Back button returns to your previous search instead of leaving the site.",
+		},
+		hotkeys: {
+			title: "Keyboard shortcuts",
+			description:
+				"On the trade site. The search box shortcuts also work while you are typing in one.",
+			actions: {
+				togglePanel: "Show or hide the panel",
+				focusItemSearch: "Go to item search",
+				addStatFilter: "Add a stat filter",
+				clearSearch: "Clear the search",
+				focusMin: "Go to the stat filter's min",
+				focusMax: "Go to the stat filter's max",
+			} satisfies Record<HotkeyAction, string>,
+			unbound: "Not set",
+			recording: "Press keys",
+			recordingHint: "Press the new shortcut, or Escape to cancel.",
+			change: (action: string) => `Change the shortcut for ${action}`,
+			remove: (action: string) => `Remove the shortcut for ${action}`,
+			reset: "Reset to defaults",
+			reserved: (combo: string) =>
+				`${combo} is a browser shortcut. Pick another.`,
+			taken: (combo: string, action: string) =>
+				`${combo} is already used for "${action}".`,
 		},
 		history: {
 			title: "History",

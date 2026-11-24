@@ -34,6 +34,7 @@ import {
 	ThemePicker,
 	Toggle,
 } from "./controls";
+import { HotkeysSection } from "./HotkeysSection";
 
 export interface SettingsPageProps {
 	settings: SettingsSource;
@@ -510,6 +511,11 @@ export function SettingsPage({
 						/>
 					</Field>
 				</Section>
+
+				<HotkeysSection
+					hotkeys={prefs.hotkeys}
+					onSave={(hotkeys) => settings.save({ hotkeys })}
+				/>
 
 				<Section title={s.history.title}>
 					<Field label={s.history.record} hint={s.history.recordHint}>

@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { DEFAULT_HOTKEYS, type Hotkeys, parseHotkeys } from "./hotkeys";
 import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
 
 export const PANEL_SIDES = ["left", "right"] as const;
@@ -43,6 +44,8 @@ export interface Settings {
 	theme: ThemeId;
 	/** Shorter rows in the panel, for long bookmark lists on small screens. */
 	compact: boolean;
+	/** Keyboard shortcuts on the trade page; null leaves an action unbound. */
+	hotkeys: Hotkeys;
 }
 
 // Left matches where Better Trading docks, so people switching over find it in the same place.
@@ -59,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	backForward: true,
 	theme: DEFAULT_THEME,
 	compact: false,
+	hotkeys: DEFAULT_HOTKEYS,
 };
 
 export function clampWidth(percent: number): number {
@@ -88,6 +92,7 @@ export const SettingsSchema = v.fallback(
 		backForward: v.fallback(v.boolean(), DEFAULT_SETTINGS.backForward),
 		theme: v.fallback(v.picklist(THEME_IDS), DEFAULT_SETTINGS.theme),
 		compact: v.fallback(v.boolean(), DEFAULT_SETTINGS.compact),
+		hotkeys: v.pipe(v.optional(v.unknown(), {}), v.transform(parseHotkeys)),
 		equivalentPricing: v.fallback(
 			v.boolean(),
 			DEFAULT_SETTINGS.equivalentPricing,

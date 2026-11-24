@@ -25,6 +25,7 @@ import {
 } from "../../trade/enhanceResults";
 import { annotatePrices } from "../../trade/equivalentPrices";
 import { BACK_FORWARD_FLAG } from "../../trade/historyPatch";
+import { installHotkeys, TRADE_ACTIONS } from "../../trade/hotkeys";
 import { observeResults } from "../../trade/observeResults";
 import { jumpToResult, syncPinButtons } from "../../trade/pinButtons";
 import { createRatesClient } from "../../trade/ratesClient";
@@ -199,5 +200,20 @@ export default defineContentScript({
 			},
 		});
 		ui.mount();
+		ctx.onInvalidated(
+			installHotkeys(document, {
+				hotkeys: () => prefs.hotkeys,
+				isOurs: (node) =>
+					node instanceof Node && node.getRootNode() === ui.shadow,
+				run: (action) => {
+					if (action === "togglePanel")
+						browserUiState.update((state) => ({
+							...state,
+							panelOpen: !state.panelOpen,
+						}));
+					else TRADE_ACTIONS[action](document);
+				},
+			}),
+		);
 	},
 });

@@ -217,3 +217,75 @@ describe("SettingsPage", () => {
 		expect((await library.load()).folders).toHaveLength(2);
 	});
 });
+
+describe("keyboard shortcuts", () => {
+	const shortcut = (root: HTMLElement, name: string) => {
+		const found = root.querySelector<HTMLButtonElement>(
+			`button[aria-label="Change the shortcut for ${name}"]`,
+		);
+		if (!found) throw new Error(`no shortcut button for ${name}`);
+		return found;
+	};
+	const pressKeys = (code: string, init: KeyboardEventInit = {}) =>
+		act(() => {
+			window.dispatchEvent(
+				new KeyboardEvent("keydown", { code, cancelable: true, ...init }),
+			);
+		});
+
+	it("records a new combo", async () => {
+		const { root, settings } = await mount();
+		await act(() => shortcut(root, "Show or hide the panel").click());
+		expect(root.textContent).toContain("Press the new shortcut");
+		await pressKeys("ShiftLeft", { shiftKey: true });
+		await pressKeys("KeyK", { altKey: true, shiftKey: true });
+		expect((await settings.load()).hotkeys.togglePanel).toEqual({
+			code: "KeyK",
+			ctrl: false,
+			alt: true,
+			shift: true,
+			meta: false,
+		});
+	});
+
+	it("refuses a combo another shortcut has, and says which", async () => {
+		const { root, settings } = await mount();
+		const before = (await settings.load()).hotkeys;
+		await act(() => shortcut(root, "Show or hide the panel").click());
+		await pressKeys("KeyC", { altKey: true, shiftKey: true });
+		expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+			'already used for "Clear the search"',
+		);
+		expect((await settings.load()).hotkeys).toEqual(before);
+	});
+
+	it("refuses browser shortcuts", async () => {
+		const { root } = await mount();
+		await act(() => shortcut(root, "Show or hide the panel").click());
+		await pressKeys("KeyT", { ctrlKey: true });
+		expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+			"browser shortcut",
+		);
+	});
+
+	it("Escape cancels without changing anything", async () => {
+		const { root, settings } = await mount();
+		const before = (await settings.load()).hotkeys;
+		await act(() => shortcut(root, "Clear the search").click());
+		await pressKeys("Escape");
+		expect(root.textContent).not.toContain("Press the new shortcut");
+		expect((await settings.load()).hotkeys).toEqual(before);
+	});
+
+	it("removes one and resets all", async () => {
+		const { root, settings } = await mount();
+		const remove = root.querySelector<HTMLButtonElement>(
+			'button[aria-label="Remove the shortcut for Clear the search"]',
+		);
+		await act(() => remove?.click());
+		expect((await settings.load()).hotkeys.clearSearch).toBe(null);
+		expect(shortcut(root, "Clear the search").textContent).toBe("Not set");
+		await act(() => button(root, "Reset to defaults")?.click());
+		expect((await settings.load()).hotkeys.clearSearch).not.toBe(null);
+	});
+});
