@@ -370,14 +370,17 @@ export function SettingsPage({
 							onChange={(panelMode) => settings.save({ panelMode })}
 						/>
 					</Field>
-					<Field label="Width" hint="You can also drag the panel's inner edge.">
+					<Field
+						label="Width"
+						hint={`Share of the browser window, kept between ${PANEL_WIDTH.minPx} and ${PANEL_WIDTH.maxPx} px. You can also drag the panel's inner edge.`}
+					>
 						<div class="flex items-center gap-3">
 							<input
 								type="range"
 								aria-label="Panel width"
 								min={PANEL_WIDTH.min}
 								max={PANEL_WIDTH.max}
-								step={4}
+								step={1}
 								value={prefs.panelWidth}
 								class="w-40 accent-[#d6ad62]"
 								onChange={(e) =>
@@ -385,7 +388,7 @@ export function SettingsPage({
 								}
 							/>
 							<span class="w-14 text-right text-[13px] text-ledger-muted tabular-nums">
-								{prefs.panelWidth} px
+								{Math.round(prefs.panelWidth)}%
 							</span>
 						</div>
 					</Field>

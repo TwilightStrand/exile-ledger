@@ -6,13 +6,24 @@ export type PanelSide = (typeof PANEL_SIDES)[number];
 export const PANEL_MODES = ["overlay", "push"] as const;
 export type PanelMode = (typeof PANEL_MODES)[number];
 
-/** Narrower cuts off bookmark names; wider covers most of the trade results on a laptop. */
-export const PANEL_WIDTH = { min: 260, max: 560, default: 304 } as const;
+/**
+ * Width is a share of the window, so one synced setting suits a laptop and a
+ * 4K screen alike. The pixel bounds still apply: below 260 px bookmark names
+ * are cut off, and past 640 px the panel covers most of the results.
+ */
+export const PANEL_WIDTH = {
+	min: 14,
+	max: 40,
+	default: 20,
+	minPx: 260,
+	maxPx: 640,
+} as const;
 
 export interface Settings {
 	panelSide: PanelSide;
 	/** Overlay floats over the page; push narrows the page so nothing is covered. */
 	panelMode: PanelMode;
+	/** Percent of the window width, within PANEL_WIDTH's pixel bounds. */
 	panelWidth: number;
 	historyEnabled: boolean;
 	/** Bookmarks through storage.sync; settings themselves always sync. */
@@ -43,10 +54,13 @@ export const DEFAULT_SETTINGS: Settings = {
 	backForward: true,
 };
 
-export function clampWidth(width: number): number {
-	return Math.round(
-		Math.min(PANEL_WIDTH.max, Math.max(PANEL_WIDTH.min, width)),
-	);
+export function clampWidth(percent: number): number {
+	const clamped = Math.min(PANEL_WIDTH.max, Math.max(PANEL_WIDTH.min, percent));
+	return Math.round(clamped * 10) / 10;
+}
+
+export function panelWidthCss(percent: number): string {
+	return `clamp(${PANEL_WIDTH.minPx}px, ${percent}vw, ${PANEL_WIDTH.maxPx}px)`;
 }
 
 // Each field falls back on its own, so one bad value from another device or an

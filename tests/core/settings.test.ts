@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, parseSettings } from "../../src/core/settings";
+import {
+	DEFAULT_SETTINGS,
+	panelWidthCss,
+	parseSettings,
+} from "../../src/core/settings";
 
 describe("parseSettings", () => {
 	it.each([
@@ -13,8 +17,8 @@ describe("parseSettings", () => {
 		],
 		[
 			"an out-of-range width",
-			{ panelWidth: 9000 },
-			{ ...DEFAULT_SETTINGS, panelWidth: 560 },
+			{ panelWidth: 304 },
+			{ ...DEFAULT_SETTINGS, panelWidth: 40 },
 		],
 		["a non-number width", { panelWidth: "wide" }, DEFAULT_SETTINGS],
 	])("falls back to defaults for %s", (_label, raw, expected) => {
@@ -23,5 +27,15 @@ describe("parseSettings", () => {
 
 	it("docks the panel on the left by default", () => {
 		expect(DEFAULT_SETTINGS.panelSide).toBe("left");
+	});
+
+	it("keeps a tenth of a percent so dragging stays smooth", () => {
+		expect(parseSettings({ panelWidth: 22.345 }).panelWidth).toBe(22.3);
+	});
+});
+
+describe("panelWidthCss", () => {
+	it("scales with the window between fixed pixel bounds", () => {
+		expect(panelWidthCss(20)).toBe("clamp(260px, 20vw, 640px)");
 	});
 });

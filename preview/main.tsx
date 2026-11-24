@@ -166,7 +166,10 @@ function Preview() {
 	);
 	const [withSearch, setWithSearch] = useState(params.get("search") === "1");
 	const [withData, setWithData] = useState(params.get("data") === "1");
-	const [reserve, setReserve] = useState<Reserve>({ side: "left", px: 0 });
+	const [reserve, setReserve] = useState<Reserve>({
+		side: "left",
+		width: null,
+	});
 	const feed = useMemo(() => feedFor(withSearch), [withSearch]);
 	const history = useMemo(
 		() => createMemorySource(withData ? MOCK_HISTORY : []),
@@ -183,7 +186,7 @@ function Preview() {
 				class="transition-[margin] duration-200"
 				style={{
 					[reserve.side === "left" ? "marginLeft" : "marginRight"]:
-						`${reserve.px}px`,
+						reserve.width ?? "0px",
 				}}
 			>
 				<FakeTradePage />

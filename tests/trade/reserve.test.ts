@@ -10,16 +10,19 @@ describe("applyReserve", () => {
 	});
 
 	it("narrows the page on the panel's side", () => {
-		applyReserve(document, { side: "left", px: 300 });
-		expect(style()).toContain("margin-left: 300px");
-		applyReserve(document, { side: "right", px: 320 });
-		expect(style()).toContain("margin-right: 320px");
+		applyReserve(document, {
+			side: "left",
+			width: "clamp(260px, 20vw, 640px)",
+		});
+		expect(style()).toContain("margin-left: clamp(260px, 20vw, 640px)");
+		applyReserve(document, { side: "right", width: "300px" });
+		expect(style()).toContain("margin-right: 300px");
 		expect(document.querySelectorAll("#exile-ledger-reserve")).toHaveLength(1);
 	});
 
 	it("removes the margin when the panel floats or closes", () => {
-		applyReserve(document, { side: "left", px: 300 });
-		applyReserve(document, { side: "left", px: 0 });
+		applyReserve(document, { side: "left", width: "300px" });
+		applyReserve(document, { side: "left", width: null });
 		expect(style()).toBeNull();
 	});
 });

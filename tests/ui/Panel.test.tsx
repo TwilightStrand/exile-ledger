@@ -19,7 +19,7 @@ import { parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
 import type { UiState } from "../../src/core/uiState";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
-import { Panel, type PanelProps } from "../../src/ui/Panel";
+import { Panel, type PanelProps, type Reserve } from "../../src/ui/Panel";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
 import searchResponse from "../fixtures/trade/poe2-search-response.json";
 
@@ -434,15 +434,18 @@ describe("Panel layout and sharing", () => {
 	});
 
 	it("reserves page space only in push mode while open", async () => {
-		const reserves: { side: string; px: number }[] = [];
+		const reserves: Reserve[] = [];
 		const settings = createMemorySettings({
 			panelMode: "push",
-			panelWidth: 320,
+			panelWidth: 25,
 		});
 		const root = await mount({ settings, onReserve: (r) => reserves.push(r) });
-		expect(reserves.at(-1)).toEqual({ side: "left", px: 320 });
+		expect(reserves.at(-1)).toEqual({
+			side: "left",
+			width: "clamp(260px, 25vw, 640px)",
+		});
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
-		expect(reserves.at(-1)).toEqual({ side: "left", px: 0 });
+		expect(reserves.at(-1)).toEqual({ side: "left", width: null });
 	});
 
 	it("resizes from the keyboard and remembers the open state", async () => {
@@ -458,7 +461,7 @@ describe("Panel layout and sharing", () => {
 				new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
 			);
 		});
-		expect((await settings.load()).panelWidth).toBe(314);
+		expect((await settings.load()).panelWidth).toBe(21);
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
 		expect((await uiState.load()).panelOpen).toBe(false);
 	});

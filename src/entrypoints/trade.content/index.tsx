@@ -34,7 +34,9 @@ export default defineContentScript({
 		if (!isTradePage(new URL(location.href))) return;
 
 		const feed = createCaptureFeed();
-		ctx.onInvalidated(() => applyReserve(document, { side: "left", px: 0 }));
+		ctx.onInvalidated(() =>
+			applyReserve(document, { side: "left", width: null }),
+		);
 		ctx.onInvalidated(
 			listenForCaptures(window, (event) => {
 				feed.push(event);

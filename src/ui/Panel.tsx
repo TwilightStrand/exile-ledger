@@ -17,6 +17,7 @@ import {
 	DEFAULT_SETTINGS,
 	PANEL_WIDTH,
 	type PanelSide,
+	panelWidthCss,
 	type Settings,
 	type SettingsSource,
 } from "../core/settings";
@@ -85,7 +86,11 @@ function useSettings(settings: SettingsSource): Settings {
 	return value;
 }
 
-/** Drag the panel's inner edge to resize; saved once, when the drag ends. */
+/**
+ * Drag the panel's inner edge to resize; saved once, when the drag ends.
+ * Tracks pixels from the rendered width so the edge stays under the pointer
+ * even where the pixel bounds override the percentage.
+ */
 function useResize(
 	side: PanelSide,
 	width: number,
@@ -98,20 +103,33 @@ function useResize(
 	const [dragWidth, setDragWidth] = useState<number | null>(null);
 	const onPointerDown = (e: PointerEvent) => {
 		if (e.button !== 0) return;
+		const panel =
+			e.currentTarget instanceof HTMLElement
+				? e.currentTarget.parentElement
+				: null;
+		if (!panel) return;
 		e.preventDefault();
 		const startX = e.clientX;
-		const startWidth = width;
+		const startPx = panel.getBoundingClientRect().width;
+		const viewport = window.innerWidth;
 		const direction = side === "left" ? 1 : -1;
-		let latest = startWidth;
+		let latest = width;
 		const move = (ev: PointerEvent) => {
-			latest = clampWidth(startWidth + (ev.clientX - startX) * direction);
+			const px = Math.min(
+				PANEL_WIDTH.maxPx,
+				Math.max(
+					PANEL_WIDTH.minPx,
+					startPx + (ev.clientX - startX) * direction,
+				),
+			);
+			latest = clampWidth((px / viewport) * 100);
 			setDragWidth(latest);
 		};
 		const up = () => {
 			window.removeEventListener("pointermove", move);
 			window.removeEventListener("pointerup", up);
 			setDragWidth(null);
-			if (latest !== startWidth) onDone(latest);
+			if (latest !== width) onDone(latest);
 		};
 		window.addEventListener("pointermove", move);
 		window.addEventListener("pointerup", up);
@@ -123,10 +141,10 @@ function useResize(
 	};
 }
 
-/** The strip of page the panel takes in push mode; 0 when it floats or is closed. */
+/** The strip of page the panel takes in push mode, as a CSS length; null when it floats or is closed. */
 export interface Reserve {
 	side: PanelSide;
-	px: number;
+	width: string | null;
 }
 
 export const TABS = ["bookmarks", "history", "pinned"] as const;
@@ -234,11 +252,12 @@ export function Panel({
 	const resize = useResize(side, prefs.panelWidth, (panelWidth) =>
 		settings.save({ panelWidth }),
 	);
-	const reservePx = prefs.panelMode === "push" && open ? resize.width : 0;
+	const widthCss = panelWidthCss(resize.width);
+	const reserveWidth = prefs.panelMode === "push" && open ? widthCss : null;
 	// Layout effect so the page margin changes in the same frame as the panel.
 	useLayoutEffect(() => {
-		onReserve?.({ side, px: reservePx });
-	}, [onReserve, side, reservePx]);
+		onReserve?.({ side, width: reserveWidth });
+	}, [onReserve, side, reserveWidth]);
 	const currentPage = page();
 	const game: Game | null =
 		currentPage?.location.game ?? capture.search?.game ?? null;
@@ -351,7 +370,7 @@ export function Panel({
 				<div
 					id="exile-ledger-panel"
 					class={`relative flex h-full flex-col border-ledger-line/70 bg-ledger-panel ${classes.panel} ${PANEL_SHADOW} ${resize.resizing ? "select-none" : ""}`}
-					style={{ width: `${resize.width}px` }}
+					style={{ width: widthCss }}
 				>
 					{/* biome-ignore lint/a11y/useSemanticElements: a focusable window splitter needs role=separator with a value; <hr> cannot take focus. */}
 					<div
@@ -361,11 +380,12 @@ export function Panel({
 						aria-valuemin={PANEL_WIDTH.min}
 						aria-valuemax={PANEL_WIDTH.max}
 						aria-valuenow={resize.width}
+						aria-valuetext={`${resize.width}% of the window`}
 						tabIndex={0}
 						class={`group/handle absolute top-0 z-10 h-full w-2 cursor-col-resize ${classes.handle}`}
 						onPointerDown={resize.onPointerDown}
 						onKeyDown={(e) => {
-							const step = e.shiftKey ? 40 : 10;
+							const step = e.shiftKey ? 4 : 1;
 							const grow = side === "left" ? "ArrowRight" : "ArrowLeft";
 							const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
 							if (e.key !== grow && e.key !== shrink) return;
