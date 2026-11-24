@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { en, type Messages } from "./i18n/en";
 import type { Game } from "./tradeUrl";
 
 /** Rates go stale fast in a new league, but poe.ninja itself caches for 30 minutes. */
@@ -66,12 +67,6 @@ export const DISPLAY_CURRENCIES: Record<Game, readonly [string, string]> = {
 	poe2: ["exalted", "divine"],
 };
 
-const SHORT: Record<string, string> = {
-	chaos: "c",
-	divine: "div",
-	exalted: "ex",
-};
-
 export interface Equivalent {
 	currency: string;
 	amount: number;
@@ -94,12 +89,17 @@ export function equivalents(
 }
 
 /** 3 significant figures below 100, whole numbers above; enough to compare listings. */
-export function formatEquivalent({ currency, amount }: Equivalent): string {
-	const shown =
+export function formatEquivalent(
+	{ currency, amount }: Equivalent,
+	t: Messages = en,
+): string {
+	const shown = t.format.number(
 		amount >= 100
-			? Math.round(amount).toLocaleString("en")
-			: Number(amount.toPrecision(amount >= 1 ? 3 : 2)).toString();
-	return `${shown} ${SHORT[currency] ?? currency}`;
+			? Math.round(amount)
+			: Number(amount.toPrecision(amount >= 1 ? 3 : 2)),
+	);
+	const short: Record<string, string> = t.trade.currencyShort;
+	return `${shown} ${short[currency] ?? currency}`;
 }
 
 export const isFresh = (rates: Rates, now: number) =>

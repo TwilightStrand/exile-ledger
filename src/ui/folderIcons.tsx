@@ -54,18 +54,3 @@ export const FOLDER_ICON_COMPONENTS: Record<
 		"m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 17l-5.3 2.7 1.1-5.9L3.5 9.7l5.9-.8z",
 	),
 };
-
-export const FOLDER_ICON_LABELS: Record<FolderIcon, string> = {
-	folder: "Folder",
-	sword: "Sword",
-	bow: "Bow",
-	shield: "Shield",
-	helmet: "Helmet",
-	ring: "Ring",
-	amulet: "Amulet",
-	gem: "Gem",
-	flask: "Flask",
-	map: "Map",
-	coin: "Currency",
-	star: "Star",
-};

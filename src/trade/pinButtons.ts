@@ -1,3 +1,4 @@
+import { en, type Messages } from "../core/i18n";
 import type { PinnedItem } from "../core/pins";
 import { SELECTORS } from "./selectors";
 
@@ -10,6 +11,7 @@ export function syncPinButtons(
 	root: ParentNode,
 	pins: PinnedItem[],
 	onToggle: (id: string) => void,
+	t: Messages = en,
 ): void {
 	const pinned = new Set(pins.map((p) => p.id));
 	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
@@ -27,7 +29,7 @@ export function syncPinButtons(
 			host.append(button);
 		}
 		const isPinned = pinned.has(id);
-		const label = isPinned ? "Unpin" : "Pin";
+		const label = isPinned ? t.trade.unpin : t.trade.pin;
 		// Rewriting unchanged text is still a DOM mutation, which would wake the
 		// results observer and re-run this every frame.
 		if (button.textContent !== label) button.textContent = label;

@@ -1,3 +1,4 @@
+import { en, type Messages } from "../core/i18n";
 import { equivalents, formatEquivalent, type Rates } from "../core/pricing";
 import type { CaptureState } from "./captureFeed";
 import { SELECTORS } from "./selectors";
@@ -14,6 +15,7 @@ export function annotatePrices(
 	capture: CaptureState,
 	rates: Rates | null,
 	enabled: boolean,
+	t: Messages = en,
 ): number {
 	if (!enabled || !rates) {
 		for (const el of root.querySelectorAll(`[${PRICE_ATTR}]`)) el.remove();
@@ -32,7 +34,9 @@ export function annotatePrices(
 			existing?.remove();
 			continue;
 		}
-		const text = `≈ ${parts.map(formatEquivalent).join(" · ")}`;
+		const text = t.trade.priceEquivalents(
+			parts.map((part) => formatEquivalent(part, t)),
+		);
 		const el = existing ?? priceEl.ownerDocument.createElement("span");
 		el.setAttribute(PRICE_ATTR, "");
 		// Unchanged text is left alone so the results observer does not wake again.

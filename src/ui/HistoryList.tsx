@@ -1,4 +1,5 @@
-import { formatAgo, formatCount } from "../core/describe";
+import { formatAgo } from "../core/describe";
+import { useMessages } from "./i18n";
 import { Bookmark, Check, Clock } from "./icons";
 import { EmptyState, GameTag } from "./parts";
 import type { HistoryEntryView } from "./viewModels";
@@ -20,10 +21,11 @@ export function HistoryList({
 	now: number;
 	actions?: HistoryActions;
 }) {
+	const t = useMessages();
 	if (entries.length === 0) {
 		return (
-			<EmptyState icon={Clock} title="No history yet">
-				Searches you run on the trade site are listed here.
+			<EmptyState icon={Clock} title={t.history.emptyTitle}>
+				{t.history.emptyBody}
 			</EmptyState>
 		);
 	}
@@ -36,7 +38,7 @@ export function HistoryList({
 						class="rounded px-1.5 py-0.5 text-[11px] text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-red-300"
 						onClick={actions.onClear}
 					>
-						Clear history
+						{t.history.clear}
 					</button>
 				</div>
 			)}
@@ -54,9 +56,8 @@ export function HistoryList({
 								<GameTag game={entry.game} />
 							</span>
 							<span class="text-[11px] text-ledger-faint">
-								{entry.league} · {formatAgo(entry.at, now)}
-								{entry.total !== null &&
-									` · ${formatCount(entry.total)} results`}
+								{entry.league} · {formatAgo(entry.at, now, t.time)}
+								{entry.total !== null && ` · ${t.common.results(entry.total)}`}
 							</span>
 						</a>
 						{actions && (
@@ -64,16 +65,16 @@ export function HistoryList({
 								{entry.saved ? (
 									<span
 										class="grid size-6 place-items-center text-ledger-live"
-										title="Saved to bookmarks"
+										title={t.common.savedToBookmarks}
 									>
 										<Check class="size-3.5" />
-										<span class="sr-only">Saved to bookmarks</span>
+										<span class="sr-only">{t.common.savedToBookmarks}</span>
 									</span>
 								) : (
 									<button
 										type="button"
 										class={ICON_BUTTON}
-										aria-label={`Save ${entry.title} as bookmark`}
+										aria-label={t.history.saveAs(entry.title)}
 										onClick={() => actions.onSave(entry.id)}
 									>
 										<Bookmark class="size-3.5" />

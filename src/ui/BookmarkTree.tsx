@@ -8,7 +8,8 @@ import {
 } from "preact/hooks";
 import { FOLDER_ICONS, type FolderIcon } from "../core/model";
 import { MAX_DEPTH } from "../core/tree";
-import { FOLDER_ICON_COMPONENTS, FOLDER_ICON_LABELS } from "./folderIcons";
+import { FOLDER_ICON_COMPONENTS } from "./folderIcons";
+import { useMessages } from "./i18n";
 import {
 	Archive,
 	Bolt,
@@ -268,6 +269,7 @@ function ConfirmRow({
 	onConfirm: () => void;
 	onCancel: () => void;
 }) {
+	const t = useMessages();
 	return (
 		<div class="flex min-h-8 animate-fade-in items-center gap-2 rounded bg-red-950/40 px-2 py-1 text-[12px]">
 			<span class="min-w-0 flex-1 text-ledger-text">{message}</span>
@@ -276,14 +278,14 @@ function ConfirmRow({
 				class="rounded px-2 py-0.5 font-semibold text-red-300 hover:bg-red-900/50"
 				onClick={onConfirm}
 			>
-				Delete
+				{t.common.delete}
 			</button>
 			<button
 				type="button"
 				class="rounded px-2 py-0.5 text-ledger-muted hover:bg-ledger-raised"
 				onClick={onCancel}
 			>
-				Keep
+				{t.common.keep}
 			</button>
 		</div>
 	);
@@ -296,9 +298,10 @@ function IconPicker({
 	current: FolderIcon;
 	onPick: (icon: FolderIcon | null) => void;
 }) {
+	const t = useMessages();
 	return (
 		<fieldset
-			aria-label="Folder icon"
+			aria-label={t.bookmarks.folderIcon}
 			class="ml-[15px] grid animate-fade-in grid-cols-6 gap-1 border-0 border-l border-ledger-border py-1 pl-2"
 			onKeyDown={(e) => {
 				if (e.key === "Escape") onPick(null);
@@ -312,8 +315,8 @@ function IconPicker({
 						key={icon}
 						type="button"
 						aria-pressed={selected}
-						aria-label={FOLDER_ICON_LABELS[icon]}
-						title={FOLDER_ICON_LABELS[icon]}
+						aria-label={t.bookmarks.folderIcons[icon]}
+						title={t.bookmarks.folderIcons[icon]}
 						class={`grid h-7 place-items-center rounded border transition-colors focus-visible:outline-2 focus-visible:outline-ledger-gold ${
 							selected
 								? "border-ledger-gold/60 bg-ledger-gold/15 text-ledger-gold-bright"
@@ -329,10 +332,6 @@ function IconPicker({
 	);
 }
 
-function plural(n: number, word: string): string {
-	return `${n} ${word}${n === 1 ? "" : "s"}`;
-}
-
 function BookmarkRow({
 	bookmark,
 	place,
@@ -342,6 +341,7 @@ function BookmarkRow({
 	place: RowPlace;
 	actions: TreeActions | undefined;
 }) {
+	const t = useMessages();
 	const [mode, setMode] = useState<"view" | "rename" | "confirm-delete">(
 		"view",
 	);
@@ -355,7 +355,7 @@ function BookmarkRow({
 		return (
 			<NameField
 				initial={bookmark.title}
-				label="Bookmark name"
+				label={t.bookmarks.bookmarkName}
 				onDone={(name) => {
 					if (name !== null && name !== bookmark.title) {
 						actions.onRename(bookmark.id, name);
@@ -369,7 +369,7 @@ function BookmarkRow({
 	if (mode === "confirm-delete" && actions) {
 		return (
 			<ConfirmRow
-				message={`Delete “${bookmark.title}”?`}
+				message={t.bookmarks.confirmDeleteBookmark(bookmark.title)}
 				onConfirm={() => actions.onDelete(bookmark.id)}
 				onCancel={() => setMode("view")}
 			/>
@@ -388,9 +388,9 @@ function BookmarkRow({
 			>
 				<span class="min-w-0 flex-1 truncate">{bookmark.title}</span>
 				{bookmark.live && (
-					<span class="shrink-0 text-ledger-live" title="Live search">
+					<span class="shrink-0 text-ledger-live" title={t.common.liveSearch}>
 						<Bolt class="size-3.5" />
-						<span class="sr-only">Live search</span>
+						<span class="sr-only">{t.common.liveSearch}</span>
 					</span>
 				)}
 				<GameTag game={bookmark.game} />
@@ -400,7 +400,7 @@ function BookmarkRow({
 					<button
 						type="button"
 						class={ICON_BUTTON}
-						aria-label={`Rename ${bookmark.title}`}
+						aria-label={t.bookmarks.rename(bookmark.title)}
 						onClick={() => setMode("rename")}
 					>
 						<Pencil class="size-3.5" />
@@ -408,7 +408,7 @@ function BookmarkRow({
 					<button
 						type="button"
 						class={`${ICON_BUTTON} hover:text-red-300`}
-						aria-label={`Delete ${bookmark.title}`}
+						aria-label={t.bookmarks.delete(bookmark.title)}
 						onClick={() => setMode("confirm-delete")}
 					>
 						<Trash class="size-3.5" />
@@ -430,6 +430,7 @@ function FolderRow({
 	place: RowPlace;
 	actions: TreeActions | undefined;
 }) {
+	const t = useMessages();
 	const [mode, setMode] = useState<FolderMode>("view");
 	const [copied, setCopied] = useState(false);
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
@@ -466,7 +467,7 @@ function FolderRow({
 						<button
 							type="button"
 							class={ICON_BUTTON}
-							aria-label={`New folder in ${folder.name}`}
+							aria-label={t.bookmarks.newFolderIn(folder.name)}
 							onClick={() => {
 								if (!open) actions.onToggleFolder(folder.id, false);
 								setMode("new-child");
@@ -478,7 +479,7 @@ function FolderRow({
 					<button
 						type="button"
 						class={ICON_BUTTON}
-						aria-label={`Change icon of ${folder.name}`}
+						aria-label={t.bookmarks.changeIcon(folder.name)}
 						onClick={() => setMode(mode === "icon" ? "view" : "icon")}
 					>
 						<Icon class="size-3.5" />
@@ -486,7 +487,7 @@ function FolderRow({
 					<button
 						type="button"
 						class={ICON_BUTTON}
-						aria-label={`Rename ${folder.name}`}
+						aria-label={t.bookmarks.rename(folder.name)}
 						onClick={() => setMode("rename")}
 					>
 						<Pencil class="size-3.5" />
@@ -496,10 +497,10 @@ function FolderRow({
 						class={`${ICON_BUTTON} ${copied ? "text-ledger-live" : ""}`}
 						aria-label={
 							copied
-								? "Share string copied"
-								: `Copy share string for ${folder.name}`
+								? t.bookmarks.shareCopied
+								: t.bookmarks.copyShareFor(folder.name)
 						}
-						title={copied ? "Copied" : "Copy share string"}
+						title={copied ? t.bookmarks.copied : t.bookmarks.copyShare}
 						onClick={() =>
 							actions.onShareFolder(folder.id).then(() => {
 								setCopied(true);
@@ -512,7 +513,7 @@ function FolderRow({
 					<button
 						type="button"
 						class={ICON_BUTTON}
-						aria-label={`Archive ${folder.name}`}
+						aria-label={t.bookmarks.archive(folder.name)}
 						onClick={() => actions.onArchiveFolder(folder.id, true)}
 					>
 						<Archive class="size-3.5" />
@@ -520,7 +521,7 @@ function FolderRow({
 					<button
 						type="button"
 						class={`${ICON_BUTTON} hover:text-red-300`}
-						aria-label={`Delete ${folder.name}`}
+						aria-label={t.bookmarks.delete(folder.name)}
 						onClick={() => setMode("confirm-delete")}
 					>
 						<Trash class="size-3.5" />
@@ -534,7 +535,7 @@ function FolderRow({
 		row = (
 			<NameField
 				initial={folder.name}
-				label="Folder name"
+				label={t.bookmarks.folderName}
 				onDone={(name) => {
 					if (name !== null && name !== folder.name) {
 						actions.onRenameFolder(folder.id, name);
@@ -545,13 +546,13 @@ function FolderRow({
 		);
 	}
 	if (mode === "confirm-delete" && actions) {
-		const inside = [
-			count > 0 ? plural(count, "bookmark") : null,
-			subfolders > 0 ? plural(subfolders, "subfolder") : null,
-		].filter(Boolean);
 		row = (
 			<ConfirmRow
-				message={`Delete “${folder.name}”${inside.length ? ` and its ${inside.join(" and ")}` : ""}?`}
+				message={t.bookmarks.confirmDeleteFolder(
+					folder.name,
+					count,
+					subfolders,
+				)}
 				onConfirm={() => actions.onDeleteFolder(folder.id)}
 				onCancel={() => setMode("view")}
 			/>
@@ -574,8 +575,8 @@ function FolderRow({
 				<div class="ml-[15px] border-l border-ledger-border pl-1.5">
 					<NameField
 						initial=""
-						label="New folder name"
-						placeholder="Folder name"
+						label={t.bookmarks.newFolderName}
+						placeholder={t.bookmarks.folderNamePlaceholder}
 						onDone={(name) => {
 							if (name?.trim()) actions.onCreateFolder(folder.id, name);
 							setMode("view");
@@ -684,6 +685,7 @@ function ArchivedSection({
 	folders: ArchivedFolderView[];
 	actions: TreeActions | undefined;
 }) {
+	const t = useMessages();
 	const [open, setOpen] = useState(false);
 	if (folders.length === 0) return null;
 	return (
@@ -698,7 +700,7 @@ function ArchivedSection({
 					class={`size-3.5 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
 				/>
 				<Archive class="size-4 shrink-0" />
-				<span class="flex-1">Archived</span>
+				<span class="flex-1">{t.bookmarks.archived}</span>
 				<span class="text-[11px] tabular-nums">{folders.length}</span>
 			</button>
 			{open && (
@@ -714,7 +716,7 @@ function ArchivedSection({
 								<button
 									type="button"
 									class={ICON_BUTTON}
-									aria-label={`Restore ${f.name}`}
+									aria-label={t.bookmarks.restore(f.name)}
 									onClick={() => actions.onArchiveFolder(f.id, false)}
 								>
 									<Restore class="size-3.5" />
@@ -737,6 +739,7 @@ export function BookmarkTree({
 	archived?: ArchivedFolderView[];
 	actions?: TreeActions;
 }) {
+	const t = useMessages();
 	const [creating, setCreating] = useState(false);
 	const [dragging, setDragging] = useState<DragItem | null>(null);
 	const [hint, setHint] = useState<DragState["hint"]>(null);
@@ -756,7 +759,7 @@ export function BookmarkTree({
 							onClick={() => setCreating(true)}
 						>
 							<FolderPlus class="size-3.5" />
-							New folder
+							{t.bookmarks.newFolder}
 						</button>
 					</div>
 				)}
@@ -764,8 +767,8 @@ export function BookmarkTree({
 					<div class="px-2">
 						<NameField
 							initial=""
-							label="New folder name"
-							placeholder="Folder name"
+							label={t.bookmarks.newFolderName}
+							placeholder={t.bookmarks.folderNamePlaceholder}
 							onDone={(name) => {
 								if (name?.trim()) actions.onCreateFolder(null, name);
 								setCreating(false);
@@ -774,11 +777,11 @@ export function BookmarkTree({
 					</div>
 				)}
 				{nodes.length === 0 && !creating ? (
-					<EmptyState icon={Plus} title="No bookmarks yet">
-						Save a search to keep it here. Folders sync to your other browsers.
+					<EmptyState icon={Plus} title={t.bookmarks.emptyTitle}>
+						{t.bookmarks.emptyBody}
 					</EmptyState>
 				) : (
-					<nav aria-label="Bookmarks" class="px-2">
+					<nav aria-label={t.bookmarks.nav} class="px-2">
 						<TreeLevel
 							nodes={nodes}
 							parentId={null}

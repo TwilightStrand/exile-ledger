@@ -33,9 +33,5 @@ export function decodeImport(
 			ok: true,
 			value: { source: "better-trading", payload: betterTrading },
 		};
-	return {
-		ok: false,
-		message:
-			"This is not an Exile Ledger, Better Trading or Poe Trade Plus export.",
-	};
+	return { ok: false, error: "unknown-format" };
 }

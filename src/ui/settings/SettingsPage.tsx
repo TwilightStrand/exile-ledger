@@ -20,6 +20,7 @@ import {
 } from "../../core/settings";
 import type { Source } from "../../core/source";
 import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
+import { useMessages } from "../i18n";
 import { Mark } from "../icons";
 import { quotaPercent, syncStatusText } from "../syncStatusText";
 import {
@@ -47,16 +48,6 @@ export interface SettingsPageProps {
 	now?: () => number;
 	newId?: () => string;
 }
-
-const SIDES: readonly { value: PanelSide; label: string }[] = [
-	{ value: "left", label: "Left" },
-	{ value: "right", label: "Right" },
-];
-
-const MODES: readonly { value: PanelMode; label: string }[] = [
-	{ value: "overlay", label: "Float over" },
-	{ value: "push", label: "Push aside" },
-];
 
 function useSourceValue<T>(source: Source<T>, initial: T): T {
 	const [value, setValue] = useState<T>(initial);
@@ -95,19 +86,8 @@ type Pending =
 	| { kind: "share"; source: ImportSource; payload: Payload }
 	| null;
 
-const SOURCE_LABELS: Record<ImportSource, string> = {
-	"exile-ledger": "Shared folder",
-	"better-trading": "Better Trading export",
-	"poe-trade-plus": "Poe Trade Plus export",
-};
-
-function countText(folders: number, bookmarks: number): string {
-	return `${folders} folder${folders === 1 ? "" : "s"} and ${bookmarks} bookmark${bookmarks === 1 ? "" : "s"}`;
-}
-
-function summary(payload: Payload): string {
-	return countText(payload.folders.length, payload.bookmarks.length);
-}
+const PANEL_SIDES: readonly PanelSide[] = ["left", "right"];
+const PANEL_MODES: readonly PanelMode[] = ["overlay", "push"];
 
 function BackupSection({
 	settings,
@@ -120,6 +100,9 @@ function BackupSection({
 	download: SettingsPageProps["download"];
 	clock: () => Clock;
 }) {
+	const t = useMessages();
+	const summary = (payload: Payload) =>
+		t.imports.summary(payload.folders.length, payload.bookmarks.length);
 	const [pending, setPending] = useState<Pending>(null);
 	const [restoreSettings, setRestoreSettings] = useState(true);
 	const [shareText, setShareText] = useState("");
@@ -141,7 +124,7 @@ function BackupSection({
 		);
 		setMessage({
 			tone: "ok",
-			text: `Backup saved with ${summary(backup.library)}.`,
+			text: t.imports.backupSaved(summary(backup.library)),
 		});
 	};
 
@@ -151,7 +134,7 @@ function BackupSection({
 			setMessage(null);
 		} else {
 			setPending(null);
-			setMessage({ tone: "error", text: parsed.message });
+			setMessage({ tone: "error", text: t.imports.errors[parsed.error] });
 		}
 	};
 
@@ -208,7 +191,7 @@ function BackupSection({
 		} catch {
 			setMessage({
 				tone: "error",
-				text: "Could not save the import. Reload this page and try again.",
+				text: t.imports.saveFailed,
 			});
 			return;
 		}
@@ -223,29 +206,22 @@ function BackupSection({
 		setShareText("");
 		setMessage({
 			tone: "ok",
-			text: `Imported ${countText(counts.folders, counts.bookmarks)}.`,
+			text: t.imports.imported(
+				t.imports.summary(counts.folders, counts.bookmarks),
+			),
 		});
 	};
 
 	return (
-		<Section
-			title="Backup and sharing"
-			description="Imports always add new folders next to yours. Nothing you already have is changed or removed."
-		>
-			<Field
-				label="Back up everything"
-				hint="A file with every folder, bookmark and setting. History stays on this machine."
-			>
+		<Section title={t.imports.title} description={t.imports.description}>
+			<Field label={t.imports.backupLabel} hint={t.imports.backupHint}>
 				<button type="button" class={PRIMARY_BUTTON} onClick={exportBackup}>
-					Save backup file
+					{t.imports.saveBackup}
 				</button>
 			</Field>
-			<Field
-				label="Restore from a backup file"
-				hint="Pick a file saved by Exile Ledger."
-			>
+			<Field label={t.imports.restoreLabel} hint={t.imports.restoreHint}>
 				<label class={`${BUTTON} cursor-pointer`}>
-					Choose file
+					{t.imports.chooseFile}
 					<input
 						type="file"
 						accept="application/json,.json"
@@ -259,17 +235,16 @@ function BackupSection({
 				</label>
 			</Field>
 			<div>
-				<p class="text-[14px] text-ledger-text">Import a shared folder</p>
+				<p class="text-[14px] text-ledger-text">{t.imports.shareLabel}</p>
 				<p class="mt-0.5 text-[12px] text-ledger-muted">
-					Paste a string copied with “Copy share string” on a folder in the
-					panel.
+					{t.imports.shareHint}
 				</p>
 				<div class="mt-2 flex gap-2">
 					<textarea
-						aria-label="Share string"
+						aria-label={t.imports.shareInput}
 						rows={2}
 						spellcheck={false}
-						placeholder="EL1:…"
+						placeholder={t.imports.sharePlaceholder}
 						class="min-w-0 flex-1 resize-y rounded-md border border-ledger-border bg-ledger-bg px-3 py-2 font-mono text-[12px] text-ledger-text outline-none placeholder:text-ledger-faint focus:border-ledger-gold/60"
 						value={shareText}
 						onInput={(e) => setShareText(e.currentTarget.value)}
@@ -280,7 +255,7 @@ function BackupSection({
 						disabled={!shareText.trim()}
 						onClick={readShare}
 					>
-						Read
+						{t.imports.read}
 					</button>
 				</div>
 			</div>
@@ -289,8 +264,14 @@ function BackupSection({
 				<div class="animate-pop-in rounded-md border border-ledger-gold/40 bg-ledger-gold/5 p-4">
 					<p class="text-[14px] text-ledger-text">
 						{pending.kind === "backup"
-							? `Backup from ${new Date(pending.backup.exportedAt).toLocaleString("en")}: ${summary(pending.backup.library)}.`
-							: `${SOURCE_LABELS[pending.source]}: ${summary(pending.payload)}.`}
+							? t.imports.backupFrom(
+									pending.backup.exportedAt,
+									summary(pending.backup.library),
+								)
+							: t.imports.fromSource(
+									t.imports.sources[pending.source],
+									summary(pending.payload),
+								)}
 					</p>
 					{pending.kind === "backup" && pending.backup.settings && (
 						<label class="mt-3 flex items-center gap-2 text-[13px] text-ledger-muted">
@@ -299,7 +280,7 @@ function BackupSection({
 								checked={restoreSettings}
 								onChange={(e) => setRestoreSettings(e.currentTarget.checked)}
 							/>
-							Also restore settings
+							{t.imports.restoreSettings}
 						</label>
 					)}
 					<div class="mt-3 flex gap-2">
@@ -308,14 +289,14 @@ function BackupSection({
 							class={PRIMARY_BUTTON}
 							onClick={confirmImport}
 						>
-							Import
+							{t.imports.import}
 						</button>
 						<button
 							type="button"
 							class={BUTTON}
 							onClick={() => setPending(null)}
 						>
-							Cancel
+							{t.common.cancel}
 						</button>
 					</div>
 				</div>
@@ -337,6 +318,8 @@ export function SettingsPage({
 	now = Date.now,
 	newId = () => crypto.randomUUID(),
 }: SettingsPageProps) {
+	const t = useMessages();
+	const s = t.settings;
 	const prefs = useSettingsValue(settings);
 	const [historyCleared, setHistoryCleared] = useState(false);
 	const [pricingDenied, setPricingDenied] = useState(false);
@@ -358,45 +341,45 @@ export function SettingsPage({
 					<Mark class="size-8 text-ledger-gold" />
 					<div>
 						<h1 class="font-display text-[26px] leading-tight tracking-[0.03em] text-ledger-gold-bright">
-							Exile Ledger
+							{t.app.name}
 						</h1>
 						<p class="text-[13px] text-ledger-muted">
-							Settings · version {version}
+							{s.versionLine(version)}
 						</p>
 					</div>
 				</header>
 
-				<Section
-					title="Panel"
-					description="How the panel sits on the trade site."
-				>
-					<Field label="Dock side">
+				<Section title={s.panel.title} description={s.panel.description}>
+					<Field label={s.panel.side}>
 						<Segmented
-							label="Dock side"
+							label={s.panel.side}
 							value={prefs.panelSide}
-							options={SIDES}
+							options={PANEL_SIDES.map((value) => ({
+								value,
+								label: s.panel.sides[value],
+							}))}
 							onChange={(panelSide) => settings.save({ panelSide })}
 						/>
 					</Field>
-					<Field
-						label="Layout"
-						hint="Float over the page, or push the page aside so the panel never covers results."
-					>
+					<Field label={s.panel.layout} hint={s.panel.layoutHint}>
 						<Segmented
-							label="Layout"
+							label={s.panel.layout}
 							value={prefs.panelMode}
-							options={MODES}
+							options={PANEL_MODES.map((value) => ({
+								value,
+								label: s.panel.modes[value],
+							}))}
 							onChange={(panelMode) => settings.save({ panelMode })}
 						/>
 					</Field>
 					<Field
-						label="Width"
-						hint={`Share of the browser window, kept between ${PANEL_WIDTH.minPx} and ${PANEL_WIDTH.maxPx} px. You can also drag the panel's inner edge.`}
+						label={s.panel.width}
+						hint={s.panel.widthHint(PANEL_WIDTH.minPx, PANEL_WIDTH.maxPx)}
 					>
 						<div class="flex items-center gap-3">
 							<input
 								type="range"
-								aria-label="Panel width"
+								aria-label={s.panel.widthInput}
 								min={PANEL_WIDTH.min}
 								max={PANEL_WIDTH.max}
 								step={1}
@@ -413,13 +396,10 @@ export function SettingsPage({
 					</Field>
 				</Section>
 
-				<Section
-					title="Sync"
-					description="Bookmarks and folders follow you through your browser account. History stays on each machine."
-				>
-					<Field label="Sync bookmarks" hint={syncStatusText(sync, now())}>
+				<Section title={s.sync.title} description={s.sync.description}>
+					<Field label={s.sync.toggle} hint={syncStatusText(sync, now(), t)}>
 						<Toggle
-							label="Sync bookmarks"
+							label={s.sync.toggle}
 							checked={prefs.syncEnabled}
 							onChange={(syncEnabled) => settings.save({ syncEnabled })}
 						/>
@@ -427,7 +407,7 @@ export function SettingsPage({
 					{sync.state !== "off" && (
 						<div>
 							<div class="flex justify-between text-[12px] text-ledger-muted">
-								<span>Sync space</span>
+								<span>{s.sync.space}</span>
 								<span class="tabular-nums">{quotaPercent(sync)}%</span>
 							</div>
 							<div class="mt-1 h-1.5 overflow-hidden rounded-full bg-ledger-bg">
@@ -439,30 +419,21 @@ export function SettingsPage({
 						</div>
 					)}
 					{(sync.state === "error" || sync.state === "quota") && (
-						<Notice tone="error">{syncStatusText(sync, now())}</Notice>
+						<Notice tone="error">{syncStatusText(sync, now(), t)}</Notice>
 					)}
 				</Section>
 
-				<Section
-					title="Results"
-					description="Additions to the trade site's own result list."
-				>
-					<Field
-						label="Highlight searched mods"
-						hint="Marks the mod lines on each result that your search filtered on."
-					>
+				<Section title={s.results.title} description={s.results.description}>
+					<Field label={s.results.highlight} hint={s.results.highlightHint}>
 						<Toggle
-							label="Highlight searched mods"
+							label={s.results.highlight}
 							checked={prefs.highlightMods}
 							onChange={(highlightMods) => settings.save({ highlightMods })}
 						/>
 					</Field>
-					<Field
-						label="Equivalent prices"
-						hint="Shows each price in chaos and divine (PoE1) or exalted and divine (PoE2), using poe.ninja rates refreshed every 30 minutes. Turning this on asks permission to read poe.ninja."
-					>
+					<Field label={s.results.prices} hint={s.results.pricesHint}>
 						<Toggle
-							label="Equivalent prices"
+							label={s.results.prices}
 							checked={prefs.equivalentPricing && !pricingMissingAccess}
 							onChange={async (equivalentPricing) => {
 								if (equivalentPricing && !(await requestPricingAccess())) {
@@ -476,63 +447,46 @@ export function SettingsPage({
 						/>
 					</Field>
 					{pricingMissingAccess && !pricingDenied && (
-						<Notice tone="error">
-							Equivalent prices are on in another browser, but this one has not
-							been allowed to read poe.ninja. Turn the switch on to allow it.
-						</Notice>
+						<Notice tone="error">{s.results.pricesMissingAccess}</Notice>
 					)}
 					{pricingDenied && (
-						<Notice tone="error">
-							Equivalent prices need access to poe.ninja. Nothing was changed.
-						</Notice>
+						<Notice tone="error">{s.results.pricesDenied}</Notice>
 					)}
 				</Section>
 
-				<Section title="Trade site">
-					<Field
-						label="Tab titles"
-						hint="Puts the bookmark name, or the item and league, in the browser tab, with ⚡ for live searches."
-					>
+				<Section title={s.trade.title}>
+					<Field label={s.trade.tabTitles} hint={s.trade.tabTitlesHint}>
 						<Toggle
-							label="Tab titles"
+							label={s.trade.tabTitles}
 							checked={prefs.tabTitles}
 							onChange={(tabTitles) => settings.save({ tabTitles })}
 						/>
 					</Field>
-					<Field
-						label="Fuzzy search by default"
-						hint="Adds ~ when you start typing in a search box. Start with a space to search exactly."
-					>
+					<Field label={s.trade.fuzzy} hint={s.trade.fuzzyHint}>
 						<Toggle
-							label="Fuzzy search by default"
+							label={s.trade.fuzzy}
 							checked={prefs.tildePrefix}
 							onChange={(tildePrefix) => settings.save({ tildePrefix })}
 						/>
 					</Field>
-					<Field
-						label="Back and Forward between searches"
-						hint="The browser's Back button returns to your previous search instead of leaving the site."
-					>
+					<Field label={s.trade.backForward} hint={s.trade.backForwardHint}>
 						<Toggle
-							label="Back and Forward between searches"
+							label={s.trade.backForward}
 							checked={prefs.backForward}
 							onChange={(backForward) => settings.save({ backForward })}
 						/>
 					</Field>
 				</Section>
 
-				<Section title="History">
-					<Field
-						label="Record searches"
-						hint="Kept on this machine only, up to 200 per game."
-					>
+				<Section title={s.history.title}>
+					<Field label={s.history.record} hint={s.history.recordHint}>
 						<Toggle
-							label="Record searches"
+							label={s.history.record}
 							checked={prefs.historyEnabled}
 							onChange={(historyEnabled) => settings.save({ historyEnabled })}
 						/>
 					</Field>
-					<Field label="Clear all history" hint="Both games, on this machine.">
+					<Field label={s.history.clearAll} hint={s.history.clearAllHint}>
 						<button
 							type="button"
 							class={BUTTON}
@@ -541,10 +495,10 @@ export function SettingsPage({
 								setHistoryCleared(true);
 							}}
 						>
-							Clear history
+							{s.history.clear}
 						</button>
 					</Field>
-					{historyCleared && <Notice tone="ok">History cleared.</Notice>}
+					{historyCleared && <Notice tone="ok">{s.history.cleared}</Notice>}
 				</Section>
 
 				<BackupSection
@@ -554,13 +508,8 @@ export function SettingsPage({
 					clock={clock}
 				/>
 
-				<Section title="About and privacy">
-					<p class="text-[13px] leading-6 text-ledger-muted">
-						Exile Ledger keeps your bookmarks in your browser and syncs them
-						through your browser account. It sends nothing anywhere else: no
-						analytics, no tracking, and it never reads your Path of Exile
-						session. It only sees the trade searches your own page makes.
-					</p>
+				<Section title={s.about.title}>
+					<p class="text-[13px] leading-6 text-ledger-muted">{s.about.body}</p>
 				</Section>
 			</main>
 		</div>

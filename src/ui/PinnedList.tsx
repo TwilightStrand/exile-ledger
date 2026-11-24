@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import type { PinnedItem } from "../core/pins";
+import { useMessages } from "./i18n";
 import { Pin, Trash } from "./icons";
 import { EmptyState } from "./parts";
 
@@ -16,11 +17,12 @@ export function PinnedList({
 	onJump: (id: string) => boolean;
 	onUnpin: (id: string) => void;
 }) {
+	const t = useMessages();
 	const [missing, setMissing] = useState<string | null>(null);
 	if (pins.length === 0) {
 		return (
-			<EmptyState icon={Pin} title="Nothing pinned">
-				Use Pin on a result to keep it here while you keep searching.
+			<EmptyState icon={Pin} title={t.pins.emptyTitle}>
+				{t.pins.emptyBody}
 			</EmptyState>
 		);
 	}
@@ -41,16 +43,16 @@ export function PinnedList({
 						</span>
 						<span class="text-[11px] text-ledger-faint">
 							{missing === pin.id
-								? "Not on this page any more"
+								? t.pins.gone
 								: pin.price
 									? `${pin.price.amount} ${pin.price.currency}`
-									: "No price"}
+									: t.pins.noPrice}
 						</span>
 					</button>
 					<button
 						type="button"
 						class={`${ICON_BUTTON} mr-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100`}
-						aria-label={`Unpin ${pin.name || pin.baseType}`}
+						aria-label={t.pins.unpin(pin.name || pin.baseType)}
 						onClick={() => onUnpin(pin.id)}
 					>
 						<Trash class="size-3.5" />

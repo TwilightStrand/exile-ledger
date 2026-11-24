@@ -34,7 +34,17 @@ const BackupSchema = v.object({
 });
 export type Backup = v.InferOutput<typeof BackupSchema>;
 
-export type Parsed<T> = { ok: true; value: T } | { ok: false; message: string };
+/** Why a pasted string or picked file could not be read; the catalogue words it. */
+export type ImportError =
+	| "not-share"
+	| "share-damaged"
+	| "share-empty"
+	| "not-backup"
+	| "unknown-format";
+
+export type Parsed<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: ImportError };
 
 function toBase64Url(text: string): string {
 	const bytes = new TextEncoder().encode(text);
@@ -83,17 +93,16 @@ export function encodeShare(library: Library, folderId: string): string | null {
 export function decodeShare(text: string): Parsed<Payload> {
 	const trimmed = text.trim();
 	if (!trimmed.startsWith(SHARE_PREFIX)) {
-		return { ok: false, message: "This is not an Exile Ledger share string." };
+		return { ok: false, error: "not-share" };
 	}
 	const json = fromBase64Url(trimmed.slice(SHARE_PREFIX.length));
 	const parsed = v.safeParse(
 		PayloadSchema,
 		json === null ? undefined : parseJson(json),
 	);
-	if (!parsed.success)
-		return { ok: false, message: "The share string is damaged or incomplete." };
+	if (!parsed.success) return { ok: false, error: "share-damaged" };
 	if (parsed.output.folders.length === 0)
-		return { ok: false, message: "The share string holds no folders." };
+		return { ok: false, error: "share-empty" };
 	return { ok: true, value: parsed.output };
 }
 
@@ -113,11 +122,7 @@ export function createBackup(
 
 export function parseBackup(text: string): Parsed<Backup> {
 	const parsed = v.safeParse(BackupSchema, parseJson(text));
-	if (!parsed.success)
-		return {
-			ok: false,
-			message: "This file is not an Exile Ledger backup, or it is damaged.",
-		};
+	if (!parsed.success) return { ok: false, error: "not-backup" };
 	return { ok: true, value: parsed.output };
 }
 

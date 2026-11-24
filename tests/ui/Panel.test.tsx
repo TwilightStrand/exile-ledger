@@ -2,9 +2,9 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "../../src/core/history";
+import { en } from "../../src/core/i18n";
 import {
 	createMemoryLibrary,
-	DEFAULT_FOLDER_NAME,
 	emptyLibrary,
 	type LibrarySource,
 	saveSearch,
@@ -22,6 +22,8 @@ import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { Panel, type PanelProps, type Reserve } from "../../src/ui/Panel";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
 import searchResponse from "../fixtures/trade/poe2-search-response.json";
+
+const DEFAULT_FOLDER_NAME = en.bookmarks.defaultFolder;
 
 const POE2_PAGE = "https://www.pathofexile.com/trade2/search/poe2/Dawn";
 

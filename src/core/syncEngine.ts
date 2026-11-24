@@ -32,7 +32,8 @@ export interface SyncStatus {
 	usedBytes: number;
 	quotaBytes: number;
 	lastSyncAt: number | null;
-	message: string | null;
+	/** The browser's own error text, only in the "error" state; the UI words every other state. */
+	error: string | null;
 }
 
 export const OFF_STATUS: SyncStatus = {
@@ -40,7 +41,7 @@ export const OFF_STATUS: SyncStatus = {
 	usedBytes: 0,
 	quotaBytes: SYNC_QUOTA_BYTES,
 	lastSyncAt: null,
-	message: null,
+	error: null,
 };
 
 const MetaSchema = v.object({
@@ -115,7 +116,7 @@ export async function syncOnce(
 				usedBytes: syncBytes(items),
 				quotaBytes: SYNC_QUOTA_BYTES,
 				lastSyncAt: null,
-				message: "Another browser is writing; trying again shortly.",
+				error: null,
 			};
 		}
 		const remoteLibrary =
@@ -142,8 +143,7 @@ export async function syncOnce(
 					usedBytes,
 					quotaBytes: SYNC_QUOTA_BYTES,
 					lastSyncAt: null,
-					message:
-						"Too many bookmarks for browser sync. Your bookmarks are safe on this machine; archive or delete some to resume syncing.",
+					error: null,
 				};
 			}
 			// Chunks first, meta last: readers trust only chunks that match the meta's write id.
@@ -161,7 +161,7 @@ export async function syncOnce(
 			usedBytes,
 			quotaBytes: SYNC_QUOTA_BYTES,
 			lastSyncAt: now,
-			message: null,
+			error: null,
 		};
 	} catch (error) {
 		return {
@@ -169,7 +169,7 @@ export async function syncOnce(
 			usedBytes: 0,
 			quotaBytes: SYNC_QUOTA_BYTES,
 			lastSyncAt: null,
-			message: error instanceof Error ? error.message : "Sync failed.",
+			error: error instanceof Error ? error.message : null,
 		};
 	}
 }
@@ -179,7 +179,7 @@ const StatusSchema = v.object({
 	usedBytes: v.number(),
 	quotaBytes: v.number(),
 	lastSyncAt: v.nullable(v.number()),
-	message: v.nullable(v.string()),
+	error: v.nullable(v.string()),
 });
 
 export function parseSyncStatus(raw: unknown): SyncStatus {

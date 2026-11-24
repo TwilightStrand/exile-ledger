@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { en } from "./i18n/en";
 import {
 	type Bookmark,
 	BookmarkSchema,
@@ -11,8 +12,6 @@ import {
 import type { TradeQuery } from "./query";
 import { createMemorySource, type Source } from "./source";
 import type { Game } from "./tradeUrl";
-
-export const DEFAULT_FOLDER_NAME = "Saved searches";
 
 export function emptyLibrary(): Library {
 	return { folders: [], bookmarks: [], tombstones: [] };
@@ -66,20 +65,21 @@ export function saveSearch(
 	library: Library,
 	input: SaveInput,
 	{ now, newId }: Clock,
+	defaultFolder: string = en.bookmarks.defaultFolder,
 ): { library: Library; bookmark: Bookmark } {
 	let folders = library.folders;
 	let folder = folders.find(
 		(f) =>
 			f.game === input.game &&
 			f.parentId === null &&
-			f.name === DEFAULT_FOLDER_NAME &&
+			f.name === defaultFolder &&
 			!f.archived,
 	);
 	if (!folder) {
 		folder = {
 			id: newId(),
 			parentId: null,
-			name: DEFAULT_FOLDER_NAME,
+			name: defaultFolder,
 			game: input.game,
 			order: nextOrder(
 				folders.filter((f) => f.game === input.game && f.parentId === null),

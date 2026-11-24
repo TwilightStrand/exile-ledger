@@ -1,6 +1,8 @@
-import { formatCount, titleOfQuery } from "../core/describe";
+import { titleOfQuery } from "../core/describe";
+import { searchWarningText } from "../core/i18n";
 import { checkSearch } from "../core/searchChecks";
 import type { CaptureState } from "../trade/captureFeed";
+import { useMessages } from "./i18n";
 import { Bookmark, Check, Search, Warning } from "./icons";
 import { Chip, Eyebrow, GameTag } from "./parts";
 
@@ -14,6 +16,7 @@ export function CurrentSearch({
 	saved?: boolean;
 	onSave?: (() => void) | undefined;
 }) {
+	const t = useMessages();
 	const event = capture.search;
 	const warnings = event ? checkSearch(event.game, event.search.query) : [];
 
@@ -22,26 +25,29 @@ export function CurrentSearch({
 			class="mx-3 mt-3 rounded-md border border-ledger-border bg-ledger-surface p-3"
 			data-testid="current-search"
 		>
-			<Eyebrow>Current search</Eyebrow>
+			<Eyebrow>{t.currentSearch.heading}</Eyebrow>
 			{event ? (
 				<>
 					<h2 class="mt-1 truncate font-display text-[16px] leading-6 text-ledger-text">
-						{titleOfQuery(event.search.query)}
+						{titleOfQuery(event.search.query, t)}
 					</h2>
 					<div class="mt-2 flex flex-wrap items-center gap-1.5">
 						<GameTag game={event.game} />
 						<Chip>{event.league}</Chip>
-						<Chip>{formatCount(event.search.total)} results</Chip>
+						<Chip>{t.common.results(event.search.total)}</Chip>
 					</div>
 					{warnings.length > 0 && (
-						<ul class="mt-2.5 space-y-1.5" aria-label="Search problems">
+						<ul
+							class="mt-2.5 space-y-1.5"
+							aria-label={t.currentSearch.problems}
+						>
 							{warnings.map((warning) => (
 								<li
 									key={warning.id}
 									class="flex animate-fade-in items-start gap-2 rounded border border-[#c9824a]/40 bg-[#c9824a]/10 px-2 py-1.5 text-[12px] leading-[18px] text-[#efc39a]"
 								>
 									<Warning class="mt-px size-3.5 shrink-0 text-[#e0985a]" />
-									{warning.message}
+									{searchWarningText(t, warning)}
 								</li>
 							))}
 						</ul>
@@ -49,7 +55,7 @@ export function CurrentSearch({
 					{onSave && saved && (
 						<p class="mt-3 flex animate-pop-in items-center justify-center gap-1.5 rounded border border-ledger-border py-1.5 text-[12px] text-ledger-muted">
 							<Check class="size-3.5 text-ledger-live" />
-							Saved to bookmarks
+							{t.common.savedToBookmarks}
 						</p>
 					)}
 					{onSave && !saved && (
@@ -59,14 +65,14 @@ export function CurrentSearch({
 							onClick={onSave}
 						>
 							<Bookmark class="size-3.5" />
-							Save search
+							{t.currentSearch.save}
 						</button>
 					)}
 				</>
 			) : (
 				<p class="mt-1.5 flex items-start gap-2 text-[12px] leading-5 text-ledger-muted">
 					<Search class="mt-0.5 size-3.5 shrink-0 text-ledger-faint" />
-					Run a search on the trade site and it shows up here.
+					{t.currentSearch.empty}
 				</p>
 			)}
 		</section>

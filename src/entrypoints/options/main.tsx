@@ -1,11 +1,13 @@
 import "../../styles/tailwind.css";
 import { render } from "preact";
 import { browser } from "wxt/browser";
+import { messagesFor } from "../../core/i18n";
 import { NINJA_ORIGIN } from "../../pricing/ratesService";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
 import { browserSyncStatus } from "../../storage/syncPorts";
+import { MessagesProvider } from "../../ui/i18n";
 import { SettingsPage } from "../../ui/settings/SettingsPage";
 
 function download(filename: string, text: string) {
@@ -27,17 +29,21 @@ const hasPricingAccess = () =>
 
 const root = document.getElementById("app");
 if (root) {
+	const t = messagesFor("en");
+	document.title = t.settings.pageTitle;
 	render(
-		<SettingsPage
-			settings={browserSettings}
-			library={browserLibrary}
-			history={browserHistory}
-			syncStatus={browserSyncStatus}
-			requestPricingAccess={requestPricingAccess}
-			hasPricingAccess={hasPricingAccess}
-			version={browser.runtime.getManifest().version}
-			download={download}
-		/>,
+		<MessagesProvider messages={t}>
+			<SettingsPage
+				settings={browserSettings}
+				library={browserLibrary}
+				history={browserHistory}
+				syncStatus={browserSyncStatus}
+				requestPricingAccess={requestPricingAccess}
+				hasPricingAccess={hasPricingAccess}
+				version={browser.runtime.getManifest().version}
+				download={download}
+			/>
+		</MessagesProvider>,
 		root,
 	);
 }

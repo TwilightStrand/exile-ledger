@@ -36,6 +36,7 @@ import type { CaptureFeed, CaptureState } from "../trade/captureFeed";
 import { BookmarkTree, type TreeActions } from "./BookmarkTree";
 import { CurrentSearch } from "./CurrentSearch";
 import { type HistoryActions, HistoryList } from "./HistoryList";
+import { useMessages } from "./i18n";
 import { ChevronLeft, ChevronRight, Mark } from "./icons";
 import { archivedView, historyView, libraryView } from "./libraryView";
 import { PinnedList } from "./PinnedList";
@@ -182,12 +183,6 @@ export interface Reserve {
 export const TABS = ["bookmarks", "history", "pinned"] as const;
 export type TabId = (typeof TABS)[number];
 
-const TAB_LABELS: Record<TabId, string> = {
-	bookmarks: "Bookmarks",
-	history: "History",
-	pinned: "Pinned",
-};
-
 // Literal class strings so Tailwind's scanner picks them up.
 const SIDE_CLASSES = {
 	left: {
@@ -253,6 +248,7 @@ export function Panel({
 	now = Date.now,
 	newId = () => crypto.randomUUID(),
 }: PanelProps) {
+	const t = useMessages();
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
@@ -296,7 +292,7 @@ export function Panel({
 	const bookmarks = game ? libraryView(library, game, currentPage) : [];
 	const archived = game ? archivedView(library, game) : [];
 	const history = game
-		? historyView(historyEntries, library, game, currentPage)
+		? historyView(historyEntries, library, game, currentPage, t)
 		: [];
 	const searchId = capture.search?.search.searchId;
 	const saved =
@@ -314,12 +310,13 @@ export function Panel({
 				{
 					game: event.game,
 					league: event.league,
-					name: titleOfQuery(query),
+					name: titleOfQuery(query, t),
 					query,
 					searchId: event.search.searchId,
 					live: currentPage?.location.live ?? false,
 				},
 				clock(),
+				t.bookmarks.defaultFolder,
 			);
 			setLastSavedId(saved.bookmark.id);
 			return saved.library;
@@ -371,12 +368,13 @@ export function Panel({
 					{
 						game: entry.game,
 						league: entry.league,
-						name: titleOfQuery(entry.query),
+						name: titleOfQuery(entry.query, t),
 						query: entry.query,
 						searchId: entry.searchId,
 						live: false,
 					},
 					clock(),
+					t.bookmarks.defaultFolder,
 				);
 				setLastSavedId(saved.bookmark.id);
 				return saved.library;
@@ -395,7 +393,7 @@ export function Panel({
 	return (
 		<aside
 			class={`fixed top-0 z-[2147483000] h-full font-sans text-[13px] leading-5 text-ledger-text antialiased [color-scheme:dark] ${classes.aside}`}
-			aria-label="Exile Ledger"
+			aria-label={t.app.name}
 			data-side={side}
 		>
 			{open ? (
@@ -408,11 +406,11 @@ export function Panel({
 					<div
 						role="separator"
 						aria-orientation="vertical"
-						aria-label="Resize panel"
+						aria-label={t.panel.resize}
 						aria-valuemin={PANEL_WIDTH.min}
 						aria-valuemax={PANEL_WIDTH.max}
 						aria-valuenow={resize.width}
-						aria-valuetext={`${resize.width}% of the window`}
+						aria-valuetext={t.panel.resizeValue(resize.width)}
 						tabIndex={0}
 						class={`group/handle absolute top-0 z-10 h-full w-2 cursor-col-resize ${classes.handle}`}
 						onPointerDown={resize.onPointerDown}
@@ -430,20 +428,20 @@ export function Panel({
 					<header class="flex h-12 shrink-0 items-center gap-2.5 border-b border-ledger-line/60 bg-[linear-gradient(180deg,#1f1912,#14110d)] px-3.5">
 						<Mark class="size-5 text-ledger-gold" />
 						<h1 class="font-display text-[17px] tracking-[0.04em] text-ledger-gold-bright">
-							Exile Ledger
+							{t.app.name}
 						</h1>
 						<span
 							class={`ml-auto size-2 rounded-full ${SYNC_DOT[sync.state]}`}
-							title={syncStatusText(sync, now())}
+							title={syncStatusText(sync, now(), t)}
 						>
-							<span class="sr-only">{syncStatusText(sync, now())}</span>
+							<span class="sr-only">{syncStatusText(sync, now(), t)}</span>
 						</span>
 						<button
 							type="button"
 							class="grid size-7 place-items-center rounded text-ledger-muted transition-colors hover:bg-ledger-raised hover:text-ledger-gold focus-visible:outline-2 focus-visible:outline-ledger-gold"
 							aria-expanded={true}
 							aria-controls="exile-ledger-panel"
-							aria-label="Collapse Exile Ledger"
+							aria-label={t.panel.collapse}
 							onClick={() => setOpen(false)}
 						>
 							<CollapseIcon class="size-4" />
@@ -454,7 +452,7 @@ export function Panel({
 
 					<div
 						role="tablist"
-						aria-label="Panel sections"
+						aria-label={t.panel.sections}
 						class="relative mt-3 flex shrink-0 border-b border-ledger-border px-3"
 					>
 						<span
@@ -463,7 +461,7 @@ export function Panel({
 							style={{ transform: `translateX(${TABS.indexOf(tab) * 100}%)` }}
 						/>
 						{TABS.map((id) => {
-							const label = TAB_LABELS[id];
+							const label = t.panel.tabs[id];
 							const selected = tab === id;
 							return (
 								<button
@@ -528,12 +526,12 @@ export function Panel({
 					class={`absolute top-24 flex h-32 w-8 animate-fade-in flex-col items-center justify-center gap-2 border border-ledger-line/70 bg-ledger-panel text-ledger-gold transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold ${classes.tab} ${PANEL_SHADOW}`}
 					aria-expanded={false}
 					aria-controls="exile-ledger-panel"
-					aria-label="Expand Exile Ledger"
+					aria-label={t.panel.expand}
 					onClick={() => setOpen(true)}
 				>
 					<Mark class="size-4" />
 					<span class="font-display text-[12px] tracking-[0.08em] [writing-mode:vertical-rl]">
-						Ledger
+						{t.panel.expandTab}
 					</span>
 					<ExpandIcon class="size-3.5" />
 				</button>

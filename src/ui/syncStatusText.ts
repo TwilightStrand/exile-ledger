@@ -1,4 +1,5 @@
 import { formatAgo } from "../core/describe";
+import { en, type Messages } from "../core/i18n";
 import type { SyncStatus } from "../core/syncEngine";
 
 export function quotaPercent(status: SyncStatus): number {
@@ -9,17 +10,25 @@ export function quotaPercent(status: SyncStatus): number {
 }
 
 /** One line for tooltips and the settings page. */
-export function syncStatusText(status: SyncStatus, now: number): string {
+export function syncStatusText(
+	status: SyncStatus,
+	now: number,
+	t: Messages = en,
+): string {
 	switch (status.state) {
 		case "off":
-			return "Sync is off. Bookmarks stay on this machine.";
+			return t.sync.off;
 		case "on":
-			return `Synced${status.lastSyncAt ? ` ${formatAgo(status.lastSyncAt, now)}` : ""} · ${quotaPercent(status)}% of sync space used`;
+			return t.sync.on(
+				status.lastSyncAt ? formatAgo(status.lastSyncAt, now, t.time) : null,
+				quotaPercent(status),
+			);
 		case "waiting":
-			return status.message ?? "Waiting for another browser to finish syncing.";
+			return t.sync.waiting;
 		case "quota":
+			return t.sync.quota;
 		case "error":
-			return status.message ?? "Sync stopped.";
+			return status.error ?? t.sync.failed;
 	}
 }
 

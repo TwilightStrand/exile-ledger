@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { en, searchWarningText } from "../../src/core/i18n";
 import type { TradeQuery } from "../../src/core/query";
 import { checkSearch } from "../../src/core/searchChecks";
 
@@ -29,7 +30,12 @@ describe("checkSearch: gem level", () => {
 			corrupted: { option: "false" },
 		});
 		expect(ids(query)).toEqual(["gem-level-needs-corruption"]);
-		expect(checkSearch("poe1", query)[0]?.message).toContain("Empower");
+		const [warning] = checkSearch("poe1", query);
+		expect(warning).toMatchObject({ gem: "empower", maxLevel: 3 });
+		if (!warning) throw new Error("no warning");
+		expect(searchWarningText(en, warning)).toBe(
+			"Empower gems only go above level 3 by corrupting, but this search excludes corrupted items. Set Corrupted to Any or Yes.",
+		);
 	});
 
 	it("accepts level 4 when corrupted items are allowed", () => {
@@ -229,8 +235,11 @@ describe("checkSearch: contradictory filters", () => {
 				.map((w) => w.id)
 				.sort(),
 		).toEqual([...expected].sort());
-		expect(checkSearch("poe1", query)[0]?.message).toContain(
-			"Price has a minimum of 10",
+		const [warning] = checkSearch("poe1", query);
+		expect(warning).toMatchObject({ filter: "price", min: 10, max: 5 });
+		if (!warning) throw new Error("no warning");
+		expect(searchWarningText(en, warning)).toBe(
+			"Price has a minimum of 10 above its maximum of 5.",
 		);
 	});
 });

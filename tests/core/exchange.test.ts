@@ -3,10 +3,12 @@ import {
 	createBackup,
 	decodeShare,
 	encodeShare,
+	type ImportError,
 	importPayload,
 	parseBackup,
 	SHARE_PREFIX,
 } from "../../src/core/exchange";
+import { en } from "../../src/core/i18n";
 import { emptyLibrary, parseLibrary } from "../../src/core/library";
 import type { Bookmark, Folder, Library } from "../../src/core/model";
 import { DEFAULT_SETTINGS } from "../../src/core/settings";
@@ -51,21 +53,27 @@ describe("share strings", () => {
 		const text = encodeShare(lib(), "a");
 		expect(text?.startsWith(SHARE_PREFIX)).toBe(true);
 		const decoded = decodeShare(text ?? "");
-		if (!decoded.ok) throw new Error(decoded.message);
+		if (!decoded.ok) throw new Error(decoded.error);
 		expect(decoded.value.folders.map((f) => f.id)).toEqual(["a", "b"]);
 		expect(decoded.value.folders[0]?.name).toBe("Folder a – ünïcødé ⚔");
 		expect(decoded.value.bookmarks.map((b) => b.id)).toEqual(["m1", "m2"]);
 	});
 
-	it.each([
-		["", "not an Exile Ledger share string"],
-		["3:eyJ4Ijoi", "not an Exile Ledger share string"],
-		[`${SHARE_PREFIX}%%%`, "damaged"],
-		[`${SHARE_PREFIX}eyJmb2xkZXJzIjpbXSwiYm9va21hcmtzIjpbXX0`, "no folders"],
-	])("rejects %j with a message", (text, message) => {
+	it.each<[string, ImportError, string]>([
+		["", "not-share", "not an Exile Ledger share string"],
+		["3:eyJ4Ijoi", "not-share", "not an Exile Ledger share string"],
+		[`${SHARE_PREFIX}%%%`, "share-damaged", "damaged"],
+		[
+			`${SHARE_PREFIX}eyJmb2xkZXJzIjpbXSwiYm9va21hcmtzIjpbXX0`,
+			"share-empty",
+			"no folders",
+		],
+	])("rejects %j with a reason", (text, error, message) => {
 		const decoded = decodeShare(text);
 		expect(decoded.ok).toBe(false);
-		if (!decoded.ok) expect(decoded.message).toContain(message);
+		if (decoded.ok) return;
+		expect(decoded.error).toBe(error);
+		expect(en.imports.errors[decoded.error]).toContain(message);
 	});
 });
 
@@ -73,7 +81,7 @@ describe("importPayload", () => {
 	it("adds copies with fresh IDs after existing folders and leaves existing data alone", () => {
 		const start = lib();
 		const decoded = decodeShare(encodeShare(start, "a") ?? "");
-		if (!decoded.ok) throw new Error(decoded.message);
+		if (!decoded.ok) throw new Error(decoded.error);
 		const result = importPayload(start, decoded.value, clock());
 
 		expect(result).toMatchObject({ folders: 2, bookmarks: 2 });
@@ -97,7 +105,7 @@ describe("backups", () => {
 			99,
 		);
 		const parsed = parseBackup(JSON.stringify(backup));
-		if (!parsed.ok) throw new Error(parsed.message);
+		if (!parsed.ok) throw new Error(parsed.error);
 		const restored = importPayload(
 			emptyLibrary(),
 			parsed.value.library,

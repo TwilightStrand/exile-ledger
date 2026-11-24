@@ -5,6 +5,7 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { storage } from "wxt/utils/storage";
 import { titleOfQuery } from "../../core/describe";
 import { recordSearch } from "../../core/history";
+import { messagesFor } from "../../core/i18n";
 import { PRICING_ACCESS_KEY } from "../../core/messages";
 import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
@@ -27,6 +28,7 @@ import { historyEntryFrom } from "../../trade/recordHistory";
 import { applyReserve } from "../../trade/reserve";
 import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
+import { MessagesProvider } from "../../ui/i18n";
 import { Panel } from "../../ui/Panel";
 
 function domReady(doc: Document): Promise<void> {
@@ -65,6 +67,7 @@ export default defineContentScript({
 			});
 		}
 
+		const t = messagesFor("en");
 		await domReady(document);
 		installPageStyles(document);
 		let prefs = await browserSettings.load();
@@ -90,7 +93,10 @@ export default defineContentScript({
 			title.set({
 				segment:
 					bookmark?.name ??
-					`${titleOfQuery(search.search.query)} (${search.league})`,
+					t.trade.titleSegment(
+						titleOfQuery(search.search.query, t),
+						search.league,
+					),
 				live: page?.location.live ?? false,
 			});
 		};
@@ -127,7 +133,7 @@ export default defineContentScript({
 			updateTitle();
 			pins
 				.load()
-				.then((current) => syncPinButtons(document, current, togglePinned));
+				.then((current) => syncPinButtons(document, current, togglePinned, t));
 			annotatePrices(
 				document,
 				capture,
@@ -135,6 +141,7 @@ export default defineContentScript({
 					? rates.get(search.game, search.league)
 					: null,
 				prefs.equivalentPricing,
+				t,
 			);
 		};
 		ctx.onInvalidated(
@@ -162,18 +169,20 @@ export default defineContentScript({
 			anchor: "body",
 			onMount(container) {
 				render(
-					<Panel
-						feed={feed}
-						settings={browserSettings}
-						library={browserLibrary}
-						uiState={browserUiState}
-						history={browserHistory}
-						syncStatus={browserSyncStatus}
-						pins={pins}
-						onJumpToPin={(id) => jumpToResult(document, id)}
-						onReserve={(reserve) => applyReserve(document, reserve)}
-						page={() => parseTradeUrl(new URL(location.href))}
-					/>,
+					<MessagesProvider messages={t}>
+						<Panel
+							feed={feed}
+							settings={browserSettings}
+							library={browserLibrary}
+							uiState={browserUiState}
+							history={browserHistory}
+							syncStatus={browserSyncStatus}
+							pins={pins}
+							onJumpToPin={(id) => jumpToResult(document, id)}
+							onReserve={(reserve) => applyReserve(document, reserve)}
+							page={() => parseTradeUrl(new URL(location.href))}
+						/>
+					</MessagesProvider>,
 					container,
 				);
 				return container;

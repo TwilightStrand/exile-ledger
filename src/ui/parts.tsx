@@ -1,24 +1,19 @@
 import type { ComponentChildren, FunctionComponent } from "preact";
 import type { Game } from "../core/tradeUrl";
+import { useMessages } from "./i18n";
 
-const GAME_TAGS: Record<Game, { label: string; class: string }> = {
-	poe1: {
-		label: "PoE1",
-		class: "border-ledger-poe1/40 text-ledger-poe1",
-	},
-	poe2: {
-		label: "PoE2",
-		class: "border-ledger-poe2/40 text-ledger-poe2",
-	},
+const GAME_TAG_CLASSES: Record<Game, string> = {
+	poe1: "border-ledger-poe1/40 text-ledger-poe1",
+	poe2: "border-ledger-poe2/40 text-ledger-poe2",
 };
 
 export function GameTag({ game }: { game: Game }) {
-	const tag = GAME_TAGS[game];
+	const t = useMessages();
 	return (
 		<span
-			class={`shrink-0 rounded-sm border px-1 text-[10px] leading-4 font-semibold tracking-wide ${tag.class}`}
+			class={`shrink-0 rounded-sm border px-1 text-[10px] leading-4 font-semibold tracking-wide ${GAME_TAG_CLASSES[game]}`}
 		>
-			{tag.label}
+			{t.common.games[game]}
 		</span>
 	);
 }

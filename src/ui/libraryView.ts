@@ -1,5 +1,6 @@
 import { titleOfQuery } from "../core/describe";
 import { type HistoryEntry, historyFor } from "../core/history";
+import { en, type Messages } from "../core/i18n";
 import { bookmarkTree, type FolderNode } from "../core/library";
 import type { Library } from "../core/model";
 import { bookmarkHref } from "../core/openUrl";
@@ -57,11 +58,12 @@ export function historyView(
 	library: Library,
 	game: Game,
 	page: ParsedTradeUrl | null,
+	t: Messages = en,
 ): HistoryEntryView[] {
 	const savedIds = new Set(library.bookmarks.map((b) => b.searchId));
 	return historyFor(history, game).map((h) => ({
 		id: h.id,
-		title: titleOfQuery(h.query),
+		title: titleOfQuery(h.query, t),
 		game: h.game,
 		league: h.league,
 		at: h.at,

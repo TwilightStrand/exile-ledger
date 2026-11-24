@@ -2,11 +2,67 @@ import * as v from "valibot";
 import type { TradeQuery } from "./query";
 import type { Game } from "./tradeUrl";
 
-/** A reason the current search cannot return what the player is after. */
-export interface SearchWarning {
-	id: string;
-	message: string;
-}
+export type GemKind = "empower" | "enlighten" | "enhance" | "awakened" | "any";
+export type SocketItemKind =
+	| "helmets-gloves-boots"
+	| "shields"
+	| "one-handed"
+	| "any";
+
+/**
+ * A reason the current search cannot return what the player is after. `id`
+ * is unique within one check run; `kind` picks the message.
+ */
+export type SearchWarning =
+	| {
+			kind: "gem-level-out-of-reach";
+			id: string;
+			gem: GemKind;
+			corruptedMaxLevel: number;
+			wanted: number;
+	  }
+	| {
+			kind: "gem-level-needs-corruption";
+			id: string;
+			gem: GemKind;
+			maxLevel: number;
+	  }
+	| {
+			kind: "gem-quality-out-of-reach";
+			id: string;
+			gem: GemKind;
+			corruptedMaxQuality: number;
+			wanted: number;
+	  }
+	| {
+			kind: "gem-quality-needs-corruption";
+			id: string;
+			gem: GemKind;
+			maxQuality: number;
+	  }
+	| {
+			kind: "sockets-out-of-reach" | "links-out-of-reach";
+			id: string;
+			items: SocketItemKind;
+			max: number;
+			wanted: number;
+	  }
+	| { kind: "mirrored-and-corrupted"; id: string }
+	| { kind: "fractured-unique"; id: string }
+	| {
+			kind: "filter-min-above-max";
+			id: string;
+			/** The filter's key as the API names it, e.g. "gem_level". */
+			filter: string;
+			min: number;
+			max: number;
+	  }
+	| {
+			kind: "stat-group-min-above-max" | "stat-filter-min-above-max";
+			id: string;
+			min: number;
+			max: number;
+	  };
 
 type Check = (query: TradeQuery) => SearchWarning[];
 
@@ -58,7 +114,6 @@ function itemName(query: TradeQuery): string | null {
 
 // PoE1 caps without corruption. A Vaal Orb can add one gem level, or take
 // gem quality up to 23%.
-const EXCEPTIONAL_GEMS = new Set(["empower", "enlighten", "enhance"]);
 const EXCEPTIONAL_MAX_LEVEL = 3;
 const AWAKENED_MAX_LEVEL = 5;
 const GEM_MAX_LEVEL = 20;
@@ -66,17 +121,16 @@ const GEM_MAX_QUALITY = 20;
 const GEM_CORRUPTED_MAX_QUALITY = 23;
 
 /** The gem this search is for, or null when it is not clearly a gem. */
-function gemOf(query: TradeQuery): { maxLevel: number; label: string } | null {
+function gemOf(query: TradeQuery): { maxLevel: number; kind: GemKind } | null {
 	const name = itemName(query);
-	if (name && EXCEPTIONAL_GEMS.has(name)) {
-		const label = `${name[0]?.toUpperCase()}${name.slice(1)} gems`;
-		return { maxLevel: EXCEPTIONAL_MAX_LEVEL, label };
+	if (name === "empower" || name === "enlighten" || name === "enhance") {
+		return { maxLevel: EXCEPTIONAL_MAX_LEVEL, kind: name };
 	}
 	if (name?.startsWith("awakened ")) {
-		return { maxLevel: AWAKENED_MAX_LEVEL, label: "Awakened gems" };
+		return { maxLevel: AWAKENED_MAX_LEVEL, kind: "awakened" };
 	}
 	if (category(query)?.startsWith("gem")) {
-		return { maxLevel: GEM_MAX_LEVEL, label: "Gems" };
+		return { maxLevel: GEM_MAX_LEVEL, kind: "any" };
 	}
 	return null;
 }
@@ -91,16 +145,21 @@ const gemLevel: Check = (query) => {
 	if (wanted > gem.maxLevel + 1) {
 		return [
 			{
+				kind: "gem-level-out-of-reach",
 				id: "gem-level-out-of-reach",
-				message: `${gem.label} top out at level ${gem.maxLevel + 1}, and only when corrupted. Nothing can match a minimum of ${wanted}.`,
+				gem: gem.kind,
+				corruptedMaxLevel: gem.maxLevel + 1,
+				wanted,
 			},
 		];
 	}
 	if (!excludesCorrupted(query)) return [];
 	return [
 		{
+			kind: "gem-level-needs-corruption",
 			id: "gem-level-needs-corruption",
-			message: `${gem.label} only go above level ${gem.maxLevel} by corrupting, but this search excludes corrupted items. Set Corrupted to Any or Yes.`,
+			gem: gem.kind,
+			maxLevel: gem.maxLevel,
 		},
 	];
 };
@@ -112,31 +171,40 @@ const gemQuality: Check = (query) => {
 	if (wanted > GEM_CORRUPTED_MAX_QUALITY) {
 		return [
 			{
+				kind: "gem-quality-out-of-reach",
 				id: "gem-quality-out-of-reach",
-				message: `${gem.label} top out at ${GEM_CORRUPTED_MAX_QUALITY}% quality, and only when corrupted. Nothing can match a minimum of ${wanted}%.`,
+				gem: gem.kind,
+				corruptedMaxQuality: GEM_CORRUPTED_MAX_QUALITY,
+				wanted,
 			},
 		];
 	}
 	if (!excludesCorrupted(query)) return [];
 	return [
 		{
+			kind: "gem-quality-needs-corruption",
 			id: "gem-quality-needs-corruption",
-			message: `${gem.label} only go above ${GEM_MAX_QUALITY}% quality by corrupting, but this search excludes corrupted items. Set Corrupted to Any or Yes.`,
+			gem: gem.kind,
+			maxQuality: GEM_MAX_QUALITY,
 		},
 	];
 };
 
 // Most sockets a PoE1 item of each kind can have; links cannot exceed sockets.
 // Body armour and two-handed weapons reach 6, which no filter can exceed anyway.
-const SOCKET_CAPS: { label: string; max: number; categories: string[] }[] = [
+const SOCKET_CAPS: {
+	items: SocketItemKind;
+	max: number;
+	categories: string[];
+}[] = [
 	{
-		label: "Helmets, gloves and boots",
+		items: "helmets-gloves-boots",
 		max: 4,
 		categories: ["armour.helmet", "armour.gloves", "armour.boots"],
 	},
-	{ label: "Shields", max: 3, categories: ["armour.shield"] },
+	{ items: "shields", max: 3, categories: ["armour.shield"] },
 	{
-		label: "One-handed weapons",
+		items: "one-handed",
 		max: 3,
 		categories: [
 			"weapon.one",
@@ -158,53 +226,36 @@ const SOCKET_KEYS: ("sockets" | "links")[] = ["sockets", "links"];
 const socketsAndLinks: Check = (query) => {
 	const id = category(query);
 	const cap = SOCKET_CAPS.find((c) => id !== null && c.categories.includes(id));
-	const label = cap?.label ?? "Items";
+	const items = cap?.items ?? "any";
 	const max = cap?.max ?? ANY_ITEM_MAX_SOCKETS;
-	return SOCKET_KEYS.flatMap((key) => {
+	return SOCKET_KEYS.flatMap((key): SearchWarning[] => {
 		const wanted = filterOf(query, "socket_filters", key)?.min;
 		if (wanted === undefined || wanted <= max) return [];
-		return [
-			{
-				id: `${key}-out-of-reach`,
-				message: `${label} have at most ${max} sockets, so nothing can match a minimum of ${wanted} ${key}.`,
-			},
-		];
+		const kind =
+			key === "sockets" ? "sockets-out-of-reach" : "links-out-of-reach";
+		return [{ kind, id: kind, items, max, wanted }];
 	});
 };
 
 const mirroredAndCorrupted: Check = (query) =>
 	yesNo(query, "misc_filters", "mirrored") === "true" &&
 	yesNo(query, "misc_filters", "corrupted") === "true"
-		? [
-				{
-					id: "mirrored-and-corrupted",
-					message:
-						"Corrupted items cannot be mirrored, and mirrored items cannot be corrupted. Set one of Mirrored or Corrupted to Any.",
-				},
-			]
+		? [{ kind: "mirrored-and-corrupted", id: "mirrored-and-corrupted" }]
 		: [];
 
 const fracturedUnique: Check = (query) =>
 	yesNo(query, "misc_filters", "fractured_item") === "true" &&
 	yesNo(query, "type_filters", "rarity") === "unique"
-		? [
-				{
-					id: "fractured-unique",
-					message:
-						"Unique items are never fractured. Set Fractured to Any or pick another rarity.",
-				},
-			]
+		? [{ kind: "fractured-unique", id: "fractured-unique" }]
 		: [];
 
-function readable(key: string): string {
-	const words = key.replace(/_/g, " ");
-	return `${words[0]?.toUpperCase()}${words.slice(1)}`;
-}
-
-const inverted = (
+/** The pair when the minimum is above the maximum, else null. */
+function inverted(
 	value: { min?: number | undefined; max?: number | undefined } | undefined,
-) =>
-	value?.min !== undefined && value.max !== undefined && value.min > value.max;
+): { min: number; max: number } | null {
+	if (value?.min === undefined || value.max === undefined) return null;
+	return value.min > value.max ? { min: value.min, max: value.max } : null;
+}
 
 /** Any min/max pair where the minimum is above the maximum. Holds for both games. */
 const minAboveMax: Check = (query) => {
@@ -213,11 +264,13 @@ const minAboveMax: Check = (query) => {
 	if (groups.success) {
 		for (const [group, { filters }] of Object.entries(groups.output)) {
 			for (const key of Object.keys(filters ?? {})) {
-				const value = filterOf(query, group, key);
-				if (value && inverted(value)) {
+				const pair = inverted(filterOf(query, group, key) ?? undefined);
+				if (pair) {
 					warnings.push({
+						kind: "filter-min-above-max",
 						id: `min-above-max:${group}.${key}`,
-						message: `${readable(key)} has a minimum of ${value.min} above its maximum of ${value.max}.`,
+						filter: key,
+						...pair,
 					});
 				}
 			}
@@ -225,17 +278,21 @@ const minAboveMax: Check = (query) => {
 	}
 	for (const [i, statGroup] of (query.query.stats ?? []).entries()) {
 		if (statGroup.disabled) continue;
-		if (inverted(statGroup.value)) {
+		const groupPair = inverted(statGroup.value);
+		if (groupPair) {
 			warnings.push({
+				kind: "stat-group-min-above-max",
 				id: `min-above-max:stats.${i}`,
-				message: `A stat group's count or total has a minimum of ${statGroup.value?.min} above its maximum of ${statGroup.value?.max}.`,
+				...groupPair,
 			});
 		}
 		for (const filter of statGroup.filters) {
-			if (filter.disabled || !inverted(filter.value)) continue;
+			const pair = filter.disabled ? null : inverted(filter.value);
+			if (!pair) continue;
 			warnings.push({
+				kind: "stat-filter-min-above-max",
 				id: `min-above-max:${filter.id}`,
-				message: `A stat filter has a minimum of ${filter.value?.min} above its maximum of ${filter.value?.max}.`,
+				...pair,
 			});
 		}
 	}

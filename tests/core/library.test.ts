@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { en } from "../../src/core/i18n";
 import {
 	bookmarkTree,
-	DEFAULT_FOLDER_NAME,
 	deleteBookmark,
 	emptyLibrary,
 	parseLibrary,
@@ -10,6 +10,8 @@ import {
 	saveSearch,
 } from "../../src/core/library";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
+
+const DEFAULT_FOLDER_NAME = en.bookmarks.defaultFolder;
 
 function ids() {
 	let n = 0;

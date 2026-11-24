@@ -14,24 +14,25 @@ describe("parseOverview and equivalents", () => {
 	it("converts a PoE1 price into chaos and divine", () => {
 		const rates = parseOverview(poe1, "poe1", "Standard", 0);
 		if (!rates) throw new Error("fixture");
-		const fromExalts = equivalents(10, "exalted", rates).map(formatEquivalent);
+		const fromExalts = equivalents(10, "exalted", rates).map((e) =>
+			formatEquivalent(e),
+		);
 		expect(fromExalts).toEqual(["74.1 c", "0.088 div"]);
-		expect(equivalents(1, "divine", rates).map(formatEquivalent)).toEqual([
-			"846 c",
-		]);
+		expect(
+			equivalents(1, "divine", rates).map((e) => formatEquivalent(e)),
+		).toEqual(["846 c"]);
 	});
 
 	it("converts a PoE2 price into exalted and divine", () => {
 		const rates = parseOverview(poe2, "poe2", "Standard", 0);
 		if (!rates) throw new Error("fixture");
 		expect(rates.primary).toBe("divine");
-		expect(equivalents(1, "divine", rates).map(formatEquivalent)).toEqual([
-			"160 ex",
-		]);
-		expect(equivalents(2, "chaos", rates).map(formatEquivalent)).toEqual([
-			"166 ex",
-			"1.04 div",
-		]);
+		expect(
+			equivalents(1, "divine", rates).map((e) => formatEquivalent(e)),
+		).toEqual(["160 ex"]);
+		expect(
+			equivalents(2, "chaos", rates).map((e) => formatEquivalent(e)),
+		).toEqual(["166 ex", "1.04 div"]);
 	});
 
 	it("gives nothing for unknown currencies, zero prices and bad data", () => {
