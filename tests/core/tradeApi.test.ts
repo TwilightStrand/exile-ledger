@@ -184,6 +184,7 @@ describe("parseFetchResponse", () => {
 				text: null,
 				corrupted: false,
 				seller: null,
+				card: null,
 				affixes: null,
 				mods: [
 					{

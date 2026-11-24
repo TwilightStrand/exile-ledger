@@ -39,7 +39,7 @@ export function installPageStyles(doc: Document): void {
 	style.id = STYLE_ID;
 	style.textContent = [
 		`[${HIGHLIGHT_ATTR}] { background: ${tint(16)}; box-shadow: inset 3px 0 0 var(${ACCENT}); border-radius: 2px; }`,
-		`[${PRICE_ATTR}] { display: block; margin-top: 2px; font-size: 11px; color: var(${ACCENT}); opacity: 0.9; }`,
+		`[${PRICE_ATTR}] { display: block; margin-top: 2px; font-size: 11px; color: var(${ACCENT}); opacity: 0.9; white-space: pre-line; }`,
 		`[${LISTED_ATTR}] { font-size: 11px; opacity: 0.75; }`,
 		`[${SOCKETS_ATTR}] { font-size: 11px; color: var(${ACCENT}); }`,
 		`[${TOOLS_ATTR}] { display: flex; gap: 8px; align-items: center; font-size: 11px; margin: 2px 0; }`,

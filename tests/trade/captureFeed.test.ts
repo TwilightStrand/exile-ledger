@@ -28,6 +28,7 @@ const results = (queryId: string, id: string): CaptureEvent => ({
 			text: null,
 			corrupted: false,
 			seller: null,
+			card: null,
 			affixes: null,
 		},
 	],

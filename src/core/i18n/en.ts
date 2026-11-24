@@ -207,6 +207,9 @@ export const en = {
 		unpin: "Unpin",
 		/** Under a listing's price: "≈ 74.1 c · 0.088 div". */
 		priceEquivalents: (parts: string[]) => `≈ ${parts.join(" · ")}`,
+		/** A divination card stack's worth at poe.ninja's card price. */
+		stackValue: (stackSize: number, parts: string[]) =>
+			`Stack of ${stackSize} worth ≈ ${parts.join(" · ")}`,
 		currencyShort: {
 			chaos: "c",
 			divine: "div",

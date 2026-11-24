@@ -1,5 +1,10 @@
 import { en, type Messages } from "../core/i18n";
-import { equivalents, formatEquivalent, type Rates } from "../core/pricing";
+import {
+	equivalents,
+	formatEquivalent,
+	type Rates,
+	stackValue,
+} from "../core/pricing";
 import type { CaptureState } from "./captureFeed";
 import { SELECTORS } from "./selectors";
 
@@ -30,13 +35,22 @@ export function annotatePrices(
 		const parts = item?.price
 			? equivalents(item.price.amount, item.price.currency, rates)
 			: [];
-		if (!priceEl || parts.length === 0) {
+		const stack = item?.card ? stackValue(item.card, rates) : [];
+		if (!priceEl || (parts.length === 0 && stack.length === 0)) {
 			existing?.remove();
 			continue;
 		}
-		const text = t.trade.priceEquivalents(
-			parts.map((part) => formatEquivalent(part, t)),
-		);
+		const show = (list: typeof parts) =>
+			list.map((part) => formatEquivalent(part, t));
+		// One element, lines split by CSS, so the observer sees a single text change.
+		const text = [
+			parts.length > 0 ? t.trade.priceEquivalents(show(parts)) : null,
+			item?.card && stack.length > 0
+				? t.trade.stackValue(item.card.stackSize, show(stack))
+				: null,
+		]
+			.filter(Boolean)
+			.join("\n");
 		const el = existing ?? priceEl.ownerDocument.createElement("span");
 		el.setAttribute(PRICE_ATTR, "");
 		// Unchanged text is left alone so the results observer does not wake again.

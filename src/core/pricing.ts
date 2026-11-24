@@ -19,6 +19,8 @@ export interface Rates {
 	league: string;
 	primary: string;
 	values: Record<string, number>;
+	/** Divination card value by card name, in the same core currency (PoE1 only). */
+	cards: Record<string, number>;
 	fetchedAt: number;
 }
 
@@ -27,6 +29,8 @@ export const RatesSchema = v.object({
 	league: v.string(),
 	primary: v.string(),
 	values: v.record(v.string(), v.number()),
+	// Rates cached before card prices existed have none; the next refresh adds them.
+	cards: v.optional(v.record(v.string(), v.number()), {}),
 	fetchedAt: v.number(),
 });
 
@@ -48,16 +52,58 @@ export function parseOverview(
 		league,
 		primary: parsed.output.core.primary,
 		values,
+		cards: {},
 		fetchedAt: now,
 	};
 }
 
-export function overviewUrl(game: Game, league: string): string {
+const CardOverviewSchema = v.object({
+	lines: v.array(v.object({ id: v.string(), primaryValue: v.number() })),
+	items: v.array(v.object({ id: v.string(), name: v.string() })),
+});
+
+/**
+ * Card values by name from poe.ninja's DivinationCard overview. The trade API
+ * names a card by its typeLine, so the overview's ids are mapped to names.
+ */
+export function parseCardOverview(raw: unknown): Record<string, number> {
+	const parsed = v.safeParse(CardOverviewSchema, raw);
+	if (!parsed.success) return {};
+	const names = new Map(parsed.output.items.map((i) => [i.id, i.name]));
+	const cards: Record<string, number> = {};
+	for (const line of parsed.output.lines) {
+		const name = names.get(line.id);
+		if (name && line.primaryValue > 0) cards[name] = line.primaryValue;
+	}
+	return cards;
+}
+
+/** A full stack's worth in both display currencies, or nothing for unknown cards. */
+export function stackValue(
+	card: { name: string; stackSize: number },
+	rates: Rates,
+): Equivalent[] {
+	const each = rates.cards[card.name];
+	if (each === undefined || card.stackSize <= 0) return [];
+	const inPrimary = each * card.stackSize;
+	return DISPLAY_CURRENCIES[rates.game].flatMap((target) => {
+		const targetValue = rates.values[target];
+		return targetValue === undefined
+			? []
+			: [{ currency: target, amount: inPrimary / targetValue }];
+	});
+}
+
+export function overviewUrl(
+	game: Game,
+	league: string,
+	type: "Currency" | "DivinationCard" = "Currency",
+): string {
 	const url = new URL(
 		`https://poe.ninja/${game}/api/economy/exchange/current/overview`,
 	);
 	url.searchParams.set("league", league);
-	url.searchParams.set("type", "Currency");
+	url.searchParams.set("type", type);
 	return url.toString();
 }
 

@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { parseOverview } from "../../src/core/pricing";
+import { parseCardOverview, parseOverview } from "../../src/core/pricing";
 import { parseFetchResponse, parseSearch } from "../../src/core/tradeApi";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { annotatePrices, PRICE_ATTR } from "../../src/trade/equivalentPrices";
+import cards from "../fixtures/poe-ninja/poe1-cards-standard.json";
+import poe1Rates from "../fixtures/poe-ninja/poe1-currency-standard.json";
 import poe2Rates from "../fixtures/poe-ninja/poe2-currency-standard.json";
 import fetchResponse from "../fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../fixtures/trade/poe2-search-request.json";
@@ -54,5 +56,34 @@ describe("annotatePrices", () => {
 		expect(notes()).toEqual([]);
 		annotatePrices(document, capture(), null, true);
 		expect(notes()).toEqual([]);
+	});
+});
+
+describe("divination card stacks", () => {
+	it("adds the stack's worth under a card listing's price", () => {
+		const base = parseOverview(poe1Rates, "poe1", "Standard", 0);
+		if (!base) throw new Error("fixture");
+		const [item] =
+			parseFetchResponse({
+				result: [
+					{
+						id: "card1",
+						listing: { price: { amount: 15, currency: "chaos" } },
+						item: { typeLine: "Broken Truce", frameType: 6, stackSize: 5 },
+					},
+				],
+			}) ?? [];
+		if (!item) throw new Error("no item");
+		document.body.innerHTML =
+			'<div class="resultset"><div class="row" data-id="card1"><span class="price">15 chaos</span></div></div>';
+		annotatePrices(
+			document,
+			{ search: null, results: [item] },
+			{ ...base, cards: parseCardOverview(cards) },
+			true,
+		);
+		expect(notes()).toEqual([
+			"≈ 0.018 div\nStack of 5 worth ≈ 20 c · 0.024 div",
+		]);
 	});
 });

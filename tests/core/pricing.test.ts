@@ -4,9 +4,12 @@ import {
 	formatEquivalent,
 	isFresh,
 	overviewUrl,
+	parseCardOverview,
 	parseOverview,
 	RATES_TTL_MS,
+	stackValue,
 } from "../../src/core/pricing";
+import cards from "../fixtures/poe-ninja/poe1-cards-standard.json";
 import poe1 from "../fixtures/poe-ninja/poe1-currency-standard.json";
 import poe2 from "../fixtures/poe-ninja/poe2-currency-standard.json";
 
@@ -51,5 +54,37 @@ describe("parseOverview and equivalents", () => {
 		if (!rates) throw new Error("fixture");
 		expect(isFresh(rates, 1000 + RATES_TTL_MS - 1)).toBe(true);
 		expect(isFresh(rates, 1000 + RATES_TTL_MS)).toBe(false);
+	});
+});
+
+describe("divination card stacks", () => {
+	it("maps poe.ninja card ids to the names the trade API uses", () => {
+		expect(parseCardOverview(cards)).toEqual({
+			"Abandoned Wealth": 2,
+			"Broken Truce": 4,
+			"Blind Venture": 4,
+			"Cursed Words": 100,
+		});
+		expect(parseCardOverview({ nope: true })).toEqual({});
+	});
+
+	it("values a stack at per-card price times stack size", () => {
+		const base = parseOverview(poe1, "poe1", "Standard", 0);
+		if (!base) throw new Error("fixture");
+		const rates = { ...base, cards: parseCardOverview(cards) };
+		const value = stackValue({ name: "Broken Truce", stackSize: 5 }, rates);
+		expect(value.map((e) => formatEquivalent(e))).toEqual([
+			"20 c",
+			"0.024 div",
+		]);
+		expect(stackValue({ name: "Unknown Card", stackSize: 5 }, rates)).toEqual(
+			[],
+		);
+	});
+
+	it("asks poe.ninja for cards with the same endpoint", () => {
+		expect(overviewUrl("poe1", "Mercenaries", "DivinationCard")).toBe(
+			"https://poe.ninja/poe1/api/economy/exchange/current/overview?league=Mercenaries&type=DivinationCard",
+		);
 	});
 });

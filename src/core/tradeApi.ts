@@ -108,6 +108,7 @@ const ItemSchema = v.looseObject({
 	ilvl: v.optional(v.number()),
 	frameType: v.optional(v.number()),
 	corrupted: v.optional(v.boolean()),
+	stackSize: v.optional(v.number()),
 	enchantMods: ModLines,
 	implicitMods: ModLines,
 	fracturedMods: ModLines,
@@ -159,11 +160,15 @@ export interface ResultItem {
 	/** PoE1's in-game item text, decoded; PoE2 responses do not carry it. */
 	text: string | null;
 	corrupted: boolean;
+	/** Set for divination cards (frameType 6), whose value depends on the stack. */
+	card: { name: string; stackSize: number } | null;
 	/** The seller's account name. */
 	seller: string | null;
 	/** From the tier codes on rolled mods; null when the API sent none. */
 	affixes: AffixCount | null;
 }
+
+const DIVINATION_CARD = 6;
 
 export type Rarity = "Normal" | "Magic" | "Rare" | "Unique";
 const RARITIES: readonly Rarity[] = ["Normal", "Magic", "Rare", "Unique"];
@@ -241,6 +246,10 @@ export function parseFetchResponse(response: unknown): ResultItem[] | null {
 				: null,
 			corrupted: entry.item.corrupted ?? false,
 			seller: entry.listing.account?.name ?? null,
+			card:
+				entry.item.frameType === DIVINATION_CARD && entry.item.typeLine
+					? { name: entry.item.typeLine, stackSize: entry.item.stackSize ?? 1 }
+					: null,
 			affixes: countAffixes(
 				AFFIX_KINDS.flatMap((kind) =>
 					linesFor(entry.item, kind).flatMap((line) =>

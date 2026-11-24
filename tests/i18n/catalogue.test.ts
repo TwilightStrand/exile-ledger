@@ -28,6 +28,7 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"trade.affixesTitle": (t) => t.trade.affixesTitle(1, 2),
 	"trade.wikiTitle": (t) => t.trade.wikiTitle("Tabula Rasa"),
 	"trade.socketShortfall": (t) => t.trade.socketShortfall(35, 5),
+	"trade.stackValue": (t) => t.trade.stackValue(5, ["10 c", "0.01 div"]),
 	"trade.priceEquivalents": (t) =>
 		t.trade.priceEquivalents(["74.1 c", "0.088 div"]),
 	"trade.titleSegment": (t) => t.trade.titleSegment("Body Armour", "Standard"),

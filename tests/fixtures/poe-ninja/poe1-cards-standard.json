@@ -1,0 +1,97 @@
+{
+	"core": {
+		"items": [
+			{
+				"id": "chaos",
+				"name": "Chaos Orb",
+				"image": "/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQ3VycmVuY3lSZXJvbGxSYXJlIiwic2NhbGUiOjF9XQ/46a2347805/CurrencyRerollRare.png",
+				"category": "Currency",
+				"detailsId": "chaos-orb"
+			},
+			{
+				"id": "divine",
+				"name": "Divine Orb",
+				"image": "/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvQ3VycmVuY3lNb2RWYWx1ZXMiLCJzY2FsZSI6MX1d/ec48896769/CurrencyModValues.png",
+				"category": "Currency",
+				"detailsId": "divine-orb"
+			}
+		],
+		"rates": {
+			"divine": 0.001169
+		},
+		"primary": "chaos",
+		"secondary": "divine"
+	},
+	"lines": [
+		{
+			"id": "abandoned-wealth",
+			"primaryValue": 2,
+			"volumePrimaryValue": 0.6667,
+			"maxVolumeCurrency": "chaos",
+			"maxVolumeRate": 0.5,
+			"sparkline": {
+				"totalChange": 0,
+				"data": [null, null, 0, 0, null, 0, 0]
+			}
+		},
+		{
+			"id": "broken-truce",
+			"primaryValue": 4,
+			"volumePrimaryValue": 1.33,
+			"maxVolumeCurrency": "chaos",
+			"maxVolumeRate": 0.25,
+			"sparkline": {
+				"totalChange": 0,
+				"data": [null, null, null, null, null, 0, 0]
+			}
+		},
+		{
+			"id": "blind-venture",
+			"primaryValue": 4,
+			"volumePrimaryValue": 3.33,
+			"maxVolumeCurrency": "chaos",
+			"maxVolumeRate": 0.25,
+			"sparkline": {
+				"totalChange": 0,
+				"data": [null, 0, 0, 0, 0, 0, 0]
+			}
+		},
+		{
+			"id": "cursed-words",
+			"primaryValue": 100,
+			"volumePrimaryValue": 16.67,
+			"maxVolumeCurrency": "chaos",
+			"maxVolumeRate": 0.01,
+			"sparkline": {
+				"totalChange": 2400,
+				"data": [null, null, null, 0, null, null, 2400]
+			}
+		}
+	],
+	"items": [
+		{
+			"id": "abandoned-wealth",
+			"name": "Abandoned Wealth",
+			"category": "Cards",
+			"detailsId": "abandoned-wealth"
+		},
+		{
+			"id": "broken-truce",
+			"name": "Broken Truce",
+			"category": "Cards",
+			"detailsId": "broken-truce"
+		},
+		{
+			"id": "blind-venture",
+			"name": "Blind Venture",
+			"category": "Cards",
+			"detailsId": "blind-venture"
+		},
+		{
+			"id": "cursed-words",
+			"name": "Cursed Words",
+			"category": "Cards",
+			"detailsId": "cursed-words"
+		}
+	]
+}
