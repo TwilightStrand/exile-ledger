@@ -12,9 +12,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -27,3 +27,15 @@ jobs:
       # The linter addons.mozilla.org runs on upload; warnings fail here so they
       # are fixed before submission instead of explained to reviewers.
       - run: npx --yes addons-linter@10.16.0 --warnings-as-errors .output/firefox-mv3
+      # AMO reviewers rebuild from the sources zip; this proves their build
+      # matches the uploaded add-on byte for byte.
+      - run: pnpm zip:firefox
+      - name: Rebuild the Firefox add-on from its sources zip
+        run: |
+          dir=$(mktemp -d)
+          unzip -q .output/*-sources.zip -d "$dir/src"
+          unzip -q .output/*-firefox.zip -d "$dir/upload"
+          cd "$dir/src"
+          pnpm install --frozen-lockfile
+          pnpm build:firefox
+          diff -r .output/firefox-mv3 "$dir/upload"

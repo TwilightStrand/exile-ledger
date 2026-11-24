@@ -1,5 +1,9 @@
-@import "tailwindcss";
-/* Previews build from another root; this keeps class scanning on the UI sources either way. */
+/*
+ * Scan src/ only. Automatic detection would also read tests and the preview
+ * harness, so the shipped CSS would depend on files outside the sources zip
+ * and a reviewer's rebuild would not match the upload.
+ */
+@import "tailwindcss" source(none);
 @source "../";
 
 @theme {

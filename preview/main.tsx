@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import "../src/styles/tailwind.css";
+import "./preview.css";
 import { type ComponentChildren, render } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -9,7 +9,6 @@ import { createMemorySource } from "../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../src/core/syncEngine";
 import { parseFetchResponse, parseSearch } from "../src/core/tradeApi";
 import { parseTradeUrl } from "../src/core/tradeUrl";
-import panelCss from "../src/styles/tailwind.css?inline";
 import { createCaptureFeed } from "../src/trade/captureFeed";
 import { Panel, type Reserve, TABS, type TabId } from "../src/ui/Panel";
 import { SettingsPage } from "../src/ui/settings/SettingsPage";
@@ -17,6 +16,7 @@ import fetchResponse from "../tests/fixtures/trade/poe2-fetch-response.json";
 import searchRequest from "../tests/fixtures/trade/poe2-search-request.json";
 import searchResponse from "../tests/fixtures/trade/poe2-search-response.json";
 import { MOCK_HISTORY, MOCK_LIBRARY, MOCK_NOW } from "./mocks";
+import panelCss from "./preview.css?inline";
 
 // URL parameters pick the starting state, so each state is one link away:
 // ?search=1&data=1&side=right&open=0&tab=history&game=poe1

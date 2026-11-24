@@ -1,0 +1,3 @@
+/* The extension styles plus the classes only the preview harness uses. */
+@import "../src/styles/tailwind.css";
+@source "./";

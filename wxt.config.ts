@@ -62,6 +62,24 @@ export default defineConfig({
 			gecko_android: { strict_min_version: "142.0" },
 		},
 	},
+	zip: {
+		// Only what the build reads, so stray local files never reach AMO and a
+		// reviewer's rebuild sees exactly the inputs the upload was built from.
+		includeSources: [
+			"src/**",
+			"public/**",
+			"assets/**",
+			"package.json",
+			"pnpm-lock.yaml",
+			"tsconfig.json",
+			"wxt.config.ts",
+			"biome.json",
+			"README.md",
+			"LICENSE",
+			"PRIVACY.md",
+			"THIRD_PARTY_NOTICES.md",
+		],
+	},
 	vite: () => ({
 		plugins: [stripPreactInnerHtml(), preact(), tailwindcss()],
 	}),
