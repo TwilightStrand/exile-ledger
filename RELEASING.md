@@ -21,11 +21,11 @@ Each store job runs only when its secrets are set in the repository. Without the
 | Chrome Web Store   | `CHROME_EXTENSION_ID`, `CHROME_PUBLISHER_ID`, `CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL`, `CHROME_SERVICE_ACCOUNT_PRIVATE_KEY` |
 | addons.mozilla.org | `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`                                                                                |
 
-The release job also needs `CLIENT_ID` and `APP_PRIVATE_KEY` for the GitHub App that pushes the tag and the Next Release pull request.
+The release and build jobs also need `CLIENT_ID` and `APP_PRIVATE_KEY` for the GitHub App that pushes the tag, opens the Next Release pull request and attaches the zips.
 
 ## Retrying a failed store upload
 
-Do not use **Re-run all jobs**: changesetter only reports a release from the run that pushed the tag, so a re-run skips the build and both stores.
+Do not use **Re-run all jobs**: changesetter only reports a release from the run that pushed the tag, so a re-run skips the build and both stores. **Re-run failed jobs** on the original run does work, because it keeps the outputs of the jobs that passed.
 
 Instead, run the workflow by hand with the release tag:
 
@@ -38,6 +38,6 @@ or **Actions → Release → Run workflow** and enter the tag. A manual run skip
 Each store job first asks its store whether it already has that version, using `scripts/store-version.mjs`:
 
 - Chrome Web Store: the item's published version, or a submission that is pending review, staged or published, at this version or newer.
-- addons.mozilla.org: any version with this number, in any channel or review state. AMO never accepts a version number twice, so a disabled or rejected version is reported with a warning and needs a new release.
+- addons.mozilla.org: a version with this number that AMO still lists, in any channel or review state. AMO never accepts a version number twice, so a disabled or rejected version is reported with a warning and needs a new release. A deleted version reads as missing; the upload then fails at AMO with its own error.
 
 A store that already has the version is skipped with a notice, so a retry only uploads where the last attempt failed. A Chrome submission that was rejected or cancelled is uploaded again.

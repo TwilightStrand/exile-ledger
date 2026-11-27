@@ -96,6 +96,9 @@ jobs:
         with:
           client-id: ${{ secrets.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # This job runs pnpm install, so its token only gets what attaching
+          # release assets needs.
+          permission-contents: write
 
       # A retry must send the stores the zips already attached to the release,
       # not a rebuild; it only builds when the first run never attached them.
@@ -114,7 +117,16 @@ jobs:
           done
           if [ "$found" -eq 3 ]; then
             mkdir -p .output
-            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir .output
+            # Exact names, so an extra zip on the release can never stand in
+            # for one of these.
+            for suffix in chrome firefox sources; do
+              name=$(grep -- "-${suffix}\.zip$" <<< "$assets")
+              if [ "$(wc -l <<< "$name")" -ne 1 ]; then
+                echo "::error::Expected one *-${suffix}.zip on $TAG, found: $name"
+                exit 1
+              fi
+              gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir .output
+            done
             echo "reuse=true" >> "$GITHUB_OUTPUT"
           else
             echo "reuse=false" >> "$GITHUB_OUTPUT"
@@ -162,6 +174,8 @@ jobs:
         with:
           name: store-zips
           path: .output/*.zip
+          # .output is a dot-directory, which upload-artifact skips by default.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
