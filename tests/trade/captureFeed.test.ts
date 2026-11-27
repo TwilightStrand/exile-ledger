@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CaptureEvent } from "../../src/trade/capture";
 import { CAPTURE_LIMIT, createCaptureFeed } from "../../src/trade/captureFeed";
+import { syncPinButtons } from "../../src/trade/pinButtons";
+import { annotateResults, TOOLS_ATTR } from "../../src/trade/resultHelpers";
 
 const search = (searchId: string): CaptureEvent => ({
 	kind: "search",
@@ -71,5 +73,65 @@ describe("captureFeed cap", () => {
 		feed.push(results("A", "2"));
 		feed.push(results("A", "1"));
 		expect([...feed.get().results.keys()]).toEqual(["2", "1"]);
+	});
+});
+
+describe("captureFeed cap with rows on the page", () => {
+	it("never drops a result whose row the page still shows", () => {
+		const count = CAPTURE_LIMIT + 100;
+		document.body.innerHTML = `<div class="resultset">${Array.from(
+			{ length: count },
+			(_, i) =>
+				`<div class="row" data-id="${i}"><div class="details"><div class="btns"></div></div></div>`,
+		).join("")}</div>`;
+		const feed = createCaptureFeed();
+		feed.push(search("A"));
+		for (let i = 0; i < count; i++) feed.push(results("A", `${i}`));
+		expect(feed.get().results.size).toBe(count);
+
+		// A full pass over every row still finds each listing, and Pin reaches it.
+		const capture = feed.get();
+		annotateResults(document, capture, {
+			listingTime: false,
+			socketWarning: false,
+			affixCount: false,
+			itemTools: true,
+		});
+		expect(document.querySelectorAll(`[${TOOLS_ATTR}]`)).toHaveLength(count);
+		const toggled: string[] = [];
+		syncPinButtons(document, [], (id) => {
+			if (feed.get().results.has(id)) toggled.push(id);
+		});
+		document
+			.querySelector<HTMLButtonElement>('[data-id="0"] [data-exile-ledger-pin]')
+			?.click();
+		expect(toggled).toEqual(["0"]);
+
+		// Rows the page dropped are capped again on the next fetch.
+		for (const row of [...document.querySelectorAll(".row")].slice(0, 200))
+			row.remove();
+		feed.push(results("A", "new"));
+		expect(feed.get().results.size).toBe(CAPTURE_LIMIT);
+		expect(feed.get().results.has("0")).toBe(false);
+		expect(feed.get().results.has("200")).toBe(true);
+		expect(feed.get().results.has("new")).toBe(true);
+		document.body.innerHTML = "";
+	});
+
+	it("keeps a just-fetched batch whose rows the site has not drawn yet", () => {
+		document.body.innerHTML = '<div class="resultset"></div>';
+		const list = document.querySelector(".resultset");
+		const feed = createCaptureFeed();
+		feed.push(search("A"));
+		const count = CAPTURE_LIMIT + 100;
+		for (let i = 0; i < count; i++) {
+			feed.push(results("A", `${i}`));
+			list?.insertAdjacentHTML(
+				"afterbegin",
+				`<div class="row" data-id="${i}"></div>`,
+			);
+		}
+		expect(feed.get().results.size).toBe(count);
+		document.body.innerHTML = "";
 	});
 });

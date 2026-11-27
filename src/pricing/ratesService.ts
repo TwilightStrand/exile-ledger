@@ -22,16 +22,37 @@ const cacheKey = (game: Game, league: string) =>
  */
 export const RATES_KEEP_MS = 7 * 24 * 60 * 60_000;
 
+const isStale = (value: unknown, now: number) => {
+	const parsed = v.safeParse(RatesSchema, value);
+	return !parsed.success || now - parsed.output.fetchedAt > RATES_KEEP_MS;
+};
+
+const staleKeys = (
+	stored: Record<string, unknown>,
+	keep: string,
+	now: number,
+) =>
+	Object.entries(stored)
+		.filter(
+			([key, value]) =>
+				key.startsWith(CACHE_PREFIX) && key !== keep && isStale(value, now),
+		)
+		.map(([key]) => key);
+
 /** Other leagues' rates that are past keeping or no longer parse. */
 async function removeStale(keep: string, now: number): Promise<void> {
-	const all = await browser.storage.local.get(null);
-	const stale = Object.entries(all)
-		.filter(([key, value]) => {
-			if (!key.startsWith(CACHE_PREFIX) || key === keep) return false;
-			const parsed = v.safeParse(RatesSchema, value);
-			return !parsed.success || now - parsed.output.fetchedAt > RATES_KEEP_MS;
-		})
-		.map(([key]) => key);
+	const candidates = staleKeys(
+		await browser.storage.local.get(null),
+		keep,
+		now,
+	);
+	if (candidates.length === 0) return;
+	// Another tab may have refreshed one of them since the first read.
+	const stale = staleKeys(
+		await browser.storage.local.get(candidates),
+		keep,
+		now,
+	);
 	if (stale.length > 0) await browser.storage.local.remove(stale);
 }
 
@@ -76,7 +97,8 @@ export async function getRates(
 		};
 		if (rates) {
 			await browser.storage.local.set({ [key]: rates });
-			await removeStale(key, now);
+			// Housekeeping only: a failure here must not cost the fresh rates.
+			await removeStale(key, now).catch(() => {});
 		}
 		return rates ?? fallback;
 	} catch {

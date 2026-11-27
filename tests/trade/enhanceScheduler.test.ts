@@ -102,6 +102,20 @@ describe("scheduleEnhance", () => {
 		expect(passes.at(-1)).toEqual(["id-2"]);
 	});
 
+	it("still runs for a results change with no row work, so the caller can refresh the title", async () => {
+		page(2);
+		const { passes, enhance } = recorder();
+		const scheduler = scheduleEnhance(document, enhance);
+		stop = scheduler.stop;
+		scheduler.all();
+		await frame();
+		document
+			.querySelector(".resultset")
+			?.append(document.createElement("span"));
+		await frame();
+		expect(passes).toEqual([["id-0", "id-1"], []]);
+	});
+
 	it("waits while the tab is hidden and catches up when it shows", async () => {
 		page(2);
 		let hidden = true;

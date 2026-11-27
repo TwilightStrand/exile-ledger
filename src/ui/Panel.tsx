@@ -80,6 +80,8 @@ function useCapturedSearch(feed: CaptureFeed): CaptureState["search"] {
 	const [search, setSearch] = useState(() => feed.get().search);
 	useEffect(() => {
 		let latest = feed.get().search;
+		// A search can arrive between the first render and this subscription.
+		setSearch(() => latest);
 		const unsubscribe = feed.subscribe((state) => {
 			if (state.search !== latest) {
 				latest = state.search;
@@ -149,6 +151,23 @@ function useSettings(
 
 const KEY_RESIZE_SAVE_MS = 400;
 
+/** "2m ago" labels move on this often; they show minutes at the finest. */
+const CLOCK_TICK_MS = 30_000;
+
+/** Counts up every CLOCK_TICK_MS while `active`, to refresh relative times. */
+function useTick(active: boolean): number {
+	const [tick, setTick] = useState(0);
+	useEffect(() => {
+		if (!active) return;
+		const timer = setInterval(() => setTick((n) => n + 1), CLOCK_TICK_MS);
+		return () => clearInterval(timer);
+	}, [active]);
+	return tick;
+}
+
+/** How long a finished resize holds its width for the saved setting to come back. */
+const RESIZE_SETTLE_MS = 2000;
+
 /**
  * Drag the panel's inner edge to resize; saved once, when the drag ends.
  * Tracks pixels from the rendered width so the edge stays under the pointer
@@ -167,13 +186,36 @@ function useResize(
 } {
 	// The unit travels with the in-progress width: a unit change from the
 	// settings tab or sync mid-drag must not read 21 (%) as 21 px.
+	// After the drag ends the width is held (settling) until the saved setting
+	// comes back, so the panel does not snap to the old width in between.
 	const [drag, setDrag] = useState<{
 		unit: PanelWidthUnit;
 		value: number;
+		settling: boolean;
 	} | null>(null);
 	const dragWidth = drag?.unit === unit ? drag.value : null;
 	const setDragWidth = (value: number | null) =>
-		setDrag(value === null ? null : { unit, value });
+		setDrag(value === null ? null : { unit, value, settling: false });
+	const finish = (value: number) => {
+		if (value === width) {
+			setDragWidth(null);
+			return;
+		}
+		setDrag({ unit, value, settling: true });
+		onDone(value);
+	};
+	const settling = drag?.settling ?? false;
+	const settled = drag !== null && (drag.unit !== unit || drag.value === width);
+	useEffect(() => {
+		if (!settling) return;
+		if (settled) {
+			setDrag(null);
+			return;
+		}
+		// A save that fails or is overridden must not pin the width for good.
+		const timer = setTimeout(() => setDrag(null), RESIZE_SETTLE_MS);
+		return () => clearTimeout(timer);
+	}, [settling, settled]);
 	const onPointerDown = (e: PointerEvent) => {
 		if (e.button !== 0) return;
 		const panel =
@@ -204,8 +246,7 @@ function useResize(
 		const up = () => {
 			window.removeEventListener("pointermove", move);
 			window.removeEventListener("pointerup", up);
-			setDragWidth(null);
-			if (latest !== width) onDone(latest);
+			finish(latest);
 		};
 		window.addEventListener("pointermove", move);
 		window.addEventListener("pointerup", up);
@@ -234,15 +275,15 @@ function useResize(
 		};
 		pendingNudge.current = save;
 		nudgeTimer.current = setTimeout(() => {
-			setDragWidth(null);
-			save();
+			pendingNudge.current = null;
+			finish(next);
 		}, KEY_RESIZE_SAVE_MS);
 	};
 	return {
 		width: dragWidth ?? width,
 		onPointerDown,
 		nudge,
-		resizing: dragWidth !== null,
+		resizing: dragWidth !== null && !settling,
 	};
 }
 
@@ -382,6 +423,7 @@ export function Panel({
 		panelOpen: initiallyOpen,
 	}));
 	const open = ui.panelOpen;
+	const tick = useTick(open);
 	const setOpen = (panelOpen: boolean) =>
 		uiStateSource.update((state) => ({ ...state, panelOpen }));
 	const widthUnit = prefs.panelWidthUnit;
@@ -472,16 +514,32 @@ export function Panel({
 		});
 		// clock and latest read the newest render through a ref.
 	}, []);
-	const canOverwrite = search !== null && search.game === game;
-	const watched = useMemo(
-		() =>
-			new Set(
-				watchers.flatMap((w) =>
-					w.kind === "search" && w.bookmarkId ? [w.bookmarkId] : [],
-				),
-			),
-		[watchers],
+	// The clock is read again on each tick, when a tab or the panel opens, and
+	// when what the relative times describe changes; otherwise the value stays,
+	// so the history and watcher lists can skip re-rendering.
+	const clockNow = useMemo(
+		() => now(),
+		[now, tick, tab, open, historyEntries, watchers, sync],
 	);
+	const canOverwrite = search !== null && search.game === game;
+	// The background rewrites watchers after every check; keeping the same Set
+	// while the watched bookmarks are unchanged keeps the tree from re-rendering.
+	const watchedRef = useRef<ReadonlySet<string>>(new Set());
+	const watched = useMemo(() => {
+		const next = new Set(
+			watchers.flatMap((w) =>
+				w.kind === "search" && w.bookmarkId ? [w.bookmarkId] : [],
+			),
+		);
+		const previous = watchedRef.current;
+		if (
+			next.size === previous.size &&
+			[...next].every((id) => previous.has(id))
+		)
+			return previous;
+		watchedRef.current = next;
+		return next;
+	}, [watchers]);
 	const collapsed = ui.collapsed;
 	const actions = useMemo<TreeActions>(
 		() => ({
@@ -773,9 +831,9 @@ export function Panel({
 						</h1>
 						<span
 							class={`ml-auto size-2 rounded-full ${SYNC_DOT[sync.state]}`}
-							title={syncStatusText(sync, now(), t)}
+							title={syncStatusText(sync, clockNow, t)}
 						>
-							<span class="sr-only">{syncStatusText(sync, now(), t)}</span>
+							<span class="sr-only">{syncStatusText(sync, clockNow, t)}</span>
 						</span>
 						<button
 							type="button"
@@ -852,7 +910,7 @@ export function Panel({
 							{tab === "history" && (
 								<HistoryList
 									entries={history}
-									now={now()}
+									now={clockNow}
 									actions={historyActions}
 								/>
 							)}
@@ -867,7 +925,7 @@ export function Panel({
 								<WatcherList
 									watchers={watchers}
 									hasAccess={hasTradeAccess}
-									now={now()}
+									now={clockNow}
 									actions={watcherActions}
 								/>
 							)}

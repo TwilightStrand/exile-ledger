@@ -14,7 +14,9 @@ export interface EnhanceScheduler {
  * and rows of listings that just arrived. Everything else keeps its marks.
  *
  * Hidden tabs do not run animation frames, so work queued there waits for the
- * tab to show again instead of being dropped.
+ * tab to show again instead of being dropped. `enhance` runs on every flush,
+ * even with no rows, because the caller also keeps the tab title in step with
+ * the page there.
  */
 export function scheduleEnhance(
 	doc: Document,
@@ -35,7 +37,7 @@ export function scheduleEnhance(
 			if (!(target instanceof Element)) continue;
 			const row = target.closest<HTMLElement>(SELECTORS.resultRow);
 			if (row) {
-				dirtyRows.add(row);
+				if (row.isConnected) dirtyRows.add(row);
 				touched = true;
 			} else if (
 				target.closest(SELECTORS.resultList) ||
@@ -44,6 +46,11 @@ export function scheduleEnhance(
 				// Rows added or swapped: the handled check below finds them.
 				touched = true;
 			}
+		}
+		// A hidden tab can collect changes for a long time; rows the site has
+		// removed meanwhile need no work and should not be kept alive.
+		if (doc.hidden) {
+			for (const row of dirtyRows) if (!row.isConnected) dirtyRows.delete(row);
 		}
 		return touched;
 	};
@@ -73,7 +80,7 @@ export function scheduleEnhance(
 		dirtyRows.clear();
 		dirtyIds.clear();
 		try {
-			if (rows.length > 0) enhance(rows);
+			enhance(rows);
 		} finally {
 			for (const row of rows) handled.set(row, row.dataset.id ?? "");
 			// Our own marks are childList changes inside the results; seeing them

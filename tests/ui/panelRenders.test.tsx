@@ -1,17 +1,22 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { HistoryEntry } from "../../src/core/history";
 import {
 	createMemoryLibrary,
 	emptyLibrary,
 	saveSearch,
 } from "../../src/core/library";
 import type { PinnedItem } from "../../src/core/pins";
-import { createMemorySettings } from "../../src/core/settings";
+import {
+	createMemorySettings,
+	type SettingsSource,
+} from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
 import { parseFetchResponse, parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
 import type { UiState } from "../../src/core/uiState";
+import type { ListingWatcher, Watcher } from "../../src/core/watchers";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { Panel, type PanelProps } from "../../src/ui/Panel";
 import fetchResponse from "../fixtures/trade/poe2-fetch-response.json";
@@ -169,5 +174,155 @@ describe("Panel render work", () => {
 		expect(first.className).toContain("opacity-40");
 		// The dragged row and the row under the pointer; not all twenty.
 		expect(tagRenders.count).toBe(2);
+	});
+});
+
+const LISTING: ListingWatcher = {
+	kind: "listing",
+	id: "w1",
+	origin: "https://www.pathofexile.com",
+	game: "poe2",
+	realm: "poe2",
+	league: "Standard",
+	intervalMin: 5,
+	createdAt: 0,
+	lastCheckedAt: 400,
+	failures: 0,
+	retryAt: null,
+	searchId: "s1",
+	itemId: "i1",
+	name: "Viper Wrap Hatungo Garb",
+	seller: "Seller#0000",
+	price: { amount: 8, currency: "exalted" },
+	previousPrice: null,
+	status: "listed",
+	changedAt: 400,
+};
+
+const tabButton = (root: HTMLElement, id: string) =>
+	root.querySelector<HTMLButtonElement>(`#exile-ledger-tab-${id}`);
+const panelText = (root: HTMLElement) =>
+	root.querySelector("[role=tabpanel]")?.textContent ?? "";
+
+function historyAt(at: number) {
+	const entry: HistoryEntry = {
+		id: "h1",
+		game: "poe2",
+		league: "Standard",
+		query: { query: { term: "Hatungo Garb" } },
+		searchId: "s-h1",
+		total: 42,
+		at,
+	};
+	return createMemorySource<HistoryEntry[]>([entry]);
+}
+
+describe("Panel render work, round 2", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("keeps bookmark rows alone when a watcher check rewrites the watchers", async () => {
+		const watchers = createMemorySource<Watcher[]>([LISTING]);
+		const root = await mount({ library: library(20), watchers });
+		expect(rowLinks(root)).toHaveLength(20);
+		tagRenders.count = 0;
+		await act(async () => {
+			await watchers.update((ws) =>
+				ws.map((w) => ({ ...w, lastCheckedAt: 900 })),
+			);
+		});
+		expect(tagRenders.count).toBe(0);
+	});
+
+	it("skips re-rendering history when the clock reading has not moved on", async () => {
+		let clock = 1000;
+		const pins = createMemorySource<PinnedItem[]>([]);
+		const root = await mount({
+			history: historyAt(900),
+			pins,
+			now: () => ++clock,
+		});
+		await act(async () => tabButton(root, "history")?.click());
+		expect(panelText(root)).toContain("Hatungo Garb");
+		tagRenders.count = 0;
+		await act(async () => {
+			await pins.update(() => [
+				{ id: "p", name: "", baseType: "Ring", price: null, pinnedAt: 1 },
+			]);
+		});
+		expect(tagRenders.count).toBe(0);
+	});
+
+	it("moves relative times on while the panel is open, with nothing captured", async () => {
+		vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+		let clock = 60_000;
+		const root = await mount({
+			history: historyAt(60_000),
+			now: () => clock,
+		});
+		await act(async () => tabButton(root, "history")?.click());
+		expect(panelText(root)).toContain("just now");
+		clock += 5 * 60_000;
+		await act(async () => {
+			vi.advanceTimersByTime(30_000);
+		});
+		expect(panelText(root)).toContain("5m ago");
+	});
+
+	it("shows a search captured between the first render and the subscription", async () => {
+		const { feed } = capturedFeed();
+		const empty = createCaptureFeed();
+		const root = document.createElement("div");
+		document.body.append(root);
+		const late = feed.get().search;
+		if (!late) throw new Error("no search");
+		render(
+			<Panel
+				feed={empty}
+				settings={createMemorySettings()}
+				library={createMemoryLibrary()}
+				page={() => parseTradeUrl(new URL(PAGE))}
+			/>,
+			root,
+		);
+		empty.push(late);
+		// Effects run after paint; give them that, then flush the re-render.
+		await new Promise((r) => setTimeout(r, 150));
+		await act(async () => {});
+		expect(
+			root.querySelector("[data-testid=current-search]")?.textContent,
+		).toContain("Body Armour");
+	});
+
+	it("holds the dragged width until the saved setting comes back", async () => {
+		const memory = createMemorySettings();
+		let release = () => {};
+		const settings: SettingsSource = {
+			load: () => memory.load(),
+			watch: (onChange) => memory.watch(onChange),
+			save: (patch) =>
+				new Promise((resolve) => {
+					release = () => resolve(memory.save(patch));
+				}),
+		};
+		const root = await mount({ settings });
+		const handle = root.querySelector<HTMLElement>("[role=separator]");
+		if (!handle) throw new Error("no handle");
+		expect(handle.getAttribute("aria-valuenow")).toBe("20");
+		await act(async () => {
+			handle.dispatchEvent(
+				new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
+			);
+			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 200 }));
+			window.dispatchEvent(new PointerEvent("pointerup", {}));
+		});
+		const dragged = handle.getAttribute("aria-valuenow");
+		expect(dragged).not.toBe("20");
+		await act(async () => {
+			release();
+		});
+		expect(handle.getAttribute("aria-valuenow")).toBe(dragged);
+		expect(String((await memory.load()).panelWidth)).toBe(dragged);
 	});
 });
