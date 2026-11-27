@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -56,6 +57,7 @@ export const ko: Messages = {
 	panel: {
 		resize: "패널 크기 조절",
 		resizeValue: (percent: number) => `창 너비의 ${percent}%`,
+		resizeValuePx: (px: number) => `${px}px`,
 		collapse: "Exile Ledger 접기",
 		expand: "Exile Ledger 펼치기",
 		expandTab: "장부",
@@ -328,8 +330,15 @@ export const ko: Messages = {
 				"페이지 위에 띄우거나, 페이지를 옆으로 밀어 패널이 결과를 가리지 않게 합니다.",
 			modes: { overlay: "위에 띄우기", push: "옆으로 밀기" },
 			width: "너비",
-			widthHint: (minPx: number, maxPx: number) =>
-				`브라우저 창 너비의 비율이며 ${minPx}px에서 ${maxPx}px 사이로 유지됩니다. 패널의 안쪽 가장자리를 드래그해도 됩니다.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`브라우저 창 너비의 백분율이라 패널이 창과 함께 넓어지고 좁아집니다. 단, ${minPx}px보다 좁아지거나 ${maxPx}px보다 넓어지지 않습니다. 패널의 안쪽 가장자리를 드래그해도 됩니다.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`창 크기와 관계없이 고정된 픽셀 너비이며 ${minPx}px에서 ${maxPx}px 사이입니다. 패널의 안쪽 가장자리를 드래그해도 됩니다.`,
+			widthUnit: "너비 단위",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "패널 너비",
 		},
 		appearance: {

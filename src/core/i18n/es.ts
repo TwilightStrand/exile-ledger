@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -70,6 +71,7 @@ export const es: Messages = {
 	panel: {
 		resize: "Cambiar el tamaño del panel",
 		resizeValue: (percent: number) => `${percent}% de la ventana`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Contraer Exile Ledger",
 		expand: "Expandir Exile Ledger",
 		expandTab: "Ledger",
@@ -350,8 +352,15 @@ export const es: Messages = {
 				"Flotar sobre la página, o empujarla a un lado para que el panel nunca tape los resultados.",
 			modes: { overlay: "Flotar encima", push: "Empujar a un lado" },
 			width: "Anchura",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Proporción de la ventana del navegador, entre ${minPx} y ${maxPx} px. También puedes arrastrar el borde interior del panel.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Porcentaje de la ventana del navegador, así que el panel crece y se reduce con ella. Nunca es más estrecho de ${minPx} px ni más ancho de ${maxPx} px. También puedes arrastrar el borde interior del panel.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Una anchura fija en píxeles, de ${minPx} a ${maxPx} px, sea cual sea el tamaño de la ventana. También puedes arrastrar el borde interior del panel.`,
+			widthUnit: "Unidad de anchura",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Anchura del panel",
 		},
 		appearance: {

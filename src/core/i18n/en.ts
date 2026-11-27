@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -61,6 +62,7 @@ export const en = {
 	panel: {
 		resize: "Resize panel",
 		resizeValue: (percent: number) => `${percent}% of the window`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Collapse Exile Ledger",
 		expand: "Expand Exile Ledger",
 		expandTab: "Ledger",
@@ -336,8 +338,15 @@ export const en = {
 				"Float over the page, or push the page aside so the panel never covers results.",
 			modes: { overlay: "Float over", push: "Push aside" },
 			width: "Width",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Share of the browser window, kept between ${minPx} and ${maxPx} px. You can also drag the panel's inner edge.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Percent of the browser window, so the panel grows and shrinks with it. It never gets narrower than ${minPx} px or wider than ${maxPx} px. You can also drag the panel's inner edge.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`A fixed width in pixels, from ${minPx} to ${maxPx} px, whatever the window size. You can also drag the panel's inner edge.`,
+			widthUnit: "Width unit",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Panel width",
 		},
 		appearance: {

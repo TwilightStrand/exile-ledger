@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -73,6 +74,7 @@ export const ru: Messages = {
 	panel: {
 		resize: "Изменить размер панели",
 		resizeValue: (percent: number) => `${percent}% ширины окна`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Свернуть Exile Ledger",
 		expand: "Развернуть Exile Ledger",
 		expandTab: "Ledger",
@@ -346,8 +348,15 @@ export const ru: Messages = {
 				"Поверх страницы или со сдвигом страницы, чтобы панель не закрывала результаты.",
 			modes: { overlay: "Поверх", push: "Со сдвигом" },
 			width: "Ширина",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Доля ширины окна браузера, от ${minPx} до ${maxPx} px. Также можно перетащить внутренний край панели.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Процент от ширины окна браузера: панель растёт и сжимается вместе с окном. Она никогда не бывает уже ${minPx} px или шире ${maxPx} px. Также можно перетащить внутренний край панели.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Фиксированная ширина в пикселях, от ${minPx} до ${maxPx} px, независимо от размера окна. Также можно перетащить внутренний край панели.`,
+			widthUnit: "Единица ширины",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Ширина панели",
 		},
 		appearance: {

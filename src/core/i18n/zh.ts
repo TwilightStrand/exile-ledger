@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -56,6 +57,7 @@ export const zh: Messages = {
 	panel: {
 		resize: "调整面板大小",
 		resizeValue: (percent: number) => `占窗口的 ${percent}%`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "收起 Exile Ledger",
 		expand: "展开 Exile Ledger",
 		expandTab: "账本",
@@ -319,8 +321,15 @@ export const zh: Messages = {
 			layoutHint: "浮在页面上方，或将页面推向一侧，使面板不会遮挡结果。",
 			modes: { overlay: "浮动覆盖", push: "推开页面" },
 			width: "宽度",
-			widthHint: (minPx: number, maxPx: number) =>
-				`占浏览器窗口的比例，限制在 ${minPx} 到 ${maxPx} px 之间。你也可以拖动面板的内侧边缘。`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`占浏览器窗口宽度的百分比，面板会随窗口一起变宽或变窄，但不会窄于 ${minPx} px，也不会宽于 ${maxPx} px。你也可以拖动面板的内侧边缘。`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`固定的像素宽度，从 ${minPx} 到 ${maxPx} px，不随窗口大小变化。你也可以拖动面板的内侧边缘。`,
+			widthUnit: "宽度单位",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "面板宽度",
 		},
 		appearance: {

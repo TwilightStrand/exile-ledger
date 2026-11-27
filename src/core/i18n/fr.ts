@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -61,6 +62,7 @@ export const fr: Messages = {
 	panel: {
 		resize: "Redimensionner le panneau",
 		resizeValue: (percent: number) => `${percent} % de la fenêtre`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Réduire Exile Ledger",
 		expand: "Développer Exile Ledger",
 		expandTab: "Ledger",
@@ -336,8 +338,15 @@ export const fr: Messages = {
 				"Flotter au-dessus de la page, ou repousser la page pour que le panneau ne couvre jamais les résultats.",
 			modes: { overlay: "Flottant", push: "Repousser" },
 			width: "Largeur",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Part de la fenêtre du navigateur, entre ${minPx} et ${maxPx} px. Vous pouvez aussi faire glisser le bord intérieur du panneau.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Pourcentage de la fenêtre du navigateur : le panneau s'agrandit et se réduit avec elle. Il ne descend jamais sous ${minPx} px et ne dépasse jamais ${maxPx} px. Vous pouvez aussi faire glisser le bord intérieur du panneau.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Une largeur fixe en pixels, de ${minPx} à ${maxPx} px, quelle que soit la taille de la fenêtre. Vous pouvez aussi faire glisser le bord intérieur du panneau.`,
+			widthUnit: "Unité de largeur",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Largeur du panneau",
 		},
 		appearance: {

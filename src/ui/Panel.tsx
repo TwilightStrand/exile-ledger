@@ -22,11 +22,13 @@ import { searchWatcherHref } from "../core/openUrl";
 import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
 import {
-	clampWidth,
+	clampPanelWidth,
 	DEFAULT_SETTINGS,
 	PANEL_WIDTH,
 	type PanelSide,
+	type PanelWidthUnit,
 	panelWidthCss,
+	panelWidthValue,
 	type Settings,
 	type SettingsSource,
 } from "../core/settings";
@@ -123,6 +125,7 @@ const KEY_RESIZE_SAVE_MS = 400;
  */
 function useResize(
 	side: PanelSide,
+	unit: PanelWidthUnit,
 	width: number,
 	onDone: (width: number) => void,
 ): {
@@ -131,7 +134,15 @@ function useResize(
 	nudge: (delta: number) => void;
 	resizing: boolean;
 } {
-	const [dragWidth, setDragWidth] = useState<number | null>(null);
+	// The unit travels with the in-progress width: a unit change from the
+	// settings tab or sync mid-drag must not read 21 (%) as 21 px.
+	const [drag, setDrag] = useState<{
+		unit: PanelWidthUnit;
+		value: number;
+	} | null>(null);
+	const dragWidth = drag?.unit === unit ? drag.value : null;
+	const setDragWidth = (value: number | null) =>
+		setDrag(value === null ? null : { unit, value });
 	const onPointerDown = (e: PointerEvent) => {
 		if (e.button !== 0) return;
 		const panel =
@@ -153,7 +164,10 @@ function useResize(
 					startPx + (ev.clientX - startX) * direction,
 				),
 			);
-			latest = clampWidth((px / viewport) * 100);
+			latest = clampPanelWidth(
+				unit,
+				unit === "px" ? px : (px / viewport) * 100,
+			);
 			setDragWidth(latest);
 		};
 		const up = () => {
@@ -180,7 +194,7 @@ function useResize(
 		[],
 	);
 	const nudge = (delta: number) => {
-		const next = clampWidth((dragWidth ?? width) + delta);
+		const next = clampPanelWidth(unit, (dragWidth ?? width) + delta);
 		setDragWidth(next);
 		clearTimeout(nudgeTimer.current);
 		const save = () => {
@@ -325,10 +339,13 @@ export function Panel({
 	const open = ui.panelOpen;
 	const setOpen = (panelOpen: boolean) =>
 		uiStateSource.update((state) => ({ ...state, panelOpen }));
-	const resize = useResize(side, prefs.panelWidth, (panelWidth) =>
-		settings.save({ panelWidth }),
+	const widthUnit = prefs.panelWidthUnit;
+	const resize = useResize(side, widthUnit, panelWidthValue(prefs), (value) =>
+		settings.save(
+			widthUnit === "px" ? { panelWidthPx: value } : { panelWidth: value },
+		),
 	);
-	const widthCss = panelWidthCss(resize.width);
+	const widthCss = panelWidthCss(widthUnit, resize.width);
 	const reserveWidth = prefs.panelMode === "push" && open ? widthCss : null;
 	// Layout effect so the page margin changes in the same frame as the panel.
 	useLayoutEffect(() => {
@@ -567,15 +584,24 @@ export function Panel({
 						role="separator"
 						aria-orientation="vertical"
 						aria-label={t.panel.resize}
-						aria-valuemin={PANEL_WIDTH.min}
-						aria-valuemax={PANEL_WIDTH.max}
+						aria-valuemin={
+							widthUnit === "px" ? PANEL_WIDTH.minPx : PANEL_WIDTH.min
+						}
+						aria-valuemax={
+							widthUnit === "px" ? PANEL_WIDTH.maxPx : PANEL_WIDTH.max
+						}
 						aria-valuenow={resize.width}
-						aria-valuetext={t.panel.resizeValue(resize.width)}
+						aria-valuetext={
+							widthUnit === "px"
+								? t.panel.resizeValuePx(resize.width)
+								: t.panel.resizeValue(resize.width)
+						}
 						tabIndex={0}
 						class={`group/handle absolute top-0 z-10 h-full w-2 cursor-col-resize ${classes.handle}`}
 						onPointerDown={resize.onPointerDown}
 						onKeyDown={(e) => {
-							const step = e.shiftKey ? 4 : 1;
+							// 20 px is about 1% of a 1920 px window, so both units step alike.
+							const step = (e.shiftKey ? 4 : 1) * (widthUnit === "px" ? 20 : 1);
 							const grow = side === "left" ? "ArrowRight" : "ArrowLeft";
 							const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
 							if (e.key !== grow && e.key !== shrink) return;

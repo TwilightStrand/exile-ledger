@@ -16,6 +16,7 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"time.daysAgo": (t) => t.time.daysAgo(4),
 	"time.date": (t) => t.time.date(Date.UTC(2026, 9, 14)),
 	"panel.resizeValue": (t) => t.panel.resizeValue(25),
+	"panel.resizeValuePx": (t) => t.panel.resizeValuePx(360),
 	"bookmarks.rename": (t) => t.bookmarks.rename("Garb"),
 	"bookmarks.delete": (t) => t.bookmarks.delete("Garb"),
 	"bookmarks.archive": (t) => t.bookmarks.archive("Maps"),
@@ -65,7 +66,9 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"imports.fromSource": (t) =>
 		t.imports.fromSource(t.imports.sources["better-trading"], "1 folder"),
 	"settings.versionLine": (t) => t.settings.versionLine("0.2.0"),
-	"settings.panel.widthHint": (t) => t.settings.panel.widthHint(280, 640),
+	"settings.panel.widthHintPercent": (t) =>
+		t.settings.panel.widthHintPercent(260, 640),
+	"settings.panel.widthHintPx": (t) => t.settings.panel.widthHintPx(260, 640),
 	"bookmarks.overwrite": (t) => t.bookmarks.overwrite("Garb"),
 	"bookmarks.confirmOverwrite": (t) => t.bookmarks.confirmOverwrite("Garb"),
 	"bookmarks.watch": (t) => t.bookmarks.watch("Garb"),
