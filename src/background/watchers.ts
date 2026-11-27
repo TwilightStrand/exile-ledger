@@ -93,7 +93,7 @@ async function schedule(watchers: readonly Watcher[]): Promise<void> {
 		await browser.alarms.clear(WATCHER_ALARM);
 		return;
 	}
-	const when = Math.max(now + minutes * 60_000, penaltyEndsAt());
+	const when = Math.max(now + minutes * 60_000, await penaltyEndsAt());
 	const existing = await browser.alarms.get(WATCHER_ALARM);
 	if (
 		existing &&
@@ -170,5 +170,15 @@ export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
 			runWatchers(onEvents).catch(() => {});
 		}
 	});
-	runWatchers(onEvents).catch(() => {});
+	// The background wakes for every message and storage change, so a pass
+	// here would add an unplanned check per wake. Rescheduling is enough: the
+	// browser may have dropped the alarm on restart, and an overdue watcher
+	// runs at the next alarm, a minute at the most.
+	rescheduleOnStart().catch(() => {});
+}
+
+async function rescheduleOnStart(): Promise<void> {
+	// Without access every alarm would only wake the background to clear itself.
+	if (!(await hasTradeAccess())) return;
+	await schedule(await browserWatchers.load());
 }

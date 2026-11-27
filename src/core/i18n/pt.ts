@@ -293,6 +293,8 @@ export const pt: Messages = {
 		waiting: "Outro navegador está gravando; tentando de novo em instantes.",
 		quota:
 			"Favoritos demais para a sincronização do navegador. Seus favoritos estão seguros neste computador; arquive ou exclua alguns para retomar a sincronização.",
+		newer:
+			"Outro navegador sincronizou com uma versão mais nova do Exile Ledger. Atualize a extensão aqui para retomar a sincronização; seus favoritos neste computador estão seguros.",
 		failed: "Falha na sincronização.",
 	},
 	imports: {

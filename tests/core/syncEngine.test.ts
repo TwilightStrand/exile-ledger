@@ -8,6 +8,9 @@ import type { Library } from "../../src/core/model";
 import {
 	chunkKey,
 	META_KEY,
+	OFF_STATUS,
+	parseSyncStatus,
+	SYNC_STATES,
 	type SyncPorts,
 	syncOnce,
 } from "../../src/core/syncEngine";
@@ -59,6 +62,34 @@ const save = (name: string, now: number) => (lib: Library) =>
 		},
 		{ now, newId },
 	).library;
+
+describe("parseSyncStatus", () => {
+	it.each(SYNC_STATES)("keeps the %s state through storage", (state) => {
+		const status = { ...OFF_STATUS, state };
+		expect(parseSyncStatus(JSON.parse(JSON.stringify(status)))).toEqual(status);
+	});
+});
+
+describe("syncOnce with a sync area from a newer version", () => {
+	it("leaves a newer format alone, even when asked to replace damage", async () => {
+		const clock = { now: 1 };
+		const future = { version: 2, chunks: 1, writeId: "future" };
+		const shared = new Map<string, unknown>([
+			[META_KEY, future],
+			[chunkKey(0), "future|whatever v2 writes"],
+		]);
+		const old = install(shared, clock);
+		old.edit(save("Garb", 1));
+		expect((await syncOnce(old.ports)).state).toBe("newer");
+		expect((await syncOnce(old.ports, { replaceDamaged: true })).state).toBe(
+			"newer",
+		);
+		expect(old.writes.sync).toBe(0);
+		expect(shared.get(META_KEY)).toEqual(future);
+		expect(shared.get(chunkKey(0))).toBe("future|whatever v2 writes");
+		expect(old.get().bookmarks.map((b) => b.name)).toEqual(["Garb"]);
+	});
+});
 
 describe("syncOnce with two installs sharing storage.sync", () => {
 	it("converges after concurrent edits on both machines", async () => {

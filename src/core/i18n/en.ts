@@ -280,6 +280,8 @@ export const en = {
 		waiting: "Another browser is writing; trying again shortly.",
 		quota:
 			"Too many bookmarks for browser sync. Your bookmarks are safe on this machine; archive or delete some to resume syncing.",
+		newer:
+			"Another browser synced with a newer version of Exile Ledger. Update the extension here to resume syncing; your bookmarks on this machine are safe.",
 		failed: "Sync failed.",
 	},
 	imports: {
