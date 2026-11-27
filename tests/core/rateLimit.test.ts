@@ -86,8 +86,8 @@ describe("trade queue with the rate limiter", () => {
 		const queue = createTradeQueue(createRateLimiter(), server.ports);
 		for (let round = 0; round < 20; round++) {
 			// The user searches by hand between our checks. The limiter hears
-			// about the page's hits through our next response, not before, so
-			// the half of each window it leaves free is what keeps these safe.
+			// about the page's hits through our next response, then waits out
+			// that window, so the next round's searches find it empty.
 			server.pageRequest();
 			server.pageRequest();
 			server.pageRequest();
