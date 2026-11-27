@@ -50,9 +50,9 @@ const OUR_SHARE = 0.5;
 const ourLimit = (max: number) => Math.max(1, Math.floor(max * OUR_SHARE));
 
 /**
- * Gap between requests while no response has told us the limits yet: after a
- * browser restart, or when the server answers without rate limit headers.
- * GGG's tightest published search window is about one request per 10 s.
+ * Gap between requests until any response has reported the limits, as after
+ * a browser restart. GGG's tightest published search window is about one
+ * request per 10 s.
  */
 const UNKNOWN_LIMITS_GAP_MS = 10_000;
 
@@ -148,12 +148,14 @@ export function createRateLimiter() {
 		 * stops an idle background often; a fresh limiter that forgot the
 		 * server's counts would send unpaced into a window that is already full.
 		 */
-		snapshot(): LimiterSnapshot {
+		snapshot(now: number): LimiterSnapshot {
 			const out: LimiterSnapshot = {};
 			for (const [kind, state] of kinds)
 				out[kind] = {
 					rules: state.rules.map((r) => ({ ...r, rule: { ...r.rule } })),
-					blockedUntil: state.blockedUntil,
+					// A penalty already over is dropped: after a clock set back, a
+					// stored end time would read as a penalty still running.
+					blockedUntil: state.blockedUntil > now ? state.blockedUntil : 0,
 					sent: [...state.sent],
 				};
 			return out;

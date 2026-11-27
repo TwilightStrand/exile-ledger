@@ -56,7 +56,7 @@ export async function tradeRequest(
 ): Promise<QueueResult> {
 	await restored;
 	const result = await queue.enqueue(kind, url, init, maxWaitMs);
-	await limiterState.setValue(limiter.snapshot()).catch(() => {});
+	await limiterState.setValue(limiter.snapshot(Date.now())).catch(() => {});
 	return result;
 }
 

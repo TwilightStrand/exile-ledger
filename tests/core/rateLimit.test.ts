@@ -85,9 +85,11 @@ describe("trade queue with the rate limiter", () => {
 		const server = fakeServer([{ max: 5, periodS: 10 }]);
 		const queue = createTradeQueue(createRateLimiter(), server.ports);
 		for (let round = 0; round < 20; round++) {
-			// The user searches by hand between our checks. Only one such
-			// request fits in the headroom: the limiter hears about the page's
-			// hits through our next response, not before.
+			// The user searches by hand between our checks. The limiter hears
+			// about the page's hits through our next response, not before, so
+			// the half of each window it leaves free is what keeps these safe.
+			server.pageRequest();
+			server.pageRequest();
 			server.pageRequest();
 			const result = await queue.enqueue("search", "https://example.test/s");
 			expect(result.ok).toBe(true);
@@ -183,7 +185,7 @@ describe("trade queue with the rate limiter", () => {
 		const before = createRateLimiter();
 		before.observe("fetch", 429, headers({ "Retry-After": "600" }), 0);
 		const after = createRateLimiter();
-		after.restore(before.snapshot(), 60_000);
+		after.restore(before.snapshot(0), 60_000);
 		expect(after.delayFor("fetch", 60_000)).toBe(540_000);
 		expect(after.delayFor("search", 60_000)).toBe(0);
 	});
@@ -201,7 +203,7 @@ describe("trade queue with the rate limiter", () => {
 			0,
 		);
 		const after = createRateLimiter();
-		after.restore(before.snapshot(), 30_000);
+		after.restore(before.snapshot(0), 30_000);
 		expect(after.delayFor("search", 30_000)).toBe(270_000);
 	});
 
@@ -222,7 +224,7 @@ describe("trade queue with the rate limiter", () => {
 		let limiter = createRateLimiter();
 		for (let i = 0; i < 40; i++) {
 			const next = createRateLimiter();
-			next.restore(limiter.snapshot(), server.clock.now);
+			next.restore(limiter.snapshot(server.clock.now), server.clock.now);
 			limiter = next;
 			await createTradeQueue(limiter, server.ports).enqueue(
 				"search",
@@ -251,9 +253,24 @@ describe("trade queue with the rate limiter", () => {
 			3_600_000,
 		);
 		const after = createRateLimiter();
-		after.restore(before.snapshot(), 0);
+		after.restore(before.snapshot(3_609_000), 0);
 		expect(after.delayFor("search", 0)).toBe(0);
 		expect(after.delayFor("fetch", 0)).toBe(2 * 60 * 60_000);
+	});
+
+	it("does not bring back a penalty that ended before the clock went back", () => {
+		const before = createRateLimiter();
+		const hour = 60 * 60_000;
+		const day = 24 * hour;
+		before.observe(
+			"fetch",
+			429,
+			headers({ "Retry-After": "60" }),
+			day + 10 * hour,
+		);
+		const after = createRateLimiter();
+		after.restore(before.snapshot(day + 15 * hour), 15 * hour);
+		expect(after.delayFor("fetch", 15 * hour)).toBe(0);
 	});
 
 	it("paces by a fixed gap until a response reports the limits", () => {
