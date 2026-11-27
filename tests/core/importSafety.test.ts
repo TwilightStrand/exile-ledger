@@ -321,19 +321,13 @@ describe("one bad record does not reject the rest", () => {
 
 describe("malformed input never throws", () => {
 	/** A chain of `levels` legacy folders, each holding the next. */
+	// Built as text: Node 24's JSON.stringify overflows the stack at this depth,
+	// which would fail the test before the importer ever sees the input.
 	const nestedLegacy = (levels: number) => {
-		let f: unknown = {
-			name: "x",
-			searches: [{ name: "s", url: "AAA1" }],
-			subFolders: [],
-		};
-		for (let i = 1; i < levels; i++)
-			f = {
-				name: "x",
-				searches: [{ name: "s", url: "AAA1" }],
-				subFolders: [f],
-			};
-		return tftCode({ searches: [f] });
+		const open =
+			'{"name":"x","searches":[{"name":"s","url":"AAA1"}],"subFolders":[';
+		const json = `{"searches":[${open.repeat(levels)}${"]}".repeat(levels)}]}`;
+		return Buffer.from(json, "utf8").toString("base64");
 	};
 
 	it("refuses a TFT legacy code nested 20,000 levels deep with a message", () => {
