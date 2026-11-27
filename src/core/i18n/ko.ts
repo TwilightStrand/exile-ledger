@@ -62,6 +62,12 @@ export const ko: Messages = {
 		expand: "Exile Ledger 펼치기",
 		expandTab: "장부",
 		sections: "패널 구역",
+		saveFailed: "변경 내용을 저장하지 못했습니다. 다시 시도하세요.",
+		reloadNeeded:
+			"Exile Ledger가 업데이트되었습니다. 변경 내용을 계속 저장하려면 이 페이지를 새로고침하세요.",
+		queryTooLarge:
+			"이 검색은 너무 커서 저장할 수 없습니다. 능력치 필터를 몇 개 지운 뒤 다시 시도하세요.",
+		dismiss: "닫기",
 		tabs: {
 			bookmarks: "북마크",
 			history: "기록",
@@ -308,6 +314,14 @@ export const ko: Messages = {
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed:
 			"가져온 내용을 저장하지 못했습니다. 이 페이지를 새로고침한 뒤 다시 시도하세요.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				other: `손상되었거나 너무 큰 항목 ${n}개를 건너뛰었습니다.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				other: `저장된 검색이 너무 커서 북마크 ${n}개를 검색 없이 유지했습니다. 저장된 검색 ID로 열리며 감시할 수 없습니다.`,
+			}),
 		sources: {
 			"exile-ledger": "공유된 폴더",
 			"better-trading": "Better Trading 내보내기",

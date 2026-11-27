@@ -76,6 +76,12 @@ export const es: Messages = {
 		expand: "Expandir Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Secciones del panel",
+		saveFailed: "No se pudo guardar el cambio. Inténtalo de nuevo.",
+		reloadNeeded:
+			"Exile Ledger se ha actualizado. Recarga esta página para seguir guardando cambios.",
+		queryTooLarge:
+			"Esta búsqueda es demasiado grande para guardarla. Quita algunos filtros de estadísticas e inténtalo de nuevo.",
+		dismiss: "Cerrar",
 		tabs: {
 			bookmarks: "Marcadores",
 			history: "Historial",
@@ -334,6 +340,16 @@ export const es: Messages = {
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed:
 			"No se pudo guardar la importación. Recarga esta página e inténtalo de nuevo.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `Se omitió ${n} registro porque estaba dañado o era demasiado grande.`,
+				other: `Se omitieron ${n} registros porque estaban dañados o eran demasiado grandes.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `Se conservó ${n} marcador sin su búsqueda guardada, que era demasiado grande: se abre con su ID de búsqueda guardado y no se puede vigilar.`,
+				other: `Se conservaron ${n} marcadores sin su búsqueda guardada, que era demasiado grande: se abren con su ID de búsqueda guardado y no se pueden vigilar.`,
+			}),
 		sources: {
 			"exile-ledger": "Carpeta compartida",
 			"better-trading": "Exportación de Better Trading",

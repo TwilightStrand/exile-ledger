@@ -67,6 +67,12 @@ export const fr: Messages = {
 		expand: "Développer Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Sections du panneau",
+		saveFailed: "Impossible d'enregistrer la modification. Réessayez.",
+		reloadNeeded:
+			"Exile Ledger a été mis à jour. Rechargez cette page pour continuer à enregistrer vos modifications.",
+		queryTooLarge:
+			"Cette recherche est trop volumineuse pour être enregistrée. Retirez quelques filtres de stats et réessayez.",
+		dismiss: "Fermer",
 		tabs: {
 			bookmarks: "Favoris",
 			history: "Historique",
@@ -320,6 +326,16 @@ export const fr: Messages = {
 		fromSource: (source: string, summary: string) => `${source} : ${summary}.`,
 		saveFailed:
 			"Impossible d'enregistrer l'import. Rechargez cette page et réessayez.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} élément a été ignoré, car il était endommagé ou trop volumineux.`,
+				other: `${n} éléments ont été ignorés, car ils étaient endommagés ou trop volumineux.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} favori a été conservé sans sa recherche enregistrée, trop volumineuse : il s'ouvre par son identifiant de recherche et ne peut pas être suivi.`,
+				other: `${n} favoris ont été conservés sans leur recherche enregistrée, trop volumineuse : ils s'ouvrent par leur identifiant de recherche et ne peuvent pas être suivis.`,
+			}),
 		sources: {
 			"exile-ledger": "Dossier partagé",
 			"better-trading": "Export Better Trading",

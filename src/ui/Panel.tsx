@@ -21,6 +21,7 @@ import {
 import { searchWatcherHref } from "../core/openUrl";
 import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
+import { queryFits } from "../core/query";
 import {
 	clampPanelWidth,
 	DEFAULT_SETTINGS,
@@ -68,6 +69,7 @@ import { SYNC_DOT, syncStatusText } from "./syncStatusText";
 import { themeStyle } from "./theme";
 import { countBookmarks } from "./viewModels";
 import { type WatcherActions, WatcherList } from "./WatcherList";
+import { useWriteFailures, WriteFailureNotice } from "./writeFailure";
 
 function useCapture(feed: CaptureFeed): CaptureState {
 	const [state, setState] = useState(feed.get);
@@ -286,7 +288,7 @@ export function Panel({
 	feed,
 	settings,
 	initialSettings,
-	library: librarySource,
+	library: rawLibrarySource,
 	uiState,
 	page,
 	history: historySource,
@@ -305,6 +307,8 @@ export function Panel({
 	newId = () => crypto.randomUUID(),
 }: PanelProps) {
 	const t = useMessages();
+	const writes = useWriteFailures(rawLibrarySource);
+	const librarySource = writes.source;
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
@@ -376,6 +380,10 @@ export function Panel({
 		const event = capture.search;
 		if (!event) return;
 		const query = event.search.query;
+		if (!queryFits(query)) {
+			writes.report("too-large");
+			return;
+		}
 		librarySource.update((lib) => {
 			const saved = saveSearch(
 				lib,
@@ -408,6 +416,10 @@ export function Panel({
 				? (id) => {
 						const event = capture.search;
 						if (!event) return;
+						if (!queryFits(event.search.query)) {
+							writes.report("too-large");
+							return;
+						}
 						librarySource.update((lib) =>
 							overwriteBookmark(
 								lib,
@@ -530,6 +542,10 @@ export function Panel({
 		onSave: (id) => {
 			const entry = historyEntries.find((h) => h.id === id);
 			if (!entry) return;
+			if (!queryFits(entry.query)) {
+				writes.report("too-large");
+				return;
+			}
 			librarySource.update((lib) => {
 				const saved = saveSearch(
 					lib,
@@ -641,6 +657,10 @@ export function Panel({
 						</button>
 					</header>
 
+					<WriteFailureNotice
+						failure={writes.failure}
+						onDismiss={writes.dismiss}
+					/>
 					<CurrentSearch capture={capture} saved={saved} onSave={saveCurrent} />
 
 					<div

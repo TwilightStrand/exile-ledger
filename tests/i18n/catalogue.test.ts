@@ -61,6 +61,8 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"imports.summary": (t) => t.imports.summary(2, 7),
 	"imports.backupSaved": (t) => t.imports.backupSaved("1 folder"),
 	"imports.imported": (t) => t.imports.imported("1 folder"),
+	"imports.skipped": (t) => t.imports.skipped(3),
+	"imports.queriesDropped": (t) => t.imports.queriesDropped(2),
 	"imports.backupFrom": (t) =>
 		t.imports.backupFrom(Date.UTC(2026, 10, 24), "1 folder"),
 	"imports.fromSource": (t) =>

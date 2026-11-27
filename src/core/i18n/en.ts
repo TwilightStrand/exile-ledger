@@ -67,6 +67,12 @@ export const en = {
 		expand: "Expand Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Panel sections",
+		saveFailed: "Could not save that change. Try again.",
+		reloadNeeded:
+			"Exile Ledger was updated. Reload this page to keep saving changes.",
+		queryTooLarge:
+			"This search is too large to save. Remove some stat filters and try again.",
+		dismiss: "Dismiss",
 		tabs: {
 			bookmarks: "Bookmarks",
 			history: "History",
@@ -319,6 +325,16 @@ export const en = {
 			`Backup from ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed: "Could not save the import. Reload this page and try again.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} record was left out because it was damaged or too large.`,
+				other: `${n} records were left out because they were damaged or too large.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} bookmark was kept without its stored search, which was too large: it opens by its saved search id and cannot be watched.`,
+				other: `${n} bookmarks were kept without their stored search, which was too large: they open by their saved search id and cannot be watched.`,
+			}),
 		sources: {
 			"exile-ledger": "Shared folder",
 			"better-trading": "Better Trading export",

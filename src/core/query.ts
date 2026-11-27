@@ -49,3 +49,23 @@ export const TradeQuerySchema = v.looseObject({
 export type TradeQuery = v.InferOutput<typeof TradeQuerySchema>;
 export type StatGroup = v.InferOutput<typeof StatGroupSchema>;
 export type StatFilter = v.InferOutput<typeof StatFilterSchema>;
+
+/**
+ * Largest query the app stores, in UTF-8 bytes of its JSON. Saving refuses
+ * a bigger one; an import drops it and keeps the bookmark when it has a
+ * search id to open from. Everything saved is synced, and storage.sync holds about 90 KB
+ * (SYNC_BUDGET_BYTES), so one bookmark must not be able to fill it. A real
+ * query with 150 stat filters is about 16 KB; 24 KB leaves half again as
+ * much room.
+ */
+export const QUERY_MAX_BYTES = 24 * 1024;
+
+export function queryFits(query: unknown): boolean {
+	try {
+		const json = JSON.stringify(query) ?? "";
+		return new TextEncoder().encode(json).length <= QUERY_MAX_BYTES;
+	} catch {
+		// Too deeply nested to serialise, so it could never be stored either.
+		return false;
+	}
+}

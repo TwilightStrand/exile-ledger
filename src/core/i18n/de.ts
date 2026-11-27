@@ -67,6 +67,13 @@ export const de: Messages = {
 		expand: "Exile Ledger ausklappen",
 		expandTab: "Ledger",
 		sections: "Panelbereiche",
+		saveFailed:
+			"Die Änderung konnte nicht gespeichert werden. Versuche es erneut.",
+		reloadNeeded:
+			"Exile Ledger wurde aktualisiert. Lade diese Seite neu, um weiter Änderungen zu speichern.",
+		queryTooLarge:
+			"Diese Suche ist zu groß zum Speichern. Entferne einige Statfilter und versuche es erneut.",
+		dismiss: "Schließen",
 		tabs: {
 			bookmarks: "Lesezeichen",
 			history: "Verlauf",
@@ -320,6 +327,16 @@ export const de: Messages = {
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed:
 			"Der Import konnte nicht gespeichert werden. Lade diese Seite neu und versuche es erneut.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} Eintrag wurde ausgelassen, weil er beschädigt oder zu groß war.`,
+				other: `${n} Einträge wurden ausgelassen, weil sie beschädigt oder zu groß waren.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} Lesezeichen wurde ohne seine gespeicherte Suche übernommen, weil sie zu groß war: Es öffnet sich über seine gespeicherte Such-ID und kann nicht beobachtet werden.`,
+				other: `${n} Lesezeichen wurden ohne ihre gespeicherte Suche übernommen, weil sie zu groß war: Sie öffnen sich über ihre gespeicherte Such-ID und können nicht beobachtet werden.`,
+			}),
 		sources: {
 			"exile-ledger": "Freigegebener Ordner",
 			"better-trading": "Better-Trading-Export",

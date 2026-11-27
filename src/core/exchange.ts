@@ -7,6 +7,7 @@ import {
 	FolderSchema,
 	type Library,
 } from "./model";
+import { queryFits } from "./query";
 import { repairTree } from "./repair";
 import { parseSettings, type Settings } from "./settings";
 import { subtreeIds } from "./tree";
@@ -19,18 +20,162 @@ export const BACKUP_FORMAT = "exile-ledger-backup";
 export interface Payload {
 	folders: Folder[];
 	bookmarks: Bookmark[];
+	/** Records left out while reading because they were invalid or too large. */
+	skipped?: number;
+	/** Bookmarks kept without their query, which was over QUERY_MAX_BYTES. */
+	queriesDropped?: number;
 }
 
-const PayloadSchema = v.object({
-	folders: v.array(FolderSchema),
-	bookmarks: v.array(BookmarkSchema),
+/**
+ * Upper bounds for one imported record's text, in UTF-16 units. Real names
+ * and leagues sit far below; longer ones, which the app does not stop anyone
+ * typing, are cut to fit rather than dropped, so restoring the app's own
+ * backup never loses a record. Trade search ids are about 10 characters.
+ * Queries are capped by QUERY_MAX_BYTES.
+ */
+export const IMPORT_LIMITS = {
+	name: 200,
+	league: 100,
+	searchId: 64,
+};
+
+// Every browser the manifest allows has Intl.Segmenter (Firefox 140+, Chrome MV3).
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Cuts at a code point, never leaving half of a surrogate pair. */
+function cutCodePoints(text: string, max: number): string {
+	const cut = text.slice(0, max);
+	return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+}
+
+/**
+ * Cuts to at most `max` UTF-16 units on a grapheme boundary, so a family
+ * emoji, a flag, a skin tone or an accented letter is kept whole or left
+ * out, never broken. When the first grapheme alone is longer than `max`,
+ * it cuts at a code point instead, so a name is never left empty.
+ */
+export function cutTo(text: string, max: number): string {
+	if (text.length <= max) return text;
+	let end = 0;
+	for (const { index, segment } of graphemes.segment(text)) {
+		if (index + segment.length > max) break;
+		end = index + segment.length;
+	}
+	return end > 0 ? text.slice(0, end) : cutCodePoints(text, max);
+}
+
+// Arrays of anything: each record is checked on its own so one bad entry does
+// not reject the rest, as when reading storage.
+const PayloadShape = v.object({
+	folders: v.array(v.unknown()),
+	bookmarks: v.array(v.unknown()),
 });
+
+/**
+ * Rebuilt from the fields this version knows: unknown fields are kept when
+ * syncing our own data, but an import must not carry hidden bulk into it.
+ */
+function importedFolder(raw: unknown): Folder | null {
+	const parsed = v.safeParse(FolderSchema, raw);
+	if (!parsed.success) return null;
+	const f = parsed.output;
+	return {
+		id: f.id,
+		parentId: f.parentId,
+		name: cutTo(f.name, IMPORT_LIMITS.name),
+		game: f.game,
+		order: f.order,
+		archived: f.archived,
+		...(f.icon === undefined ? {} : { icon: f.icon }),
+		// No role: an imported copy is never where saves go; the user's own folder stays that.
+		updatedAt: f.updatedAt,
+	};
+}
+
+function importedBookmark(
+	raw: unknown,
+): { bookmark: Bookmark; queryDropped: boolean } | null {
+	const parsed = v.safeParse(BookmarkSchema, raw);
+	if (!parsed.success) return null;
+	const b = parsed.output;
+	// A query over the cap is dropped, not the bookmark: older versions saved
+	// any size, and the bookmark still opens from its search id.
+	const query =
+		b.query !== undefined && queryFits(b.query) ? b.query : undefined;
+	// A cut search id would open another search, so an over-long one is
+	// dropped. The app never stores one: trade ids are about 10 characters.
+	const searchId =
+		b.searchId !== undefined && b.searchId.length <= IMPORT_LIMITS.searchId
+			? b.searchId
+			: undefined;
+	const lostSomething = query !== b.query || searchId !== b.searchId;
+	if (lostSomething && query === undefined && searchId === undefined)
+		return null;
+	const bookmark: Bookmark = {
+		id: b.id,
+		folderId: b.folderId,
+		name: cutTo(b.name, IMPORT_LIMITS.name),
+		game: b.game,
+		league: cutTo(b.league, IMPORT_LIMITS.league),
+		// The query stays loose on purpose (see TradeQuerySchema); its size is capped above.
+		...(query === undefined ? {} : { query }),
+		...(searchId === undefined ? {} : { searchId }),
+		...(b.tradeType === undefined ? {} : { tradeType: b.tradeType }),
+		// A live search needs its id; without one the bookmark opens as a plain search.
+		live: searchId === b.searchId ? b.live : false,
+		...(b.done === undefined ? {} : { done: b.done }),
+		order: b.order,
+		createdAt: b.createdAt,
+		updatedAt: b.updatedAt,
+	};
+	return { bookmark, queryDropped: query !== b.query };
+}
+
+/**
+ * Keeps the records that validate and can still be opened, counting the rest.
+ * A folder whose id repeats, and a bookmark whose folder is not kept, count
+ * as skipped too, since importing them would merge or lose them silently.
+ */
+export function cleanPayload(
+	rawFolders: readonly unknown[],
+	rawBookmarks: readonly unknown[],
+	earlier: { skipped?: number; queriesDropped?: number } = {},
+): Payload {
+	const folderIds = new Set<string>();
+	const folders = rawFolders.flatMap((raw) => {
+		const f = importedFolder(raw);
+		if (!f || folderIds.has(f.id)) return [];
+		folderIds.add(f.id);
+		return [f];
+	});
+	let queriesDropped = earlier.queriesDropped ?? 0;
+	const bookmarks = rawBookmarks.flatMap((raw) => {
+		const kept = importedBookmark(raw);
+		if (!kept || !folderIds.has(kept.bookmark.folderId)) return [];
+		if (kept.queryDropped) queriesDropped++;
+		return [kept.bookmark];
+	});
+	return {
+		folders,
+		bookmarks,
+		queriesDropped,
+		skipped:
+			(earlier.skipped ?? 0) +
+			rawFolders.length -
+			folders.length +
+			rawBookmarks.length -
+			bookmarks.length,
+	};
+}
 
 const BackupSchema = v.object({
 	format: v.literal(BACKUP_FORMAT),
 	version: v.literal(1),
 	exportedAt: v.number(),
-	library: PayloadSchema,
+	library: v.pipe(
+		PayloadShape,
+		v.transform((p): Payload => cleanPayload(p.folders, p.bookmarks)),
+	),
 	// Kept raw: a restore applies only the keys the file has, so a backup from
 	// an older version does not reset settings it never knew about.
 	settings: v.optional(v.record(v.string(), v.unknown())),
@@ -107,13 +252,16 @@ export function decodeShare(text: string): Parsed<Payload> {
 	}
 	const json = fromBase64Url(trimmed.slice(SHARE_PREFIX.length));
 	const parsed = v.safeParse(
-		PayloadSchema,
+		PayloadShape,
 		json === null ? undefined : parseJson(json),
 	);
 	if (!parsed.success) return { ok: false, error: "share-damaged" };
 	if (parsed.output.folders.length === 0)
 		return { ok: false, error: "share-empty" };
-	return { ok: true, value: parsed.output };
+	const payload = cleanPayload(parsed.output.folders, parsed.output.bookmarks);
+	if (payload.folders.length === 0)
+		return { ok: false, error: "share-damaged" };
+	return { ok: true, value: payload };
 }
 
 export function createBackup(
@@ -187,10 +335,15 @@ export function backupSettings(backup: Backup): Partial<Settings> {
 	);
 }
 
+/** Never throws: a file that cannot be read is reported, not fatal. */
 export function parseBackup(text: string): Parsed<Backup> {
-	const parsed = v.safeParse(BackupSchema, parseJson(text));
-	if (!parsed.success) return { ok: false, error: "not-backup" };
-	return { ok: true, value: parsed.output };
+	try {
+		const parsed = v.safeParse(BackupSchema, parseJson(text));
+		if (!parsed.success) return { ok: false, error: "not-backup" };
+		return { ok: true, value: parsed.output };
+	} catch {
+		return { ok: false, error: "not-backup" };
+	}
 }
 
 /**
@@ -202,8 +355,16 @@ export function importPayload(
 	library: Library,
 	payload: Payload,
 	{ now, newId }: Clock,
-): { library: Library; folders: number; bookmarks: number } {
-	const repaired = repairTree(payload.folders);
+): {
+	library: Library;
+	folders: number;
+	bookmarks: number;
+	skipped: number;
+	queriesDropped: number;
+} {
+	// Cleaned again here so no caller can add records that skipped the limits.
+	const clean = cleanPayload(payload.folders, payload.bookmarks, payload);
+	const repaired = repairTree(clean.folders);
 	const ids = new Map(repaired.map((f) => [f.id, newId()]));
 	const rootOrder: Record<Folder["game"], number> = { poe1: 0, poe2: 0 };
 	for (const f of library.folders) {
@@ -216,11 +377,9 @@ export function importPayload(
 		if (!id) return [];
 		const parentId = f.parentId === null ? null : (ids.get(f.parentId) ?? null);
 		const order = parentId === null ? rootOrder[f.game]++ : f.order;
-		// An imported copy is never where saves go; the user's own folder stays that.
-		const { role: _role, ...rest } = f;
-		return [{ ...rest, id, parentId, order, updatedAt: now }];
+		return [{ ...f, id, parentId, order, updatedAt: now }];
 	});
-	const bookmarks = payload.bookmarks.flatMap((b): Bookmark[] => {
+	const bookmarks = clean.bookmarks.flatMap((b): Bookmark[] => {
 		const folderId = ids.get(b.folderId);
 		return folderId ? [{ ...b, id: newId(), folderId, updatedAt: now }] : [];
 	});
@@ -233,5 +392,7 @@ export function importPayload(
 		},
 		folders: folders.length,
 		bookmarks: bookmarks.length,
+		skipped: clean.skipped ?? 0,
+		queriesDropped: clean.queriesDropped ?? 0,
 	};
 }

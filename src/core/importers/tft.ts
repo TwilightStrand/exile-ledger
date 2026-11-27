@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { Payload } from "../exchange";
+import { cutTo, IMPORT_LIMITS, type Payload } from "../exchange";
 import type { Bookmark, Folder } from "../model";
 import type { Game } from "../tradeUrl";
 
@@ -136,40 +136,56 @@ function flattenLegacy(
 	});
 }
 
+/** Cut before the suffix, so the import's name limit cannot take the game off the end. */
+function strayName(name: string, game: Game): string {
+	const suffix = ` (${game === "poe2" ? "PoE2" : "PoE1"})`;
+	return `${cutTo(name, IMPORT_LIMITS.name - suffix.length)}${suffix}`;
+}
+
 function toPayload(flat: readonly Flat[], now: number): Payload {
-	const ids = new Map(flat.map((f, i) => [f.id, `tft-folder-${i}`]));
-	const byId = new Map(flat.map((f) => [f.id, f]));
+	// Keyed by position, not by TFT's id: a damaged or hand-edited code can
+	// repeat an id, and both folders must survive. A repeated id used as a
+	// parent points at the first folder that has it.
+	const firstIndex = new Map<string, number>();
+	flat.forEach((f, i) => {
+		if (!firstIndex.has(f.id)) firstIndex.set(f.id, i);
+	});
+	const parentIndex = (f: Flat): number | undefined =>
+		f.parentId === null ? undefined : firstIndex.get(f.parentId);
+	const idOf = (i: number) => `tft-folder-${i}`;
 	// Our folders hold one game; a TFT folder takes the game most of its
 	// bookmarks have, and an empty one inherits its parent's. The visited set
 	// stops a parent cycle in a damaged code.
-	const gameOf = new Map<string, Game>();
-	const resolve = (f: Flat, seen: Set<string> = new Set()): Game => {
-		const known = gameOf.get(f.id);
+	const gameOf = new Map<number, Game>();
+	const resolve = (i: number, seen: Set<number> = new Set()): Game => {
+		const known = gameOf.get(i);
 		if (known) return known;
-		seen.add(f.id);
+		const f = flat[i];
+		if (!f) return "poe1";
+		seen.add(i);
 		const poe2 = f.bookmarks.filter((b) => b.game === "poe2").length;
-		const parent = f.parentId ? byId.get(f.parentId) : undefined;
+		const parent = parentIndex(f);
 		const game: Game =
 			f.bookmarks.length > 0
 				? poe2 * 2 > f.bookmarks.length
 					? "poe2"
 					: "poe1"
-				: parent && !seen.has(parent.id)
+				: parent !== undefined && !seen.has(parent)
 					? resolve(parent, seen)
 					: "poe1";
-		gameOf.set(f.id, game);
+		gameOf.set(i, game);
 		return game;
 	};
 	const folders: Folder[] = [];
 	const bookmarks: Bookmark[] = [];
 	flat.forEach((f, fi) => {
-		const game = resolve(f);
-		const folderId = ids.get(f.id) ?? f.id;
-		const parent = f.parentId ? byId.get(f.parentId) : undefined;
+		const game = resolve(fi);
+		const folderId = idOf(fi);
+		const parent = parentIndex(f);
 		const name = f.name || "TFT";
 		folders.push({
 			id: folderId,
-			parentId: parent ? (ids.get(parent.id) ?? null) : null,
+			parentId: parent === undefined ? null : idOf(parent),
 			name,
 			game,
 			order: f.order,
@@ -185,10 +201,10 @@ function toPayload(flat: readonly Flat[], now: number): Payload {
 			folders.push({
 				id: strayFolderId,
 				parentId:
-					parent && resolve(parent) === other
-						? (ids.get(parent.id) ?? null)
+					parent !== undefined && resolve(parent) === other
+						? idOf(parent)
 						: null,
-				name: `${name} (${other === "poe2" ? "PoE2" : "PoE1"})`,
+				name: strayName(name, other),
 				game: other,
 				order: f.order,
 				archived: false,
@@ -217,6 +233,35 @@ function toPayload(flat: readonly Flat[], now: number): Payload {
 	return { folders, bookmarks };
 }
 
+/**
+ * Deepest legacy folder nesting read. TFT's own UI nests a handful of levels,
+ * and the recursive schema and flattening below use the call stack, so a
+ * code nested thousands deep must be refused before either runs.
+ */
+const MAX_LEGACY_DEPTH = 64;
+
+function legacyTooDeep(json: unknown): boolean {
+	if (typeof json !== "object" || json === null || !("searches" in json))
+		return false;
+	const stack: { value: unknown; depth: number }[] = [
+		{ value: json.searches, depth: 1 },
+	];
+	for (let next = stack.pop(); next; next = stack.pop()) {
+		// An empty subFolders list adds no level of folders.
+		if (!Array.isArray(next.value) || next.value.length === 0) continue;
+		if (next.depth > MAX_LEGACY_DEPTH) return true;
+		for (const folder of next.value) {
+			if (
+				typeof folder === "object" &&
+				folder !== null &&
+				"subFolders" in folder
+			)
+				stack.push({ value: folder.subFolders, depth: next.depth + 1 });
+		}
+	}
+	return false;
+}
+
 export function parseTft(text: string, now: number): Payload | null {
 	const json = parseJson(decodeBase64(text.trim()));
 	const current = v.safeParse(Current, json);
@@ -241,6 +286,7 @@ export function parseTft(text: string, now: number): Payload | null {
 			now,
 		);
 	}
+	if (legacyTooDeep(json)) return null;
 	const legacy = v.safeParse(Legacy, json);
 	if (legacy.success && legacy.output.searches.length > 0)
 		return toPayload(

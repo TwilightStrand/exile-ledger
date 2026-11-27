@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { encodeShare } from "../../src/core/exchange";
+import { encodeShare, SHARE_PREFIX } from "../../src/core/exchange";
 import type { HistoryEntry } from "../../src/core/history";
 import { en, messagesFor } from "../../src/core/i18n";
 import {
@@ -9,6 +9,7 @@ import {
 	emptyLibrary,
 	saveSearch,
 } from "../../src/core/library";
+import { QUERY_MAX_BYTES } from "../../src/core/query";
 import { createMemorySettings } from "../../src/core/settings";
 import { createMemorySource } from "../../src/core/source";
 import { OFF_STATUS, type SyncStatus } from "../../src/core/syncEngine";
@@ -264,6 +265,66 @@ describe("SettingsPage", () => {
 		await act(async () => button(root, "Read")?.click());
 		await act(async () => button(root, "Import")?.click());
 		expect((await library.load()).folders).toHaveLength(2);
+	});
+
+	it("says which bookmarks were kept without an over-size query", async () => {
+		const { root, library } = await mount();
+		const area = root.querySelector<HTMLTextAreaElement>("textarea");
+		if (!area) throw new Error("no textarea");
+		const lib = seededLibrary();
+		const oversize = {
+			...lib.bookmarks[0],
+			id: "big",
+			query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+		};
+		area.value = `${SHARE_PREFIX}${Buffer.from(
+			JSON.stringify({
+				folders: lib.folders,
+				bookmarks: [...lib.bookmarks, oversize],
+			}),
+		).toString("base64url")}`;
+		await act(async () => {
+			area.dispatchEvent(new Event("input"));
+		});
+		await act(async () => button(root, "Read")?.click());
+		const note = en.imports.queriesDropped(1);
+		expect(root.textContent).toContain(note);
+		expect(root.textContent).not.toContain("left out");
+		await act(async () => button(root, "Import")?.click());
+		expect(root.textContent).toContain(
+			`Imported 1 folder and 2 bookmarks. ${note}`,
+		);
+		const stored = await library.load();
+		expect(stored.bookmarks).toHaveLength(3);
+		expect(stored.bookmarks.filter((b) => b.query === undefined)).toHaveLength(
+			1,
+		);
+	});
+
+	it("says how many records of a share string were left out", async () => {
+		const { root, library } = await mount();
+		const area = root.querySelector<HTMLTextAreaElement>("textarea");
+		if (!area) throw new Error("no textarea");
+		const lib = seededLibrary();
+		const fromNewerVersion = { ...lib.bookmarks[0], id: "new", game: "poe3" };
+		area.value = `${SHARE_PREFIX}${Buffer.from(
+			JSON.stringify({
+				folders: lib.folders,
+				bookmarks: [...lib.bookmarks, fromNewerVersion],
+			}),
+		).toString("base64url")}`;
+		await act(async () => {
+			area.dispatchEvent(new Event("input"));
+		});
+		await act(async () => button(root, "Read")?.click());
+		expect(root.textContent).toContain(
+			"1 record was left out because it was damaged or too large.",
+		);
+		await act(async () => button(root, "Import")?.click());
+		expect(root.textContent).toContain(
+			"Imported 1 folder and 1 bookmark. 1 record was left out",
+		);
+		expect((await library.load()).bookmarks).toHaveLength(2);
 	});
 });
 

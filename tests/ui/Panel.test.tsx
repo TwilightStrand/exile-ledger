@@ -10,6 +10,7 @@ import {
 	saveSearch,
 } from "../../src/core/library";
 import type { PinnedItem } from "../../src/core/pins";
+import { QUERY_MAX_BYTES } from "../../src/core/query";
 import {
 	createMemorySettings,
 	parseSettings,
@@ -36,6 +37,24 @@ const POE2_PAGE = "https://www.pathofexile.com/trade2/search/poe2/Dawn";
 
 function pageAt(url: string) {
 	return () => parseTradeUrl(new URL(url));
+}
+
+/** A captured search whose query is over the size cap. */
+function oversizeFeed() {
+	const feed = createCaptureFeed();
+	const search = parseSearch(searchRequest, searchResponse);
+	if (!search) throw new Error("fixture did not parse");
+	feed.push({
+		kind: "search",
+		game: "poe2",
+		realm: "poe2",
+		league: "Standard",
+		search: {
+			...search,
+			query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+		},
+	});
+	return feed;
 }
 
 function capturedFeed() {
@@ -955,5 +974,215 @@ describe("league field blur", () => {
 			input.dispatchEvent(new FocusEvent("blur"));
 		});
 		expect((await source.load()).bookmarks[0]?.league).toBe("Standard");
+	});
+});
+
+describe("Panel failed library writes", () => {
+	function failingLibrary(message: string): LibrarySource {
+		const library = createMemoryLibrary();
+		return { ...library, update: () => Promise.reject(new Error(message)) };
+	}
+
+	it("says a change was not saved, and can be dismissed", async () => {
+		const root = await mount({
+			feed: capturedFeed(),
+			library: failingLibrary("QUOTA_BYTES quota exceeded"),
+		});
+		expect(root.querySelector("[role=alert]")).toBeNull();
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.saveFailed,
+		);
+		await act(async () => button(root, en.panel.dismiss)?.click());
+		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect(document.activeElement?.getAttribute("role")).toBe("tab");
+		expect(root.contains(document.activeElement)).toBe(true);
+	});
+
+	it("clears a failed-save notice once a later write works", async () => {
+		const library = createMemoryLibrary();
+		let fail = true;
+		const flaky: LibrarySource = {
+			...library,
+			update: (change) =>
+				fail ? Promise.reject(new Error("quota")) : library.update(change),
+		};
+		const root = await mount({ feed: capturedFeed(), library: flaky });
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")).not.toBeNull();
+
+		fail = false;
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect((await library.load()).bookmarks).toHaveLength(1);
+	});
+
+	it("keeps the reload notice after a later write works", async () => {
+		const library = createMemoryLibrary();
+		let fail = true;
+		const flaky: LibrarySource = {
+			...library,
+			update: (change) =>
+				fail
+					? Promise.reject(new Error("Extension context invalidated."))
+					: library.update(change),
+		};
+		const root = await mount({ feed: capturedFeed(), library: flaky });
+		await act(async () => button(root, "Save search")?.click());
+		fail = false;
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
+	});
+
+	it("refuses to save a search over the size cap, and says why", async () => {
+		const library = createMemoryLibrary();
+		const root = await mount({ feed: oversizeFeed(), library });
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect((await library.load()).bookmarks).toHaveLength(0);
+	});
+
+	it("refuses to overwrite a bookmark with an over-size search, leaving its watcher alone", async () => {
+		const { library: seeded } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Standard",
+				name: "Old search",
+				query: { query: { term: "old" } },
+				searchId: "old-id",
+				live: false,
+			},
+			{ now: 1, newId: () => `ov${++n}` },
+		);
+		const library = createMemoryLibrary(seeded);
+		const watchers = createMemorySource<Watcher[]>([]);
+		const root = await mount({ feed: oversizeFeed(), library, watchers });
+		await act(async () =>
+			button(root, "Watch Old search for new results")?.click(),
+		);
+		const watchedBefore = await watchers.load();
+		expect(watchedBefore).toHaveLength(1);
+
+		await act(async () =>
+			button(root, "Replace Old search with the current search")?.click(),
+		);
+		await act(async () => button(root, "Replace")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect(await library.load()).toEqual(seeded);
+		expect(await watchers.load()).toEqual(watchedBefore);
+	});
+
+	it("refuses to save an over-size search from history", async () => {
+		const library = createMemoryLibrary();
+		const history = createMemorySource<HistoryEntry[]>([
+			{
+				id: "h",
+				game: "poe2",
+				league: "Standard",
+				query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+				searchId: "s-h",
+				total: 1,
+				at: 900,
+			},
+		]);
+		const root = await mount({ library, history });
+		await act(async () =>
+			[...root.querySelectorAll<HTMLButtonElement>("[role=tab]")]
+				.find((t) => t.textContent?.startsWith("History"))
+				?.click(),
+		);
+		const save = [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+			(b) => b.getAttribute("aria-label")?.startsWith("Save ") ?? false,
+		);
+		expect(save).toBeDefined();
+		await act(async () => save?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect((await library.load()).bookmarks).toHaveLength(0);
+	});
+
+	it("keeps the reload notice when a later save is refused as too large", async () => {
+		const feed = capturedFeed();
+		const root = await mount({
+			feed,
+			library: failingLibrary("Extension context invalidated."),
+		});
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
+
+		const search = parseSearch(searchRequest, searchResponse);
+		if (!search) throw new Error("fixture did not parse");
+		await act(async () =>
+			feed.push({
+				kind: "search",
+				game: "poe2",
+				realm: "poe2",
+				league: "Standard",
+				search: {
+					...search,
+					searchId: "bigger",
+					query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+				},
+			}),
+		);
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
+	});
+
+	it("shows a bookmark kept without its query, opening it by search id", async () => {
+		const { library: seeded } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Dawn",
+				name: "Query dropped",
+				query: { query: {} },
+				searchId: "Kept1",
+				live: false,
+			},
+			{ now: 1, newId: () => `qd${++n}` },
+		);
+		const library = createMemoryLibrary({
+			...seeded,
+			bookmarks: seeded.bookmarks.map(({ query: _dropped, ...b }) => b),
+		});
+		const root = await mount({ library });
+		const link = [...root.querySelectorAll<HTMLAnchorElement>("nav a")].find(
+			(a) => a.textContent?.includes("Query dropped"),
+		);
+		expect(link?.href).toContain("/Kept1");
+		expect(button(root, "Watch Query dropped for new results")).toBeUndefined();
+	});
+
+	it("asks for a reload when the extension was updated under an open tab", async () => {
+		const root = await mount({
+			feed: capturedFeed(),
+			library: failingLibrary("Extension context invalidated."),
+		});
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
 	});
 });

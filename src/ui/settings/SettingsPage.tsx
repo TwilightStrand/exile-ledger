@@ -129,6 +129,15 @@ function BackupSection({
 	const t = useMessages();
 	const summary = (payload: Payload) =>
 		t.imports.summary(payload.folders.length, payload.bookmarks.length);
+	const withNotes = (
+		text: string,
+		{ skipped = 0, queriesDropped = 0 }: Omit<Payload, "folders" | "bookmarks">,
+	) =>
+		[
+			text,
+			...(skipped > 0 ? [t.imports.skipped(skipped)] : []),
+			...(queriesDropped > 0 ? [t.imports.queriesDropped(queriesDropped)] : []),
+		].join(" ");
 	const [pending, setPending] = useState<Pending>(null);
 	const [restoreSettings, setRestoreSettings] = useState(true);
 	const [shareText, setShareText] = useState("");
@@ -208,7 +217,7 @@ function BackupSection({
 		if (!pending) return;
 		const payload =
 			pending.kind === "backup" ? pending.backup.library : pending.payload;
-		let counts = { folders: 0, bookmarks: 0 };
+		let counts = { folders: 0, bookmarks: 0, skipped: 0, queriesDropped: 0 };
 		try {
 			await library.update((lib) => {
 				const result = importPayload(lib, payload, clock());
@@ -251,8 +260,14 @@ function BackupSection({
 		const summary = t.imports.summary(counts.folders, counts.bookmarks);
 		setMessage(
 			watchersSaved
-				? { tone: "ok", text: t.imports.imported(summary) }
-				: { tone: "error", text: t.imports.watchersFailed(summary) },
+				? {
+						tone: "ok",
+						text: withNotes(t.imports.imported(summary), counts),
+					}
+				: {
+						tone: "error",
+						text: withNotes(t.imports.watchersFailed(summary), counts),
+					},
 		);
 	};
 
@@ -308,13 +323,19 @@ function BackupSection({
 				<div class="animate-pop-in rounded-md border border-ledger-gold/40 bg-ledger-gold/5 p-4">
 					<p class="text-[14px] text-ledger-text">
 						{pending.kind === "backup"
-							? t.imports.backupFrom(
-									pending.backup.exportedAt,
-									summary(pending.backup.library),
+							? withNotes(
+									t.imports.backupFrom(
+										pending.backup.exportedAt,
+										summary(pending.backup.library),
+									),
+									pending.backup.library,
 								)
-							: t.imports.fromSource(
-									t.imports.sources[pending.source],
-									summary(pending.payload),
+							: withNotes(
+									t.imports.fromSource(
+										t.imports.sources[pending.source],
+										summary(pending.payload),
+									),
+									pending.payload,
 								)}
 					</p>
 					{pending.kind === "backup" && pending.backup.settings && (

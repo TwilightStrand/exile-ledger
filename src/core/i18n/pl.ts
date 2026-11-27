@@ -79,6 +79,12 @@ export const pl: Messages = {
 		expand: "Rozwiń Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Sekcje panelu",
+		saveFailed: "Nie udało się zapisać zmiany. Spróbuj ponownie.",
+		reloadNeeded:
+			"Exile Ledger został zaktualizowany. Odśwież tę stronę, aby dalej zapisywać zmiany.",
+		queryTooLarge:
+			"To wyszukiwanie jest za duże, by je zapisać. Usuń kilka filtrów statystyk i spróbuj ponownie.",
+		dismiss: "Zamknij",
 		tabs: {
 			bookmarks: "Zakładki",
 			history: "Historia",
@@ -335,6 +341,20 @@ export const pl: Messages = {
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed:
 			"Nie udało się zapisać importu. Odśwież tę stronę i spróbuj ponownie.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `Pominięto ${n} wpis, bo był uszkodzony lub zbyt duży.`,
+				few: `Pominięto ${n} wpisy, bo były uszkodzone lub zbyt duże.`,
+				many: `Pominięto ${n} wpisów, bo były uszkodzone lub zbyt duże.`,
+				other: `Pominięto ${n} wpisu, bo były uszkodzone lub zbyt duże.`,
+			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `Zachowano ${n} zakładkę bez zapisanego wyszukiwania, które było za duże: otwiera się przez zapisany identyfikator wyszukiwania i nie można jej obserwować.`,
+				few: `Zachowano ${n} zakładki bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+				many: `Zachowano ${n} zakładek bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+				other: `Zachowano ${n} zakładki bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+			}),
 		sources: {
 			"exile-ledger": "Udostępniony folder",
 			"better-trading": "Eksport Better Trading",
