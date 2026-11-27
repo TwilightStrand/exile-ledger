@@ -328,6 +328,8 @@ export const pl: Messages = {
 			`${folders(folderCount)} i ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Zapisano kopię: ${summary}.`,
 		imported: (summary: string) => `Zaimportowano: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Zaimportowano: ${summary}. Nie udało się jednak zapisać obserwacji z kopii zapasowej.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Kopia z ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

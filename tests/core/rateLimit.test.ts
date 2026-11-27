@@ -168,6 +168,26 @@ describe("trade queue with the rate limiter", () => {
 		);
 	});
 
+	it("treats a timeout while reading the body as a network failure", async () => {
+		const queue = createTradeQueue(createRateLimiter(), {
+			now: () => 0,
+			sleep: async () => {},
+			fetch: async () => ({
+				status: 200,
+				headers: headers({}),
+				json: async () => {
+					throw new DOMException("signal timed out", "TimeoutError");
+				},
+			}),
+		});
+		expect(
+			await queue.enqueue(
+				"search",
+				"https://www.pathofexile.com/api/trade/search/x",
+			),
+		).toEqual({ ok: false, status: 200, reason: "network" });
+	});
+
 	it("defers instead of sleeping past the caller's limit", async () => {
 		const limiter = createRateLimiter();
 		limiter.observe(
@@ -386,6 +406,41 @@ describe("trade queue with the rate limiter", () => {
 					0,
 				),
 			).toBe(600_000);
+		});
+
+		it("counts www, the bare domain and language subdomains as one backend", () => {
+			const limiter = createRateLimiter();
+			limiter.observe(
+				limiterBucket(
+					"https://www.pathofexile.com/api/trade/search/x",
+					"search",
+				),
+				429,
+				headers({ "Retry-After": "600" }),
+				0,
+			);
+			for (const host of [
+				"https://pathofexile.com",
+				"https://br.pathofexile.com",
+				"https://ru.pathofexile.com",
+			])
+				expect(
+					limiter.delayFor(
+						limiterBucket(`${host}/api/trade/search/x`, "search"),
+						0,
+					),
+				).toBe(600_000);
+			for (const host of [
+				"https://pathofexile.tw",
+				"https://www.pathofexile.com.tw",
+				"https://poe.kakaogames.com",
+			])
+				expect(
+					limiter.delayFor(
+						limiterBucket(`${host}/api/trade/search/x`, "search"),
+						0,
+					),
+				).toBe(0);
 		});
 
 		it("drops a snapshot saved in the per-kind shape", () => {

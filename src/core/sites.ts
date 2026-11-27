@@ -31,10 +31,30 @@ export const TRADE_ORIGINS: string[] = TRADE_HOSTS.flatMap(
 );
 
 export function isTradeHost(hostname: string): boolean {
-	return TRADE_HOSTS.some(
-		({ domain, subdomains }) =>
-			hostname === domain || (subdomains && hostname.endsWith(`.${domain}`)),
+	return tradeDomain(hostname) !== null;
+}
+
+/**
+ * The publisher domain a trade host belongs to, or null for any other host.
+ * www., the bare domain and the language subdomains (br., ru., de., ...) are
+ * front ends of one backend, so they share its rate limits.
+ */
+export function tradeDomain(hostname: string): string | null {
+	return (
+		TRADE_HOSTS.find(
+			({ domain, subdomains }) =>
+				hostname === domain || (subdomains && hostname.endsWith(`.${domain}`)),
+		)?.domain ?? null
 	);
+}
+
+/**
+ * Whether a granted host permission pattern (`https://*.pathofexile.com/*`,
+ * or one host such as `https://www.pathofexile.com/*`) is on a trade site.
+ */
+export function isTradePattern(pattern: string): boolean {
+	const host = /^https:\/\/(?:\*\.)?([^/]+)\//.exec(pattern)?.[1];
+	return host !== undefined && isTradeHost(host);
 }
 
 /**

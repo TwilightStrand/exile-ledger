@@ -10,7 +10,8 @@ const PREFIX = "exile-ledger:";
 /**
  * Most notifications one pass shows. Past this the rest are folded into one
  * summary: a pass after a long sleep can find dozens of changes, and a stack
- * of notifications is noise the user dismisses unread.
+ * of notifications is noise the user dismisses unread. Counted per pass, not
+ * carried over: passes are minutes apart, and each pass's changes are new.
  */
 export const MAX_NOTICES_PER_PASS = 5;
 
@@ -78,25 +79,34 @@ export async function notify(events: readonly WatcherEvent[]): Promise<void> {
 	const shown = events.slice(0, MAX_NOTICES_PER_PASS);
 	for (const event of shown) {
 		const notice = noticeFor(event, t);
-		const id = `${PREFIX}${event.watcher.id}:${stamp}`;
-		// Stored before it is shown, so even an instant click finds where to go.
-		await changeTargets((all) => ({
-			next: { ...all, [id]: notice.url },
+		await showWithTarget(`${PREFIX}${event.watcher.id}:${stamp}`, notice);
+	}
+	const hidden = events.slice(shown.length);
+	const [first] = hidden;
+	if (first)
+		// Leads where the first hidden one would have, so a click still goes somewhere useful.
+		await showWithTarget(`${PREFIX}more:${stamp}`, {
+			title: t.notices.moreTitle(hidden.length),
+			message: t.notices.moreBody,
+			url: noticeFor(first, t).url,
+		});
+}
+
+async function showWithTarget(
+	id: string,
+	notice: { title: string; message: string; url: string },
+): Promise<void> {
+	// Stored before it is shown, so even an instant click finds where to go.
+	await changeTargets((all) => ({
+		next: { ...all, [id]: notice.url },
+		result: undefined,
+	}));
+	// One failed notification should not hide the others.
+	if (!(await show(id, notice)))
+		await changeTargets(({ [id]: _failed, ...rest }) => ({
+			next: rest,
 			result: undefined,
 		}));
-		// One failed notification should not hide the others.
-		if (!(await show(id, notice)))
-			await changeTargets(({ [id]: _failed, ...rest }) => ({
-				next: rest,
-				result: undefined,
-			}));
-	}
-	const more = events.length - shown.length;
-	if (more > 0)
-		await show(`${PREFIX}more:${stamp}`, {
-			title: t.notices.moreTitle(more),
-			message: t.notices.moreBody,
-		});
 }
 
 /** A notification's URL, removed from the stored targets as it is read. */

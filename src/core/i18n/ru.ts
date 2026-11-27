@@ -326,6 +326,8 @@ export const ru: Messages = {
 			`${folders(folderCount)} и ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Копия сохранена: ${summary}.`,
 		imported: (summary: string) => `Импортировано: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Импортировано: ${summary}. Но слежку из резервной копии сохранить не удалось.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Копия от ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

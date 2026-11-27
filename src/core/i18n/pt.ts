@@ -326,6 +326,8 @@ export const pt: Messages = {
 			`${folders(folderCount)} e ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Backup salvo com ${summary}.`,
 		imported: (summary: string) => `Importado: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importado: ${summary}. Mas não foi possível salvar os monitoramentos do backup.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Backup de ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

@@ -294,6 +294,8 @@ export const zh: Messages = {
 			`${folders(folderCount)}和${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `备份已保存，包含${summary}。`,
 		imported: (summary: string) => `已导入${summary}。`,
+		watchersFailed: (summary: string) =>
+			`已导入${summary}，但备份中的监视项未能保存。`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`备份时间 ${new Date(exportedAt).toLocaleString(locale)}：${summary}。`,
 		fromSource: (source: string, summary: string) => `${source}：${summary}。`,

@@ -113,7 +113,11 @@ export default defineContentScript({
 				Date.now(),
 				crypto.randomUUID(),
 			);
-			browserWatchers.update((current) => toggleListingWatch(current, watcher));
+			// A failed write puts the stored list back, so the button shows the
+			// real state again; nothing else to undo.
+			browserWatchers
+				.update((current) => toggleListingWatch(current, watcher))
+				.catch(() => {});
 		};
 		const title = createTitleKeeper(document);
 		ctx.onInvalidated(() => title.stop());

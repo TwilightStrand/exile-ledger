@@ -327,6 +327,8 @@ export const es: Messages = {
 			`${folders(folderCount)} y ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Copia guardada con ${summary}.`,
 		imported: (summary: string) => `Importado: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importado: ${summary}. Pero no se pudieron guardar los vigilantes de la copia de seguridad.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Copia del ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

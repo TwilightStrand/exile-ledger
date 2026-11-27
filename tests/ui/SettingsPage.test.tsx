@@ -448,6 +448,58 @@ describe("watcher notifications and backups", () => {
 		await act(async () => button(root, "Save backup file")?.click());
 		expect(JSON.parse(downloads[0]?.text ?? "{}").watchers).toHaveLength(1);
 	});
+
+	it("finishes a restore and says so when the watchers could not be saved", async () => {
+		const { root, downloads, watchers, settings } = await mount();
+		await watchers.update(() => [
+			{
+				kind: "listing",
+				id: "w1",
+				origin: "https://www.pathofexile.com",
+				game: "poe2",
+				realm: "poe2",
+				league: "Dawn",
+				intervalMin: 5,
+				createdAt: 0,
+				lastCheckedAt: null,
+				failures: 0,
+				retryAt: null,
+				searchId: "s",
+				itemId: "i",
+				name: "Garb",
+				seller: "",
+				price: null,
+				previousPrice: null,
+				status: "listed",
+				changedAt: null,
+			},
+		]);
+		await act(async () => button(root, "Save backup file")?.click());
+		await settings.save({ watchInterval: 42 });
+		await watchers.update(() => []);
+		vi.spyOn(watchers, "update").mockRejectedValue(new Error("no receiver"));
+
+		const input = root.querySelector<HTMLInputElement>("input[type=file]");
+		if (!input) throw new Error("no file input");
+		const file = new File([downloads[0]?.text ?? ""], "backup.json", {
+			type: "application/json",
+		});
+		Object.defineProperty(input, "files", { value: [file] });
+		await act(async () => {
+			input.dispatchEvent(new Event("change"));
+			await new Promise((r) => setTimeout(r, 0));
+		});
+		await act(async () => {
+			button(root, "Import")?.click();
+			await new Promise((r) => setTimeout(r, 0));
+		});
+
+		expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+			"Imported 1 folder and 1 bookmark, but the watchers from the backup could not be saved.",
+		);
+		expect(button(root, "Import")).toBeUndefined();
+		expect((await settings.load()).watchInterval).not.toBe(42);
+	});
 });
 
 describe("language", () => {

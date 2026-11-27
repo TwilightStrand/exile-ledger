@@ -325,6 +325,13 @@ export function Panel({
 	const [ownWatchers] = useState(() => createMemorySource<Watcher[]>([]));
 	const watcherStore = watchersSource ?? ownWatchers;
 	const watchers = useSource(watcherStore, (): Watcher[] => []);
+	// A failed write puts the stored list back on screen, which is the only
+	// sign the user needs; the rejection is handled here so it is not lost.
+	const changeWatchers = (change: (ws: Watcher[]) => Watcher[]) =>
+		watcherStore.update(change).then(
+			() => true,
+			() => false,
+		);
 	const [ownAccess] = useState(() => createMemorySource(true));
 	const hasTradeAccess = useSource(tradeAccessSource ?? ownAccess, () => true);
 	const [ownSyncStatus] = useState(() => createMemorySource(OFF_STATUS));
@@ -394,7 +401,7 @@ export function Panel({
 		onDelete: (id) => {
 			librarySource.update((lib) => deleteBookmark(lib, id, now()));
 			if (watchers.some((w) => w.kind === "search" && w.bookmarkId === id))
-				watcherStore.update((ws) => forgetBookmark(ws, id));
+				changeWatchers((ws) => forgetBookmark(ws, id));
 		},
 		onOverwrite:
 			capture.search && capture.search.game === game
@@ -419,7 +426,7 @@ export function Panel({
 							name !== undefined &&
 							watchers.some((w) => w.kind === "search" && w.bookmarkId === id)
 						)
-							watcherStore.update((ws) =>
+							changeWatchers((ws) =>
 								retargetSearchWatch(ws, id, {
 									query: event.search.query,
 									name,
@@ -460,7 +467,7 @@ export function Panel({
 				now(),
 				newId(),
 			);
-			watcherStore.update((ws) => toggleSearchWatch(ws, watcher));
+			changeWatchers((ws) => toggleSearchWatch(ws, watcher));
 		},
 		onSetDone: (id, done) =>
 			librarySource.update((lib) => setBookmarkDone(lib, id, done, now())),
@@ -500,7 +507,7 @@ export function Panel({
 						w.kind === "search" && w.bookmarkId && removed.has(w.bookmarkId),
 				)
 			)
-				watcherStore.update((ws) => forgetBookmarks(ws, removed));
+				changeWatchers((ws) => forgetBookmarks(ws, removed));
 		},
 		onSetIcon: (id, icon) =>
 			librarySource.update((lib) => setFolderIcon(lib, id, icon, now())),
@@ -552,15 +559,15 @@ export function Panel({
 		watchers: watchers.length,
 	};
 	const watcherActions: WatcherActions = {
-		onRemove: (id) => watcherStore.update((ws) => removeWatcher(ws, id)),
+		onRemove: (id) => changeWatchers((ws) => removeWatcher(ws, id)),
 		onOpenSearch: (watcher) => {
-			watcherStore
-				.update((ws) =>
-					ws.map((w) =>
-						w.id === watcher.id && w.kind === "search" ? markSeen(w) : w,
-					),
-				)
-				.then(() => navigate(searchWatcherHref(watcher)));
+			// Opens the search even when marking it seen failed: that is what
+			// the user asked for.
+			changeWatchers((ws) =>
+				ws.map((w) =>
+					w.id === watcher.id && w.kind === "search" ? markSeen(w) : w,
+				),
+			).then(() => navigate(searchWatcherHref(watcher)));
 		},
 		onOpenSettings,
 	};

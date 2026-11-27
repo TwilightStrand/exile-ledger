@@ -8,22 +8,25 @@
  *   Retry-After: 60                            on 429
  *
  * Each endpoint family has its own policy (search and fetch differ), and each
- * trade host counts on its own, so state is kept per host and kind. PoE1 and
- * PoE2 on the same host share one bucket: whether GGG counts /api/trade and
+ * publisher's backend counts on its own, so state is kept per backend domain
+ * and kind: www., the bare domain and the language subdomains of
+ * pathofexile.com share one bucket, while the Taiwan and Korea sites have
+ * their own. PoE1 and PoE2 share too: whether GGG counts /api/trade and
  * /api/trade2 apart is not published, and sharing can only wait too long.
  * The page's own requests share the same budget, which is why the server's
  * reported hits count, not just ours.
  */
 
 import * as v from "valibot";
+import { tradeDomain } from "./sites";
 
 export const REQUEST_KINDS = ["search", "fetch"] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 
-/** Which budget a request draws on: its trade host plus the endpoint kind. */
+/** Which budget a request draws on: its backend domain plus the endpoint kind. */
 export function limiterBucket(url: string, kind: RequestKind): string {
-	const origin = URL.canParse(url) ? new URL(url).origin : url;
-	return `${origin} ${kind}`;
+	const host = URL.canParse(url) ? new URL(url).hostname : url;
+	return `${tradeDomain(host) ?? host} ${kind}`;
 }
 
 export interface HeaderSource {

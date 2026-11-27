@@ -301,6 +301,8 @@ export const ko: Messages = {
 			`${folders(folderCount)}, ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `${summary}가 담긴 백업을 저장했습니다.`,
 		imported: (summary: string) => `${summary}를 가져왔습니다.`,
+		watchersFailed: (summary: string) =>
+			`${summary}를 가져왔지만 백업의 감시 항목은 저장하지 못했습니다.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`${new Date(exportedAt).toLocaleString(locale)} 백업: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

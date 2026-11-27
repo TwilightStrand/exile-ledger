@@ -224,12 +224,21 @@ function BackupSection({
 		}
 		const restoredWatchers =
 			pending.kind === "backup" ? pending.backup.watchers : undefined;
+		let watchersSaved = true;
 		if (restoredWatchers && restoredWatchers.length > 0) {
-			await watchers.update(
-				(current) =>
-					importWatchers(current, restoredWatchers, clock()).watchers,
-			);
+			watchersSaved = await watchers
+				.update(
+					(current) =>
+						importWatchers(current, restoredWatchers, clock()).watchers,
+				)
+				.then(
+					() => true,
+					() => false,
+				);
 		}
+		// Settings are restored even when the watchers were not: they do not
+		// depend on each other, and the bookmarks are already in, so a second
+		// try of the whole restore would copy them twice.
 		if (
 			pending.kind === "backup" &&
 			restoreSettings &&
@@ -239,12 +248,12 @@ function BackupSection({
 		}
 		setPending(null);
 		setShareText("");
-		setMessage({
-			tone: "ok",
-			text: t.imports.imported(
-				t.imports.summary(counts.folders, counts.bookmarks),
-			),
-		});
+		const summary = t.imports.summary(counts.folders, counts.bookmarks);
+		setMessage(
+			watchersSaved
+				? { tone: "ok", text: t.imports.imported(summary) }
+				: { tone: "error", text: t.imports.watchersFailed(summary) },
+		);
 	};
 
 	return (

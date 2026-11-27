@@ -10,7 +10,7 @@ import type { WatcherEvent } from "../../src/core/watcherRun";
 import { listingWatcherFrom } from "../../src/core/watchers";
 import { browserSettings } from "../../src/storage/settingsStore";
 
-const gone = (id: string): WatcherEvent => ({
+const gone = (id: string, searchId = "q"): WatcherEvent => ({
 	kind: "gone",
 	watcher: listingWatcherFrom(
 		{ id: `item-${id}`, name: id, baseType: "", seller: "s", price: null },
@@ -19,7 +19,7 @@ const gone = (id: string): WatcherEvent => ({
 			game: "poe1",
 			realm: null,
 			league: "Standard",
-			searchId: "q",
+			searchId,
 		},
 		5,
 		1,
@@ -83,6 +83,38 @@ describe("clicks", () => {
 		expect(windows.mock.calls[0]?.[0]?.url).toContain(
 			"https://www.pathofexile.com/trade/search/Standard/q",
 		);
+	});
+
+	it("opens the first hidden event's search from the summary", async () => {
+		listen();
+		const tabs = vi
+			.spyOn(browser.tabs, "create")
+			.mockImplementation(async (props) => ({
+				index: 0,
+				pinned: false,
+				highlighted: false,
+				windowId: 1,
+				active: true,
+				incognito: false,
+				selected: true,
+				discarded: false,
+				autoDiscardable: true,
+				groupId: -1,
+				frozen: false,
+				url: props.url,
+			}));
+		const hidden = gone("hidden", "hiddenSearch");
+		await notify([
+			...Array.from({ length: MAX_NOTICES_PER_PASS }, (_, i) => gone(`w${i}`)),
+			hidden,
+		]);
+		const summary = Object.keys(
+			fakeBrowser.notifications.getAllCreateOptions(),
+		).find((id) => id.includes(":more:"));
+		if (!summary) throw new Error("no summary shown");
+		await fakeBrowser.notifications.onClicked.trigger(summary);
+		await vi.waitFor(() => expect(tabs).toHaveBeenCalledTimes(1));
+		expect(tabs.mock.calls[0]?.[0]?.url).toContain("hiddenSearch");
 	});
 
 	it("binds the click handler again after the API lost its listeners", async () => {

@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { TRADE_ACCESS_KEY } from "../core/messages";
-import { TRADE_ORIGINS } from "../core/sites";
+import { isTradePattern } from "../core/sites";
 import { fetchApiUrl, searchApiUrl } from "../core/tradeApiUrls";
 import type { QueueResult } from "../core/tradeQueue";
 import {
@@ -154,11 +154,21 @@ export async function runWatchers(
 	}
 }
 
+let publishing: Promise<unknown> = Promise.resolve();
+
 /**
  * Tells the panel whether any watcher waits for access. Written only when it
  * changes, since every pass changes the watchers and a write wakes every tab.
+ * One at a time: two overlapping calls could otherwise each compare against
+ * the old value and land in the wrong order.
  */
-async function publishAccess(watchers?: readonly Watcher[]): Promise<void> {
+function publishAccess(watchers?: readonly Watcher[]): Promise<void> {
+	const run = publishing.then(() => writeAccess(watchers));
+	publishing = run.catch(() => {});
+	return run;
+}
+
+async function writeAccess(watchers?: readonly Watcher[]): Promise<void> {
 	const all = watchers ?? (await browserWatchers.load());
 	const ready = await runnable(all);
 	const value = ready.length === all.length;
@@ -181,7 +191,9 @@ export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
 		publishAccess(watchers).catch(() => {});
 	});
 	browser.permissions.onAdded.addListener((granted) => {
-		if (granted.origins?.some((o) => TRADE_ORIGINS.includes(o))) {
+		// Chrome may report a single host such as https://www.pathofexile.com/*
+		// rather than one of the patterns the extension asked for.
+		if (granted.origins?.some(isTradePattern)) {
 			publishAccess().catch(() => {});
 			runWatchers(onEvents).catch(() => {});
 		}

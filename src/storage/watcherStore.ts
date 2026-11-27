@@ -43,8 +43,13 @@ export function listenForWatcherWrites(): () => void {
 		const request = v.safeParse(WatcherWriteSchema, message);
 		if (!request.success) return undefined;
 		const { ops } = request.output;
-		writeWatchers((current) => applyWatcherOps(current, ops)).then(
-			() => sendResponse(true),
+		let ok = false;
+		writeWatchers((current) => {
+			const result = applyWatcherOps(current, ops);
+			ok = result.ok;
+			return result.watchers;
+		}).then(
+			() => sendResponse(ok),
 			() => sendResponse(false),
 		);
 		return true;
@@ -64,8 +69,10 @@ async function send(change: (value: Watcher[]) => Watcher[]) {
 	// Shown at once; the stored list follows when the background has written it.
 	for (const listener of local) listener(next);
 	const write: WatcherWrite = { type: "exile-ledger:watchers-write", ops };
-	const ok: unknown = await browser.runtime
-		.sendMessage(write)
+	// Through a promise, so a synchronous throw (the extension was reloaded
+	// under this tab) rolls back like a rejected send.
+	const ok: unknown = await Promise.resolve()
+		.then(() => browser.runtime.sendMessage(write))
 		.catch(() => false);
 	if (ok !== true) {
 		const latest = await stored.load();

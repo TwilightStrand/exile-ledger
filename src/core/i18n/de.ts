@@ -313,6 +313,8 @@ export const de: Messages = {
 			`${folders(folderCount)} und ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Sicherung gespeichert mit ${summary}.`,
 		imported: (summary: string) => `Importiert: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importiert: ${summary}. Die Beobachtungen aus der Sicherung konnten aber nicht gespeichert werden.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Sicherung vom ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

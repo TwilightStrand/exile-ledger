@@ -113,6 +113,33 @@ describe("watcher passes", () => {
 		);
 	});
 
+	it("starts a pass when the browser grants one trade host on its own", async () => {
+		vi.spyOn(browser.permissions, "contains").mockImplementation(
+			async () => true,
+		);
+		const fetched: string[] = [];
+		vi.stubGlobal("fetch", async (input: unknown) => {
+			fetched.push(urlOf(input));
+			return new Response(JSON.stringify({ result: [] }));
+		});
+		const added: ((granted: { origins?: string[] }) => void)[] = [];
+		vi.spyOn(browser.permissions.onAdded, "addListener").mockImplementation(
+			(listener) => {
+				added.push(listener);
+			},
+		);
+		vi.spyOn(browser.permissions.onRemoved, "addListener").mockImplementation(
+			() => {},
+		);
+		const { writeWatchers } = await import("../../src/storage/watcherStore");
+		const { startWatchers } = await import("../../src/background/watchers");
+		await writeWatchers(() => [listingOn(WWW, "a")]);
+		startWatchers(() => {});
+		for (const listener of added)
+			listener({ origins: ["https://www.pathofexile.com/*"] });
+		await vi.waitFor(() => expect(fetched.length).toBe(1));
+	});
+
 	it("does not set an alarm when no watcher's site is granted", async () => {
 		vi.spyOn(browser.permissions, "contains").mockImplementation(
 			async () => false,

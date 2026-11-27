@@ -313,6 +313,8 @@ export const en = {
 			`${folders(folderCount)} and ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Backup saved with ${summary}.`,
 		imported: (summary: string) => `Imported ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Imported ${summary}, but the watchers from the backup could not be saved.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Backup from ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
