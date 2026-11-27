@@ -2,12 +2,14 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "../../src/core/history";
+import { en } from "../../src/core/i18n";
 import {
 	createMemoryLibrary,
 	emptyLibrary,
 	saveSearch,
 } from "../../src/core/library";
 import type { PinnedItem } from "../../src/core/pins";
+import { QUERY_MAX_BYTES } from "../../src/core/query";
 import {
 	createMemorySettings,
 	type SettingsSource,
@@ -301,6 +303,47 @@ describe("Panel render work, round 2", () => {
 			configurable: true,
 			get: () => false,
 		});
+	});
+
+	it("keeps the tree, the search card and the watcher list when a write notice shows", async () => {
+		const feed = createCaptureFeed();
+		const search = parseSearch(searchRequest, searchResponse);
+		if (!search) throw new Error("fixture did not parse");
+		feed.push({
+			kind: "search",
+			game: "poe2",
+			realm: "poe2",
+			league: "Standard",
+			search: {
+				...search,
+				query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+			},
+		});
+		const root = await mount({
+			feed,
+			library: library(20),
+			watchers: createMemorySource<Watcher[]>([LISTING]),
+		});
+		const save = [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+			(b) => b.textContent?.trim() === en.currentSearch.save,
+		);
+		tagRenders.count = 0;
+		await act(async () => save?.click());
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect(tagRenders.count).toBe(0);
+
+		await act(async () => tabButton(root, "watchers")?.click());
+		expect(panelText(root)).toContain("Viper Wrap");
+		tagRenders.count = 0;
+		await act(async () =>
+			[...root.querySelectorAll<HTMLButtonElement>("button")]
+				.find((b) => b.textContent?.trim() === en.panel.dismiss)
+				?.click(),
+		);
+		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect(tagRenders.count).toBe(0);
 	});
 
 	it("shows a search captured between the first render and the subscription", async () => {

@@ -496,6 +496,7 @@ export function Panel({
 		copyText,
 		navigate,
 		onOpenSettings,
+		onJumpToPin,
 	});
 	const clock = (): Clock => ({
 		now: latest.current.now(),
@@ -790,6 +791,11 @@ export function Panel({
 		// latest reads the newest render through a ref.
 		[],
 	);
+	const onJump = useCallback(
+		(id: string) => latest.current.onJumpToPin(id),
+		// latest reads the newest render through a ref.
+		[],
+	);
 	const onUnpin = useCallback(
 		(id: string) => pinStore.update((p) => unpin(p, id)),
 		[pinStore],
@@ -932,11 +938,7 @@ export function Panel({
 								/>
 							)}
 							{tab === "pinned" && (
-								<PinnedList
-									pins={pinned}
-									onJump={onJumpToPin}
-									onUnpin={onUnpin}
-								/>
+								<PinnedList pins={pinned} onJump={onJump} onUnpin={onUnpin} />
 							)}
 							{tab === "watchers" && (
 								<WatcherList
