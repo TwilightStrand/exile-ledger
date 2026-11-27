@@ -25,13 +25,6 @@ export type QueueResult =
 			reason: "rate-limited" | "deferred" | "http" | "network";
 	  };
 
-// By name, not class: DOMException is not an Error subclass in every runtime.
-const isAbort = (error: unknown) =>
-	typeof error === "object" &&
-	error !== null &&
-	"name" in error &&
-	(error.name === "TimeoutError" || error.name === "AbortError");
-
 /**
  * Runs the extension's own trade requests one at a time, each after the rate
  * limiter allows it. Serial on purpose: watchers are background work, and a
@@ -67,12 +60,12 @@ export function createTradeQueue(limiter: RateLimiter, ports: QueuePorts) {
 		try {
 			return { ok: true, status: response.status, body: await response.json() };
 		} catch (error) {
-			// The request timeout also aborts reading the body; that is the
-			// connection failing, not the server refusing.
+			// Only a body that is not JSON is the server's answer. A timeout or a
+			// connection dropped while reading is the network failing.
 			return {
 				ok: false,
 				status: response.status,
-				reason: isAbort(error) ? "network" : "http",
+				reason: error instanceof SyntaxError ? "http" : "network",
 			};
 		}
 	};

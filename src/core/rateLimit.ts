@@ -18,7 +18,7 @@
  */
 
 import * as v from "valibot";
-import { tradeDomain } from "./sites";
+import { tradeBudget } from "./sites";
 
 export const REQUEST_KINDS = ["search", "fetch"] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
@@ -26,7 +26,7 @@ export type RequestKind = (typeof REQUEST_KINDS)[number];
 /** Which budget a request draws on: its backend domain plus the endpoint kind. */
 export function limiterBucket(url: string, kind: RequestKind): string {
 	const host = URL.canParse(url) ? new URL(url).hostname : url;
-	return `${tradeDomain(host) ?? host} ${kind}`;
+	return `${tradeBudget(host) ?? host} ${kind}`;
 }
 
 export interface HeaderSource {

@@ -5,6 +5,7 @@ import {
 	isTradePattern,
 	TRADE_MATCHES,
 	TRADE_ORIGINS,
+	tradeBudget,
 	tradeDomain,
 } from "../../src/core/sites";
 
@@ -69,6 +70,17 @@ describe("tradeDomain", () => {
 		expect(tradeDomain("www.pathofexile.com.tw")).toBe("pathofexile.com.tw");
 		expect(tradeDomain("pathofexile.tw")).toBe("pathofexile.tw");
 		expect(tradeDomain("example.com")).toBeNull();
+	});
+});
+
+describe("tradeBudget", () => {
+	it("shares a budget wherever a shared backend is possible", () => {
+		expect(tradeBudget("www.pathofexile.com")).toBe("pathofexile.com");
+		expect(tradeBudget("www.pathofexile.com.tw")).toBe("pathofexile.tw");
+		expect(tradeBudget("pathofexile.tw")).toBe("pathofexile.tw");
+		expect(tradeBudget("poe.kakaogames.com")).toBe("kakaogames.com");
+		expect(tradeBudget("poe2.kakaogames.com")).toBe("kakaogames.com");
+		expect(tradeBudget("example.com")).toBeNull();
 	});
 });
 

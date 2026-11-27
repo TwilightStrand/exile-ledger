@@ -3,12 +3,19 @@
  * regional publishers (Garena for Taiwan, Kakao Games for Korea) serve the
  * trade site on.
  */
+// `budget` groups hosts that may share one GGG rate limit. Where it is not
+// known whether two hosts share a backend, they share a budget: that can only
+// make watchers wait longer, never send more than the server allows.
 const TRADE_HOSTS = [
-	{ domain: "pathofexile.com", subdomains: true },
-	{ domain: "pathofexile.tw", subdomains: true },
-	{ domain: "pathofexile.com.tw", subdomains: true },
-	{ domain: "poe.kakaogames.com", subdomains: false },
-	{ domain: "poe2.kakaogames.com", subdomains: false },
+	{ domain: "pathofexile.com", subdomains: true, budget: "pathofexile.com" },
+	{ domain: "pathofexile.tw", subdomains: true, budget: "pathofexile.tw" },
+	{ domain: "pathofexile.com.tw", subdomains: true, budget: "pathofexile.tw" },
+	{ domain: "poe.kakaogames.com", subdomains: false, budget: "kakaogames.com" },
+	{
+		domain: "poe2.kakaogames.com",
+		subdomains: false,
+		budget: "kakaogames.com",
+	},
 ] as const;
 
 export const TRADE_MATCHES: string[] = TRADE_HOSTS.flatMap(
@@ -39,13 +46,20 @@ export function isTradeHost(hostname: string): boolean {
  * www., the bare domain and the language subdomains (br., ru., de., ...) are
  * front ends of one backend, so they share its rate limits.
  */
-export function tradeDomain(hostname: string): string | null {
-	return (
-		TRADE_HOSTS.find(
-			({ domain, subdomains }) =>
-				hostname === domain || (subdomains && hostname.endsWith(`.${domain}`)),
-		)?.domain ?? null
+function tradeHost(hostname: string) {
+	return TRADE_HOSTS.find(
+		({ domain, subdomains }) =>
+			hostname === domain || (subdomains && hostname.endsWith(`.${domain}`)),
 	);
+}
+
+export function tradeDomain(hostname: string): string | null {
+	return tradeHost(hostname)?.domain ?? null;
+}
+
+/** The rate limit budget a trade host draws on. */
+export function tradeBudget(hostname: string): string | null {
+	return tradeHost(hostname)?.budget ?? null;
 }
 
 /**

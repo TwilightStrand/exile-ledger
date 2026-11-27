@@ -188,6 +188,33 @@ describe("trade queue with the rate limiter", () => {
 		).toEqual({ ok: false, status: 200, reason: "network" });
 	});
 
+	it.each([
+		[
+			"a connection dropped while reading",
+			new TypeError("network error"),
+			"network",
+		],
+		["a body that is not JSON", new SyntaxError("Unexpected token <"), "http"],
+	])("reports %s by what failed", async (_label, error, reason) => {
+		const queue = createTradeQueue(createRateLimiter(), {
+			now: () => 0,
+			sleep: async () => {},
+			fetch: async () => ({
+				status: 200,
+				headers: headers({}),
+				json: async () => {
+					throw error;
+				},
+			}),
+		});
+		expect(
+			await queue.enqueue(
+				"search",
+				"https://www.pathofexile.com/api/trade/search/x",
+			),
+		).toEqual({ ok: false, status: 200, reason });
+	});
+
 	it("defers instead of sleeping past the caller's limit", async () => {
 		const limiter = createRateLimiter();
 		limiter.observe(
