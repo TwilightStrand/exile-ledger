@@ -79,3 +79,19 @@ describe("togglePin", () => {
 		expect(togglePin(pinned, item, 6)).toEqual([]);
 	});
 });
+
+describe("pin buttons on reused rows", () => {
+	it("toggles the listing the row shows now, not the one it was made for", () => {
+		document.body.innerHTML =
+			'<div class="resultset"><div class="row" data-id="first"><div class="details"><div class="btns"></div></div></div></div>';
+		const toggled: string[] = [];
+		syncPinButtons(document, [], (id) => toggled.push(id));
+		const row = document.querySelector<HTMLElement>(".row");
+		if (row) row.dataset.id = "second";
+		syncPinButtons(document, [], (id) => toggled.push(id));
+		document
+			.querySelector<HTMLButtonElement>("[data-exile-ledger-pin]")
+			?.click();
+		expect(toggled).toEqual(["second"]);
+	});
+});

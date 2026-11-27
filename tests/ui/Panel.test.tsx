@@ -561,9 +561,14 @@ describe("Panel layout and sharing", () => {
 		expect(reserves.at(-1)).toEqual({
 			side: "left",
 			width: "clamp(260px, 25vw, 640px)",
+			resizing: false,
 		});
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
-		expect(reserves.at(-1)).toEqual({ side: "left", width: null });
+		expect(reserves.at(-1)).toEqual({
+			side: "left",
+			width: null,
+			resizing: false,
+		});
 	});
 
 	it("resizes from the keyboard and remembers the open state", async () => {
@@ -599,7 +604,11 @@ describe("Panel layout and sharing", () => {
 			panelWidthPx: 400,
 		});
 		const root = await mount({ settings, onReserve: (r) => reserves.push(r) });
-		expect(reserves.at(-1)).toEqual({ side: "left", width: "400px" });
+		expect(reserves.at(-1)).toEqual({
+			side: "left",
+			width: "400px",
+			resizing: false,
+		});
 		const handle = root.querySelector("[role=separator]");
 		expect(handle?.getAttribute("aria-valuetext")).toBe("400 px");
 		await act(async () => {

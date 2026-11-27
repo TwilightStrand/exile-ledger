@@ -1,3 +1,4 @@
+import { memo } from "preact/compat";
 import { titleOfQuery } from "../core/describe";
 import { searchWarningText } from "../core/i18n";
 import { checkSearch } from "../core/searchChecks";
@@ -6,18 +7,17 @@ import { useMessages } from "./i18n";
 import { Bookmark, Check, Search, Warning } from "./icons";
 import { Chip, Eyebrow, GameTag } from "./parts";
 
-export function CurrentSearch({
-	capture,
+export const CurrentSearch = memo(function CurrentSearch({
+	search: event,
 	saved = false,
 	onSave,
 }: {
-	capture: CaptureState;
+	search: CaptureState["search"];
 	/** True when this exact search is already bookmarked. */
 	saved?: boolean;
 	onSave?: (() => void) | undefined;
 }) {
 	const t = useMessages();
-	const event = capture.search;
 	const warnings = event ? checkSearch(event.game, event.search.query) : [];
 
 	return (
@@ -77,4 +77,4 @@ export function CurrentSearch({
 			)}
 		</section>
 	);
-}
+});

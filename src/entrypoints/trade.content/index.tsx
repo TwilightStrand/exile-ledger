@@ -12,7 +12,11 @@ import { type PinnedItem, togglePin } from "../../core/pins";
 import { isTradePage, TRADE_MATCHES } from "../../core/sites";
 import { createMemorySource } from "../../core/source";
 import { parseTradeUrl } from "../../core/tradeUrl";
-import { listingWatcherFrom, toggleListingWatch } from "../../core/watchers";
+import {
+	listingWatcherFrom,
+	toggleListingWatch,
+	type Watcher,
+} from "../../core/watchers";
 import { browserHistory } from "../../storage/historyStore";
 import { browserLibrary } from "../../storage/libraryStore";
 import { browserSettings } from "../../storage/settingsStore";
@@ -29,14 +33,14 @@ import {
 	installPageStyles,
 	setPageTheme,
 } from "../../trade/enhanceResults";
+import { scheduleEnhance } from "../../trade/enhanceScheduler";
 import { annotatePrices } from "../../trade/equivalentPrices";
 import { BACK_FORWARD_FLAG } from "../../trade/historyPatch";
 import { installHotkeys, TRADE_ACTIONS } from "../../trade/hotkeys";
-import { observeResults } from "../../trade/observeResults";
 import { jumpToResult, syncPinButtons } from "../../trade/pinButtons";
 import { createRatesClient } from "../../trade/ratesClient";
 import { historyEntryFrom } from "../../trade/recordHistory";
-import { applyReserve } from "../../trade/reserve";
+import { applyReserve, createReserver } from "../../trade/reserve";
 import { annotateResults } from "../../trade/resultHelpers";
 import { installTildePrefix } from "../../trade/tildePrefix";
 import { createTitleKeeper } from "../../trade/titleKeeper";
@@ -61,9 +65,11 @@ export default defineContentScript({
 		if (!isTradePage(new URL(location.href))) return;
 
 		const feed = createCaptureFeed();
-		ctx.onInvalidated(() =>
-			applyReserve(document, { side: "left", width: null }),
-		);
+		const reserver = createReserver(document);
+		ctx.onInvalidated(() => {
+			reserver.stop();
+			applyReserve(document, { side: "left", width: null, resizing: false });
+		});
 		ctx.onInvalidated(
 			listenForCaptures(window, (event) => {
 				feed.push(event);
@@ -88,16 +94,19 @@ export default defineContentScript({
 		let t = messagesOf(prefs);
 		setPageTheme(document, prefs.theme);
 		const pins = createMemorySource<PinnedItem[]>([]);
+		let pinned: PinnedItem[] = [];
 		const togglePinned = (id: string) => {
-			const item = feed.get().results.find((r) => r.id === id);
+			const item = feed.get().results.get(id);
 			if (item) pins.update((current) => togglePin(current, item, Date.now()));
 		};
-		const rates = createRatesClient(() => enhance());
+		const rates = createRatesClient(() => enhancer.all());
 		let library = await browserLibrary.load();
-		let watchers = await browserWatchers.load();
+		const watchedOf = (list: Watcher[]) =>
+			new Set(list.flatMap((w) => (w.kind === "listing" ? [w.itemId] : [])));
+		let watched = watchedOf(await browserWatchers.load());
 		const toggleWatch = (id: string) => {
 			const capture = feed.get();
-			const item = capture.results.find((r) => r.id === id);
+			const item = capture.results.get(id);
 			const search = capture.search;
 			if (!item || !search) return;
 			const watcher = listingWatcherFrom(
@@ -153,12 +162,6 @@ export default defineContentScript({
 			),
 		);
 		ctx.onInvalidated(
-			browserWatchers.watch((next) => {
-				watchers = next;
-				enhance();
-			}),
-		);
-		ctx.onInvalidated(
 			browserLibrary.watch((next) => {
 				library = next;
 				updateTitle();
@@ -177,25 +180,16 @@ export default defineContentScript({
 		};
 		window.addEventListener("popstate", onPopState);
 		ctx.onInvalidated(() => window.removeEventListener("popstate", onPopState));
-		const enhance = () => {
+		const enhance = (rows: HTMLElement[]) => {
 			const capture = feed.get();
 			const search = capture.search;
-			highlightMods(document, capture, prefs.highlightMods);
-			annotateResults(document, capture, prefs, t);
 			updateTitle();
-			syncWatchButtons(
-				document,
-				new Set(
-					watchers.flatMap((w) => (w.kind === "listing" ? [w.itemId] : [])),
-				),
-				toggleWatch,
-				t,
-			);
-			pins
-				.load()
-				.then((current) => syncPinButtons(document, current, togglePinned, t));
+			highlightMods(rows, capture, prefs.highlightMods);
+			annotateResults(rows, capture, prefs, t);
+			syncWatchButtons(rows, watched, toggleWatch, t);
+			syncPinButtons(rows, pinned, togglePinned, t);
 			annotatePrices(
-				document,
+				rows,
 				capture,
 				search && prefs.equivalentPricing
 					? rates.get(search.game, search.league)
@@ -204,6 +198,8 @@ export default defineContentScript({
 				t,
 			);
 		};
+		const enhancer = scheduleEnhance(document, enhance);
+		ctx.onInvalidated(() => enhancer.stop());
 		ctx.onInvalidated(
 			browserSettings.watch((next) => {
 				// Turning pricing on after a denied or missing permission should retry.
@@ -212,18 +208,46 @@ export default defineContentScript({
 				t = messagesOf(prefs);
 				setBackForwardFlag();
 				setPageTheme(document, prefs.theme);
-				enhance();
+				updateTitle();
+				enhancer.all();
 			}),
 		);
 		ctx.onInvalidated(
 			storage.defineItem<unknown>(`local:${PRICING_ACCESS_KEY}`).watch(() => {
 				rates.reset();
-				enhance();
+				enhancer.all();
 			}),
 		);
-		ctx.onInvalidated(feed.subscribe(enhance));
-		ctx.onInvalidated(pins.watch(enhance));
-		ctx.onInvalidated(observeResults(document, enhance));
+		ctx.onInvalidated(
+			browserWatchers.watch((next) => {
+				// The background rewrites watchers after every check; only a change
+				// in which listings are watched shows on the page.
+				const nextWatched = watchedOf(next);
+				const same =
+					nextWatched.size === watched.size &&
+					[...nextWatched].every((id) => watched.has(id));
+				watched = nextWatched;
+				if (!same) enhancer.all();
+			}),
+		);
+		ctx.onInvalidated(
+			feed.subscribe((_, event) => {
+				if (event.kind === "search") {
+					// Titles matter most in background tabs, where frames do not run.
+					updateTitle();
+					enhancer.all();
+				} else {
+					enhancer.items(event.items.map((item) => item.id));
+				}
+			}),
+		);
+		ctx.onInvalidated(
+			pins.watch((next) => {
+				pinned = next;
+				enhancer.all();
+			}),
+		);
+		enhancer.all();
 
 		const ui = await createShadowRootUi(ctx, {
 			name: "exile-ledger",
@@ -249,7 +273,7 @@ export default defineContentScript({
 									.catch(() => {});
 							}}
 							onJumpToPin={(id) => jumpToResult(document, id)}
-							onReserve={(reserve) => applyReserve(document, reserve)}
+							onReserve={reserver.apply}
 							page={() => parseTradeUrl(new URL(location.href))}
 						/>
 					</SettingsMessages>,

@@ -12,7 +12,28 @@ import type { Game } from "../core/tradeUrl";
 
 export const NINJA_ORIGIN = "https://poe.ninja/*";
 
-const cacheKey = (game: Game, league: string) => `ninja:${game}:${league}`;
+const CACHE_PREFIX = "ninja:";
+const cacheKey = (game: Game, league: string) =>
+	`${CACHE_PREFIX}${game}:${league}`;
+
+/**
+ * How long another league's rates are kept as an offline fallback. Leagues end
+ * and their keys would otherwise stay in storage.local for good.
+ */
+export const RATES_KEEP_MS = 7 * 24 * 60 * 60_000;
+
+/** Other leagues' rates that are past keeping or no longer parse. */
+async function removeStale(keep: string, now: number): Promise<void> {
+	const all = await browser.storage.local.get(null);
+	const stale = Object.entries(all)
+		.filter(([key, value]) => {
+			if (!key.startsWith(CACHE_PREFIX) || key === keep) return false;
+			const parsed = v.safeParse(RatesSchema, value);
+			return !parsed.success || now - parsed.output.fetchedAt > RATES_KEEP_MS;
+		})
+		.map(([key]) => key);
+	if (stale.length > 0) await browser.storage.local.remove(stale);
+}
 
 /** PoE1 only; a failed card lookup leaves currency prices working. */
 async function cardValues(
@@ -53,7 +74,10 @@ export async function getRates(
 			...parsed,
 			cards: await cardValues(game, league),
 		};
-		if (rates) await browser.storage.local.set({ [key]: rates });
+		if (rates) {
+			await browser.storage.local.set({ [key]: rates });
+			await removeStale(key, now);
+		}
 		return rates ?? fallback;
 	} catch {
 		return fallback;

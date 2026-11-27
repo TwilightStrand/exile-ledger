@@ -1,4 +1,5 @@
 import {
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -71,15 +72,43 @@ import { countBookmarks } from "./viewModels";
 import { type WatcherActions, WatcherList } from "./WatcherList";
 import { useWriteFailures, WriteFailureNotice } from "./writeFailure";
 
-function useCapture(feed: CaptureFeed): CaptureState {
-	const [state, setState] = useState(feed.get);
+/**
+ * The captured search. Results arrive many times a second during live search
+ * and the panel shows none of them, so only a new search re-renders it.
+ */
+function useCapturedSearch(feed: CaptureFeed): CaptureState["search"] {
+	const [search, setSearch] = useState(() => feed.get().search);
 	useEffect(() => {
-		const unsubscribe = feed.subscribe(setState);
+		let latest = feed.get().search;
+		const unsubscribe = feed.subscribe((state) => {
+			if (state.search !== latest) {
+				latest = state.search;
+				setSearch(state.search);
+			}
+		});
 		return () => {
 			unsubscribe();
 		};
 	}, [feed]);
-	return state;
+	return search;
+}
+
+/**
+ * Keeps the previous object while the value is unchanged, so views built from
+ * it stay memoised. `page()` parses the URL afresh on every call.
+ */
+function useStable<T>(value: T): T {
+	const kept = useRef({ value, key: JSON.stringify(value) });
+	const key = JSON.stringify(value);
+	if (key !== kept.current.key) kept.current = { value, key };
+	return kept.current.value;
+}
+
+/** The latest render's values, for callbacks that must keep one identity. */
+function useLatest<T>(value: T): { readonly current: T } {
+	const ref = useRef(value);
+	ref.current = value;
+	return ref;
 }
 
 /** Loads a source and follows its changes. */
@@ -221,6 +250,8 @@ function useResize(
 export interface Reserve {
 	side: PanelSide;
 	width: string | null;
+	/** The width is following a drag or held arrow key; settle it without easing. */
+	resizing: boolean;
 }
 
 export const TABS = ["bookmarks", "history", "pinned", "watchers"] as const;
@@ -311,7 +342,7 @@ export function Panel({
 	const librarySource = writes.source;
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
-	const capture = useCapture(feed);
+	const search = useCapturedSearch(feed);
 	const prefs = useSettings(settings, initialSettings);
 	const themeVars = useMemo(() => themeStyle(prefs.theme), [prefs.theme]);
 	const side = prefs.panelSide;
@@ -331,11 +362,14 @@ export function Panel({
 	const watchers = useSource(watcherStore, (): Watcher[] => []);
 	// A failed write puts the stored list back on screen, which is the only
 	// sign the user needs; the rejection is handled here so it is not lost.
-	const changeWatchers = (change: (ws: Watcher[]) => Watcher[]) =>
-		watcherStore.update(change).then(
-			() => true,
-			() => false,
-		);
+	const changeWatchers = useCallback(
+		(change: (ws: Watcher[]) => Watcher[]) =>
+			watcherStore.update(change).then(
+				() => true,
+				() => false,
+			),
+		[watcherStore],
+	);
 	const [ownAccess] = useState(() => createMemorySource(true));
 	const hasTradeAccess = useSource(tradeAccessSource ?? ownAccess, () => true);
 	const [ownSyncStatus] = useState(() => createMemorySource(OFF_STATUS));
@@ -359,29 +393,64 @@ export function Panel({
 	const widthCss = panelWidthCss(widthUnit, resize.width);
 	const reserveWidth = prefs.panelMode === "push" && open ? widthCss : null;
 	// Layout effect so the page margin changes in the same frame as the panel.
+	const resizing = resize.resizing;
 	useLayoutEffect(() => {
-		onReserve?.({ side, width: reserveWidth });
-	}, [onReserve, side, reserveWidth]);
-	const currentPage = page();
-	const game: Game | null =
-		currentPage?.location.game ?? capture.search?.game ?? null;
-	const bookmarks = game ? libraryView(library, game, currentPage) : [];
-	const archived = game ? archivedView(library, game) : [];
-	const history = game
-		? historyView(historyEntries, library, game, currentPage, t)
-		: [];
-	const searchId = capture.search?.search.searchId;
+		onReserve?.({ side, width: reserveWidth, resizing });
+	}, [onReserve, side, reserveWidth, resizing]);
+	const currentPage = useStable(page());
+	const game: Game | null = currentPage?.location.game ?? search?.game ?? null;
+	const bookmarks = useMemo(
+		() => (game ? libraryView(library, game, currentPage) : []),
+		[library, game, currentPage],
+	);
+	const archived = useMemo(
+		() => (game ? archivedView(library, game) : []),
+		[library, game],
+	);
+	const history = useMemo(
+		() =>
+			game ? historyView(historyEntries, library, game, currentPage, t) : [],
+		[historyEntries, library, game, currentPage, t],
+	);
+	const searchId = search?.search.searchId;
 	const saved =
 		searchId !== undefined &&
 		library.bookmarks.some((b) => b.searchId === searchId);
-	const clock = (): Clock => ({ now: now(), newId });
+	// Handlers below read this instead of closing over a render, so the tree
+	// and lists get the same functions every render and can skip re-rendering.
+	const latest = useLatest({
+		search,
+		page,
+		game,
+		library,
+		watchers,
+		historyEntries,
+		prefs,
+		t,
+		now,
+		newId,
+		librarySource,
+		changeWatchers,
+		report: writes.report,
+		historyStore,
+		uiStateSource,
+		copyText,
+		navigate,
+		onOpenSettings,
+	});
+	const clock = (): Clock => ({
+		now: latest.current.now(),
+		newId: latest.current.newId,
+	});
 
-	const saveCurrent = () => {
-		const event = capture.search;
+	const saveCurrent = useCallback(() => {
+		const { search: event, t, page, librarySource, report } = latest.current;
 		if (!event) return;
+		// Read now: the site may have switched to live search since the last render.
+		const currentPage = page();
 		const query = event.search.query;
 		if (!queryFits(query)) {
-			writes.report("too-large");
+			report("too-large");
 			return;
 		}
 		librarySource.update((lib) => {
@@ -401,25 +470,50 @@ export function Panel({
 			setLastSavedId(saved.bookmark.id);
 			return saved.library;
 		});
-	};
-	const actions: TreeActions = {
-		highlightId: lastSavedId,
-		onRename: (id, name) =>
-			librarySource.update((lib) => renameBookmark(lib, id, name, now())),
-		onDelete: (id) => {
-			librarySource.update((lib) => deleteBookmark(lib, id, now()));
-			if (watchers.some((w) => w.kind === "search" && w.bookmarkId === id))
-				changeWatchers((ws) => forgetBookmark(ws, id));
-		},
-		onOverwrite:
-			capture.search && capture.search.game === game
+		// clock and latest read the newest render through a ref.
+	}, []);
+	const canOverwrite = search !== null && search.game === game;
+	const watched = useMemo(
+		() =>
+			new Set(
+				watchers.flatMap((w) =>
+					w.kind === "search" && w.bookmarkId ? [w.bookmarkId] : [],
+				),
+			),
+		[watchers],
+	);
+	const collapsed = ui.collapsed;
+	const actions = useMemo<TreeActions>(
+		() => ({
+			highlightId: lastSavedId,
+			onRename: (id, name) =>
+				latest.current.librarySource.update((lib) =>
+					renameBookmark(lib, id, name, latest.current.now()),
+				),
+			onDelete: (id) => {
+				const { librarySource, changeWatchers, watchers, now } = latest.current;
+				librarySource.update((lib) => deleteBookmark(lib, id, now()));
+				if (watchers.some((w) => w.kind === "search" && w.bookmarkId === id))
+					changeWatchers((ws) => forgetBookmark(ws, id));
+			},
+			onOverwrite: canOverwrite
 				? (id) => {
-						const event = capture.search;
+						const {
+							search: event,
+							librarySource,
+							changeWatchers,
+							library,
+							watchers,
+							page,
+							report,
+							now,
+						} = latest.current;
 						if (!event) return;
 						if (!queryFits(event.search.query)) {
-							writes.report("too-large");
+							report("too-large");
 							return;
 						}
+						const currentPage = page();
 						librarySource.update((lib) =>
 							overwriteBookmark(
 								lib,
@@ -447,146 +541,184 @@ export function Panel({
 							);
 					}
 				: undefined,
-		watched: new Set(
-			watchers.flatMap((w) =>
-				w.kind === "search" && w.bookmarkId ? [w.bookmarkId] : [],
-			),
-		),
-		onToggleWatch: (id) => {
-			const bookmark = library.bookmarks.find((b) => b.id === id);
-			if (!bookmark?.query || !currentPage) return;
-			const sameGame = currentPage.location.game === bookmark.game;
-			const league = sameGame ? currentPage.location.league : bookmark.league;
-			const watching = watchers.some(
-				(w) => w.kind === "search" && w.bookmarkId === bookmark.id,
-			);
-			// A league-less bookmark cannot be searched; unwatching still works.
-			if (!league && !watching) return;
-			const watcher = searchWatcherFrom(
-				{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
-				{
-					origin: currentPage.origin,
-					game: bookmark.game,
-					// Bookmarks open in the page's league (see bookmarkHref), so they are watched there too.
-					realm: sameGame
-						? currentPage.location.realm
-						: bookmark.game === "poe2"
-							? "poe2"
-							: null,
-					league,
-				},
-				prefs.watchInterval,
-				now(),
-				newId(),
-			);
-			changeWatchers((ws) => toggleSearchWatch(ws, watcher));
-		},
-		onSetDone: (id, done) =>
-			librarySource.update((lib) => setBookmarkDone(lib, id, done, now())),
-		onSetFolderDone: (id, done) =>
-			librarySource.update((lib) => setFolderDone(lib, id, done, now())),
-		onChangeLeague: async (id, league) => {
-			let changed = 0;
-			await librarySource.update((lib) => {
-				const result = changeFolderLeague(lib, id, league, now());
-				changed = result.changed;
-				return result.library;
-			});
-			return changed;
-		},
-		onCreateFolder: (parentId, name) => {
-			if (!game) return;
-			librarySource.update((lib) => {
-				const created = createFolder(lib, { name, game, parentId }, clock());
-				return created.ok ? created.library : lib;
-			});
-		},
-		onRenameFolder: (id, name) =>
-			librarySource.update((lib) => renameFolder(lib, id, name, now())),
-		onArchiveFolder: (id, isArchived) =>
-			librarySource.update((lib) => setArchived(lib, id, isArchived, now())),
-		onDeleteFolder: (id) => {
-			const folders = subtreeIds(library.folders, id);
-			const removed = new Set(
-				library.bookmarks
-					.filter((b) => folders.has(b.folderId))
-					.map((b) => b.id),
-			);
-			librarySource.update((lib) => deleteFolder(lib, id, now()));
-			if (
-				watchers.some(
-					(w) =>
-						w.kind === "search" && w.bookmarkId && removed.has(w.bookmarkId),
+			watched,
+			onToggleWatch: (id) => {
+				const { library, page, watchers, prefs, now, newId } = latest.current;
+				const currentPage = page();
+				const bookmark = library.bookmarks.find((b) => b.id === id);
+				if (!bookmark?.query || !currentPage) return;
+				const sameGame = currentPage.location.game === bookmark.game;
+				const league = sameGame ? currentPage.location.league : bookmark.league;
+				const watching = watchers.some(
+					(w) => w.kind === "search" && w.bookmarkId === bookmark.id,
+				);
+				// A league-less bookmark cannot be searched; unwatching still works.
+				if (!league && !watching) return;
+				const watcher = searchWatcherFrom(
+					{ id: bookmark.id, name: bookmark.name, query: bookmark.query },
+					{
+						origin: currentPage.origin,
+						game: bookmark.game,
+						// Bookmarks open in the page's league (see bookmarkHref), so they are watched there too.
+						realm: sameGame
+							? currentPage.location.realm
+							: bookmark.game === "poe2"
+								? "poe2"
+								: null,
+						league,
+					},
+					prefs.watchInterval,
+					now(),
+					newId(),
+				);
+				latest.current.changeWatchers((ws) => toggleSearchWatch(ws, watcher));
+			},
+			onSetDone: (id, done) =>
+				latest.current.librarySource.update((lib) =>
+					setBookmarkDone(lib, id, done, latest.current.now()),
+				),
+			onSetFolderDone: (id, done) =>
+				latest.current.librarySource.update((lib) =>
+					setFolderDone(lib, id, done, latest.current.now()),
+				),
+			onChangeLeague: async (id, league) => {
+				let changed = 0;
+				await latest.current.librarySource.update((lib) => {
+					const result = changeFolderLeague(
+						lib,
+						id,
+						league,
+						latest.current.now(),
+					);
+					changed = result.changed;
+					return result.library;
+				});
+				return changed;
+			},
+			onCreateFolder: (parentId, name) => {
+				const game = latest.current.game;
+				if (!game) return;
+				latest.current.librarySource.update((lib) => {
+					const created = createFolder(lib, { name, game, parentId }, clock());
+					return created.ok ? created.library : lib;
+				});
+			},
+			onRenameFolder: (id, name) =>
+				latest.current.librarySource.update((lib) =>
+					renameFolder(lib, id, name, latest.current.now()),
+				),
+			onArchiveFolder: (id, isArchived) =>
+				latest.current.librarySource.update((lib) =>
+					setArchived(lib, id, isArchived, latest.current.now()),
+				),
+			onDeleteFolder: (id) => {
+				const { library, librarySource, changeWatchers, watchers, now } =
+					latest.current;
+				const folders = subtreeIds(library.folders, id);
+				const removed = new Set(
+					library.bookmarks
+						.filter((b) => folders.has(b.folderId))
+						.map((b) => b.id),
+				);
+				librarySource.update((lib) => deleteFolder(lib, id, now()));
+				if (
+					watchers.some(
+						(w) =>
+							w.kind === "search" && w.bookmarkId && removed.has(w.bookmarkId),
+					)
 				)
-			)
-				changeWatchers((ws) => forgetBookmarks(ws, removed));
-		},
-		onSetIcon: (id, icon) =>
-			librarySource.update((lib) => setFolderIcon(lib, id, icon, now())),
-		onShareFolder: async (id) => {
-			const text = encodeShare(await librarySource.load(), id);
-			if (text) await copyText(text);
-		},
-		onPlace: (item, target) =>
-			librarySource.update((lib) =>
-				applyPlace(lib, { ...item, ...target }, now()),
-			),
-		isCollapsed: (id) => ui.collapsed.includes(id),
-		onToggleFolder: (id, collapsed) =>
-			uiStateSource.update((state) => setCollapsed(state, id, collapsed)),
-	};
+					changeWatchers((ws) => forgetBookmarks(ws, removed));
+			},
+			onSetIcon: (id, icon) =>
+				latest.current.librarySource.update((lib) =>
+					setFolderIcon(lib, id, icon, latest.current.now()),
+				),
+			onShareFolder: async (id) => {
+				const { librarySource, copyText } = latest.current;
+				const text = encodeShare(await librarySource.load(), id);
+				if (text) await copyText(text);
+			},
+			onPlace: (item, target) =>
+				latest.current.librarySource.update((lib) =>
+					applyPlace(lib, { ...item, ...target }, latest.current.now()),
+				),
+			isCollapsed: (id) => collapsed.includes(id),
+			onToggleFolder: (id, isCollapsed) =>
+				latest.current.uiStateSource.update((state) =>
+					setCollapsed(state, id, isCollapsed),
+				),
+		}),
+		// clock and latest read the newest render through a ref.
+		[lastSavedId, canOverwrite, watched, collapsed],
+	);
 	const classes = SIDE_CLASSES[side];
 	const CollapseIcon = side === "left" ? ChevronLeft : ChevronRight;
 	const ExpandIcon = side === "left" ? ChevronRight : ChevronLeft;
-	const historyActions: HistoryActions = {
-		onSave: (id) => {
-			const entry = historyEntries.find((h) => h.id === id);
-			if (!entry) return;
-			if (!queryFits(entry.query)) {
-				writes.report("too-large");
-				return;
-			}
-			librarySource.update((lib) => {
-				const saved = saveSearch(
-					lib,
-					{
-						game: entry.game,
-						league: entry.league,
-						name: titleOfQuery(entry.query, t),
-						query: entry.query,
-						searchId: entry.searchId,
-						live: false,
-					},
-					clock(),
-					t.bookmarks.defaultFolder,
-				);
-				setLastSavedId(saved.bookmark.id);
-				return saved.library;
-			});
-		},
-		onClear: () => {
-			if (game) historyStore.update((h) => clearHistory(h, game));
-		},
-	};
+	const historyActions = useMemo<HistoryActions>(
+		() => ({
+			onSave: (id) => {
+				const { historyEntries, librarySource, report, t } = latest.current;
+				const entry = historyEntries.find((h) => h.id === id);
+				if (!entry) return;
+				if (!queryFits(entry.query)) {
+					report("too-large");
+					return;
+				}
+				librarySource.update((lib) => {
+					const saved = saveSearch(
+						lib,
+						{
+							game: entry.game,
+							league: entry.league,
+							name: titleOfQuery(entry.query, t),
+							query: entry.query,
+							searchId: entry.searchId,
+							live: false,
+						},
+						clock(),
+						t.bookmarks.defaultFolder,
+					);
+					setLastSavedId(saved.bookmark.id);
+					return saved.library;
+				});
+			},
+			onClear: () => {
+				const { game, historyStore } = latest.current;
+				if (game) historyStore.update((h) => clearHistory(h, game));
+			},
+		}),
+		// clock and latest read the newest render through a ref.
+		[],
+	);
 	const counts: Record<TabId, number> = {
 		bookmarks: countBookmarks(bookmarks),
 		history: history.length,
 		pinned: pinned.length,
 		watchers: watchers.length,
 	};
-	const watcherActions: WatcherActions = {
-		onRemove: (id) => changeWatchers((ws) => removeWatcher(ws, id)),
-		onOpenSearch: (watcher) => {
-			// Opens the search even when marking it seen failed: that is what
-			// the user asked for.
-			changeWatchers((ws) =>
-				ws.map((w) =>
-					w.id === watcher.id && w.kind === "search" ? markSeen(w) : w,
-				),
-			).then(() => navigate(searchWatcherHref(watcher)));
-		},
-		onOpenSettings,
-	};
+	const watcherActions = useMemo<WatcherActions>(
+		() => ({
+			onRemove: (id) =>
+				latest.current.changeWatchers((ws) => removeWatcher(ws, id)),
+			onOpenSearch: (watcher) => {
+				const { changeWatchers, navigate } = latest.current;
+				// Opens the search even when marking it seen failed: that is what
+				// the user asked for.
+				changeWatchers((ws) =>
+					ws.map((w) =>
+						w.id === watcher.id && w.kind === "search" ? markSeen(w) : w,
+					),
+				).then(() => navigate(searchWatcherHref(watcher)));
+			},
+			onOpenSettings: () => latest.current.onOpenSettings(),
+		}),
+		// latest reads the newest render through a ref.
+		[],
+	);
+	const onUnpin = useCallback(
+		(id: string) => pinStore.update((p) => unpin(p, id)),
+		[pinStore],
+	);
 
 	return (
 		<aside
@@ -661,7 +793,7 @@ export function Panel({
 						failure={writes.failure}
 						onDismiss={writes.dismiss}
 					/>
-					<CurrentSearch capture={capture} saved={saved} onSave={saveCurrent} />
+					<CurrentSearch search={search} saved={saved} onSave={saveCurrent} />
 
 					<div
 						role="tablist"
@@ -728,7 +860,7 @@ export function Panel({
 								<PinnedList
 									pins={pinned}
 									onJump={onJumpToPin}
-									onUnpin={(id) => pinStore.update((p) => unpin(p, id))}
+									onUnpin={onUnpin}
 								/>
 							)}
 							{tab === "watchers" && (

@@ -8,6 +8,7 @@ import type { CaptureState } from "./captureFeed";
 import { PRICE_ATTR } from "./equivalentPrices";
 import { FLASH_ATTR, PINNED_ROW_ATTR } from "./pinButtons";
 import { LISTED_ATTR, SOCKETS_ATTR, TOOLS_ATTR } from "./resultHelpers";
+import { type RowScope, resultRows } from "./resultRows";
 import { SELECTORS } from "./selectors";
 
 export const HIGHLIGHT_ATTR = "data-exile-ledger-match";
@@ -69,16 +70,17 @@ export function setPageTheme(doc: Document, id: ThemeId): void {
 
 /** Marks the mod lines each captured result matched; clears marks that no longer apply. */
 export function highlightMods(
-	root: ParentNode,
+	scope: RowScope,
 	capture: CaptureState,
 	enabled: boolean,
 ): number {
 	const query = capture.search?.search.query;
 	const wanted = query && enabled ? wantedStatIds(query) : new Set<string>();
-	const byId = new Map(capture.results.map((item) => [item.id, item]));
 	let marked = 0;
-	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
-		const item = row.dataset.id ? byId.get(row.dataset.id) : undefined;
+	for (const row of resultRows(scope)) {
+		const item = row.dataset.id
+			? capture.results.get(row.dataset.id)
+			: undefined;
 		const matched =
 			item && wanted.size > 0 ? matchedMods(item, wanted) : new Set<string>();
 		for (const line of row.querySelectorAll<HTMLElement>(SELECTORS.modLine)) {

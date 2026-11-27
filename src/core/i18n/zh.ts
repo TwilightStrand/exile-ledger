@@ -7,6 +7,7 @@ import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
+import { listingDateTime } from "./dateTime";
 import type { Messages } from "./en";
 import { plural } from "./plural";
 
@@ -210,8 +211,7 @@ export const zh: Messages = {
 			divine: "div",
 			exalted: "ex",
 		} satisfies Record<string, string>,
-		listedAt: (at: number) =>
-			`上架于 ${new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+		listedAt: (at: number) => `上架于 ${listingDateTime(undefined, at)}`,
 		affixes: (prefixes: number, suffixes: number) =>
 			`${prefixes}前 · ${suffixes}后`,
 		affixesTitle: (prefixes: number, suffixes: number) =>

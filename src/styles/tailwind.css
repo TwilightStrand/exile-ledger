@@ -44,6 +44,7 @@
 	--animate-fade-in: fade-in 160ms ease-out;
 	--animate-pop-in: pop-in 200ms var(--ease-out-soft);
 	--animate-glow: glow 1400ms ease-out;
+	--animate-folder-open: folder-open 200ms ease-out;
 
 	@keyframes panel-in-left {
 		from {
@@ -66,6 +67,13 @@
 		from {
 			opacity: 0;
 			transform: scale(0.96);
+		}
+	}
+	/* Matches the collapse transition for rows mounted by opening a folder. */
+	@keyframes folder-open {
+		from {
+			grid-template-rows: 0fr;
+			opacity: 0;
 		}
 	}
 	/* A just-saved bookmark lights up so the eye finds where it landed. */

@@ -1,6 +1,8 @@
 import { createContext } from "preact";
+import { memo } from "preact/compat";
 import {
 	useContext,
+	useEffect,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -82,19 +84,83 @@ interface RowPlace {
 
 type DropWhere = "before" | "after" | "into";
 
-interface DragState {
-	dragging: DragItem | null;
-	hint: { id: string; where: DropWhere } | null;
+type DropHint = { id: string; where: DropWhere } | null;
+
+/**
+ * Drag state lives outside Preact's context value so that moving the pointer
+ * over the tree re-renders only the rows whose hint or dragged look changes,
+ * not every row in a large library.
+ */
+interface DragStore {
+	dragging: () => DragItem | null;
+	hint: () => DropHint;
 	setDragging: (item: DragItem | null) => void;
-	setHint: (hint: { id: string; where: DropWhere } | null) => void;
+	setHint: (hint: DropHint) => void;
+	subscribe: (listener: () => void) => () => void;
 }
 
-const DragContext = createContext<DragState>({
-	dragging: null,
-	hint: null,
-	setDragging: () => {},
-	setHint: () => {},
-});
+function createDragStore(): DragStore {
+	let dragging: DragItem | null = null;
+	let hint: DropHint = null;
+	const listeners = new Set<() => void>();
+	const notify = () => {
+		for (const listener of listeners) listener();
+	};
+	return {
+		dragging: () => dragging,
+		hint: () => hint,
+		setDragging: (item) => {
+			dragging = item;
+			notify();
+		},
+		setHint: (next) => {
+			hint = next;
+			notify();
+		},
+		subscribe: (listener) => {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+	};
+}
+
+const DragContext = createContext<DragStore>(createDragStore());
+
+interface RowDragLook {
+	hint: DropWhere | null;
+	isDragged: boolean;
+}
+
+function lookOf(drag: DragStore, id: string): RowDragLook {
+	const hint = drag.hint();
+	return {
+		hint: hint?.id === id ? hint.where : null,
+		isDragged: drag.dragging()?.id === id,
+	};
+}
+
+function useRowDragLook(drag: DragStore, id: string): RowDragLook {
+	const [state, setState] = useState(() => lookOf(drag, id));
+	// Layout effect: a drag can start right after the row mounts.
+	useLayoutEffect(() => {
+		const update = () => {
+			const next = lookOf(drag, id);
+			setState((prev) =>
+				prev.hint === next.hint && prev.isDragged === next.isDragged
+					? prev
+					: next,
+			);
+		};
+		update();
+		return drag.subscribe(update);
+	}, [drag, id]);
+	return state;
+}
+
+/** How long a collapsing folder keeps its rows, so the close transition can play. */
+const COLLAPSE_MS = 250;
 
 const ROW =
 	"flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] compact:h-6 compact:text-[12px] transition-colors hover:bg-ledger-raised focus-visible:outline-2 focus-visible:outline-ledger-gold";
@@ -140,8 +206,7 @@ function useDragRow(
 	actions: TreeActions | undefined,
 ) {
 	const drag = useContext(DragContext);
-	const hint = drag.hint?.id === self.id ? drag.hint.where : null;
-	const isDragged = drag.dragging?.id === self.id;
+	const { hint, isDragged } = useRowDragLook(drag, self.id);
 
 	const targetFor = (where: DropWhere): PlaceTarget =>
 		where === "into"
@@ -192,13 +257,14 @@ function useDragRow(
 					drag.setHint(null);
 				},
 				onDragOver: (e: DragEvent) => {
-					const item = drag.dragging;
+					const item = drag.dragging();
 					if (!item || item.id === self.id) return;
 					const where = dropWhere(e, item, self.kind);
 					if (!where) return;
 					e.preventDefault();
 					e.stopPropagation();
-					if (drag.hint?.id !== self.id || drag.hint.where !== where) {
+					const current = drag.hint();
+					if (current?.id !== self.id || current.where !== where) {
 						drag.setHint({ id: self.id, where });
 					}
 				},
@@ -211,10 +277,10 @@ function useDragRow(
 					) {
 						return;
 					}
-					if (drag.hint?.id === self.id) drag.setHint(null);
+					if (drag.hint()?.id === self.id) drag.setHint(null);
 				},
 				onDrop: (e: DragEvent) => {
-					const item = drag.dragging;
+					const item = drag.dragging();
 					const where = item ? dropWhere(e, item, self.kind) : null;
 					drag.setDragging(null);
 					drag.setHint(null);
@@ -347,7 +413,7 @@ function IconPicker({
 	);
 }
 
-function BookmarkRow({
+const BookmarkRow = memo(function BookmarkRow({
 	bookmark,
 	place,
 	actions,
@@ -506,7 +572,7 @@ function BookmarkRow({
 			)}
 		</div>
 	);
-}
+});
 
 type FolderMode =
 	| "view"
@@ -520,7 +586,7 @@ type FolderMode =
 const MENU_ITEM =
 	"w-full rounded px-2 py-1 text-left text-[12px] text-ledger-text transition-colors hover:bg-ledger-raised hover:text-ledger-gold-bright focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
-function FolderRow({
+const FolderRow = memo(function FolderRow({
 	folder,
 	place,
 	actions,
@@ -549,8 +615,30 @@ function FolderRow({
 		setMode("view");
 	};
 	const open = !(actions?.isCollapsed(folder.id) ?? false);
-	const count = countBookmarks(folder.children);
+	const count = useMemo(
+		() => countBookmarks(folder.children),
+		[folder.children],
+	);
 	const subfolders = folder.children.filter((c) => c.kind === "folder").length;
+	// Collapsed rows are not rendered at all; a large library would otherwise
+	// keep every hidden row mounted and re-rendered. They stay for the length
+	// of the close transition, and rows mounted by opening animate in.
+	const childrenMounted = useRef(open);
+	const animateIn = useRef(false);
+	if (open && !childrenMounted.current) {
+		childrenMounted.current = true;
+		animateIn.current = true;
+	}
+	const [, setUnmounted] = useState(0);
+	useEffect(() => {
+		if (open || !childrenMounted.current) return;
+		const timer = setTimeout(() => {
+			childrenMounted.current = false;
+			animateIn.current = false;
+			setUnmounted((n) => n + 1);
+		}, COLLAPSE_MS);
+		return () => clearTimeout(timer);
+	}, [open]);
 	const canNest = folder.depth < MAX_DEPTH;
 	const Icon = FOLDER_ICON_COMPONENTS[folder.icon];
 	const { props, onKeyDown, stateClass } = useDragRow(
@@ -785,11 +873,11 @@ function FolderRow({
 					/>
 				</div>
 			)}
-			{folder.children.length > 0 && (
+			{folder.children.length > 0 && childrenMounted.current && (
 				// Grid rows animate between 0fr and 1fr, which gives a height
 				// transition without measuring content.
 				<div
-					class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+					class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"} ${animateIn.current ? "animate-folder-open" : ""}`}
 					inert={!open}
 				>
 					<div class="min-h-0 overflow-hidden">
@@ -805,7 +893,7 @@ function FolderRow({
 			)}
 		</li>
 	);
-}
+});
 
 /** Neighbours among siblings of the same kind; folders and bookmarks order separately. */
 function placesFor(
@@ -830,7 +918,7 @@ function placesFor(
 	return places;
 }
 
-function TreeLevel({
+const TreeLevel = memo(function TreeLevel({
 	nodes,
 	parentId,
 	grandParentId,
@@ -843,14 +931,20 @@ function TreeLevel({
 	actions: TreeActions | undefined;
 	nested?: boolean;
 }) {
-	const places = placesFor(nodes, parentId, grandParentId);
-	const fallback: RowPlace = {
-		parentId,
-		grandParentId,
-		prevId: null,
-		nextId: null,
-		nextNextId: null,
-	};
+	const places = useMemo(
+		() => placesFor(nodes, parentId, grandParentId),
+		[nodes, parentId, grandParentId],
+	);
+	const fallback = useMemo<RowPlace>(
+		() => ({
+			parentId,
+			grandParentId,
+			prevId: null,
+			nextId: null,
+			nextNextId: null,
+		}),
+		[parentId, grandParentId],
+	);
 	return (
 		<ul
 			class={
@@ -877,7 +971,7 @@ function TreeLevel({
 			)}
 		</ul>
 	);
-}
+});
 
 function ArchivedSection({
 	folders,
@@ -931,9 +1025,11 @@ function ArchivedSection({
 	);
 }
 
-export function BookmarkTree({
+const NO_ARCHIVED: ArchivedFolderView[] = [];
+
+export const BookmarkTree = memo(function BookmarkTree({
 	nodes,
-	archived = [],
+	archived = NO_ARCHIVED,
 	actions,
 }: {
 	nodes: TreeNodeView[];
@@ -942,12 +1038,7 @@ export function BookmarkTree({
 }) {
 	const t = useMessages();
 	const [creating, setCreating] = useState(false);
-	const [dragging, setDragging] = useState<DragItem | null>(null);
-	const [hint, setHint] = useState<DragState["hint"]>(null);
-	const drag = useMemo(
-		() => ({ dragging, hint, setDragging, setHint }),
-		[dragging, hint],
-	);
+	const [drag] = useState(createDragStore);
 
 	return (
 		<DragContext.Provider value={drag}>
@@ -995,4 +1086,4 @@ export function BookmarkTree({
 			</div>
 		</DragContext.Provider>
 	);
-}
+});
