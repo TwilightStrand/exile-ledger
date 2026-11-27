@@ -332,6 +332,11 @@ export const de: Messages = {
 				one: `${n} Eintrag wurde ausgelassen, weil er beschädigt oder zu groß war.`,
 				other: `${n} Einträge wurden ausgelassen, weil sie beschädigt oder zu groß waren.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} Lesezeichen wurde ohne seine gespeicherte Suche übernommen, weil sie zu groß war: Es öffnet sich über seine gespeicherte Such-ID und kann nicht beobachtet werden.`,
+				other: `${n} Lesezeichen wurden ohne ihre gespeicherte Suche übernommen, weil sie zu groß war: Sie öffnen sich über ihre gespeicherte Such-ID und können nicht beobachtet werden.`,
+			}),
 		sources: {
 			"exile-ledger": "Freigegebener Ordner",
 			"better-trading": "Better-Trading-Export",

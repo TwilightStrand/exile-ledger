@@ -330,6 +330,11 @@ export const en = {
 				one: `${n} record was left out because it was damaged or too large.`,
 				other: `${n} records were left out because they were damaged or too large.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} bookmark was kept without its stored search, which was too large: it opens by its saved search id and cannot be watched.`,
+				other: `${n} bookmarks were kept without their stored search, which was too large: they open by their saved search id and cannot be watched.`,
+			}),
 		sources: {
 			"exile-ledger": "Shared folder",
 			"better-trading": "Better Trading export",

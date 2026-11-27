@@ -348,6 +348,13 @@ export const pl: Messages = {
 				many: `Pominięto ${n} wpisów, bo były uszkodzone lub zbyt duże.`,
 				other: `Pominięto ${n} wpisu, bo były uszkodzone lub zbyt duże.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `Zachowano ${n} zakładkę bez zapisanego wyszukiwania, które było za duże: otwiera się przez zapisany identyfikator wyszukiwania i nie można jej obserwować.`,
+				few: `Zachowano ${n} zakładki bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+				many: `Zachowano ${n} zakładek bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+				other: `Zachowano ${n} zakładki bez zapisanych wyszukiwań, które były za duże: otwierają się przez zapisany identyfikator wyszukiwania i nie można ich obserwować.`,
+			}),
 		sources: {
 			"exile-ledger": "Udostępniony folder",
 			"better-trading": "Eksport Better Trading",

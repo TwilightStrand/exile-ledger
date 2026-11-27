@@ -306,6 +306,10 @@ export const zh: Messages = {
 		saveFailed: "无法保存导入内容。请刷新此页面后重试。",
 		skipped: (n: number) =>
 			plural(locale, n, { other: `已跳过 ${n} 条损坏或过大的记录。` }),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				other: `${n} 个书签保存的搜索过大，已在不含该搜索的情况下保留：它们通过保存的搜索 ID 打开，且无法监视。`,
+			}),
 		sources: {
 			"exile-ledger": "分享的文件夹",
 			"better-trading": "Better Trading 导出",

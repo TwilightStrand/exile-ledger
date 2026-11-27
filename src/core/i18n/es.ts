@@ -345,6 +345,11 @@ export const es: Messages = {
 				one: `Se omitió ${n} registro porque estaba dañado o era demasiado grande.`,
 				other: `Se omitieron ${n} registros porque estaban dañados o eran demasiado grandes.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `Se conservó ${n} marcador sin su búsqueda guardada, que era demasiado grande: se abre con su ID de búsqueda guardado y no se puede vigilar.`,
+				other: `Se conservaron ${n} marcadores sin su búsqueda guardada, que era demasiado grande: se abren con su ID de búsqueda guardado y no se pueden vigilar.`,
+			}),
 		sources: {
 			"exile-ledger": "Carpeta compartida",
 			"better-trading": "Exportación de Better Trading",

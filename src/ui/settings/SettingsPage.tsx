@@ -129,8 +129,15 @@ function BackupSection({
 	const t = useMessages();
 	const summary = (payload: Payload) =>
 		t.imports.summary(payload.folders.length, payload.bookmarks.length);
-	const withSkipped = (text: string, skipped = 0) =>
-		skipped > 0 ? `${text} ${t.imports.skipped(skipped)}` : text;
+	const withNotes = (
+		text: string,
+		{ skipped = 0, queriesDropped = 0 }: Omit<Payload, "folders" | "bookmarks">,
+	) =>
+		[
+			text,
+			...(skipped > 0 ? [t.imports.skipped(skipped)] : []),
+			...(queriesDropped > 0 ? [t.imports.queriesDropped(queriesDropped)] : []),
+		].join(" ");
 	const [pending, setPending] = useState<Pending>(null);
 	const [restoreSettings, setRestoreSettings] = useState(true);
 	const [shareText, setShareText] = useState("");
@@ -210,7 +217,7 @@ function BackupSection({
 		if (!pending) return;
 		const payload =
 			pending.kind === "backup" ? pending.backup.library : pending.payload;
-		let counts = { folders: 0, bookmarks: 0, skipped: 0 };
+		let counts = { folders: 0, bookmarks: 0, skipped: 0, queriesDropped: 0 };
 		try {
 			await library.update((lib) => {
 				const result = importPayload(lib, payload, clock());
@@ -255,14 +262,11 @@ function BackupSection({
 			watchersSaved
 				? {
 						tone: "ok",
-						text: withSkipped(t.imports.imported(summary), counts.skipped),
+						text: withNotes(t.imports.imported(summary), counts),
 					}
 				: {
 						tone: "error",
-						text: withSkipped(
-							t.imports.watchersFailed(summary),
-							counts.skipped,
-						),
+						text: withNotes(t.imports.watchersFailed(summary), counts),
 					},
 		);
 	};
@@ -319,19 +323,19 @@ function BackupSection({
 				<div class="animate-pop-in rounded-md border border-ledger-gold/40 bg-ledger-gold/5 p-4">
 					<p class="text-[14px] text-ledger-text">
 						{pending.kind === "backup"
-							? withSkipped(
+							? withNotes(
 									t.imports.backupFrom(
 										pending.backup.exportedAt,
 										summary(pending.backup.library),
 									),
-									pending.backup.library.skipped,
+									pending.backup.library,
 								)
-							: withSkipped(
+							: withNotes(
 									t.imports.fromSource(
 										t.imports.sources[pending.source],
 										summary(pending.payload),
 									),
-									pending.payload.skipped,
+									pending.payload,
 								)}
 					</p>
 					{pending.kind === "backup" && pending.backup.settings && (

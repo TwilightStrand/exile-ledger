@@ -318,6 +318,10 @@ export const ko: Messages = {
 			plural(locale, n, {
 				other: `손상되었거나 너무 큰 항목 ${n}개를 건너뛰었습니다.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				other: `저장된 검색이 너무 커서 북마크 ${n}개를 검색 없이 유지했습니다. 저장된 검색 ID로 열리며 감시할 수 없습니다.`,
+			}),
 		sources: {
 			"exile-ledger": "공유된 폴더",
 			"better-trading": "Better Trading 내보내기",

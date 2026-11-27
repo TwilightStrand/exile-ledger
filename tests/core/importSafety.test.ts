@@ -166,9 +166,12 @@ describe("import size limits", () => {
 				live: true,
 			});
 			expect(decoded.value.skipped).toBe(1);
+			expect(decoded.value.queriesDropped).toBe(1);
 			const result = importPayload(emptyLibrary(), decoded.value, clock());
 			expect(result.bookmarks).toBe(1);
 			expect(result.skipped).toBe(1);
+			// Counted once, though importPayload cleans the payload a second time.
+			expect(result.queriesDropped).toBe(1);
 		},
 	);
 

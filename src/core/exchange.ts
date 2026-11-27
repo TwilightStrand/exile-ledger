@@ -22,6 +22,8 @@ export interface Payload {
 	bookmarks: Bookmark[];
 	/** Records left out while reading because they were invalid or too large. */
 	skipped?: number;
+	/** Bookmarks kept without their query, which was over QUERY_MAX_BYTES. */
+	queriesDropped?: number;
 }
 
 /**
@@ -37,10 +39,8 @@ export const IMPORT_LIMITS = {
 	searchId: 64,
 };
 
-const graphemes =
-	typeof Intl.Segmenter === "function"
-		? new Intl.Segmenter(undefined, { granularity: "grapheme" })
-		: null;
+// Every browser the manifest allows has Intl.Segmenter (Firefox 140+, Chrome MV3).
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 /** Cuts at a code point, never leaving half of a surrogate pair. */
 function cutCodePoints(text: string, max: number): string {
@@ -51,12 +51,11 @@ function cutCodePoints(text: string, max: number): string {
 /**
  * Cuts to at most `max` UTF-16 units on a grapheme boundary, so a family
  * emoji, a flag, a skin tone or an accented letter is kept whole or left
- * out, never broken. Without Intl.Segmenter, or when the first grapheme
- * alone is longer than `max`, it cuts at a code point instead.
+ * out, never broken. When the first grapheme alone is longer than `max`,
+ * it cuts at a code point instead, so a name is never left empty.
  */
 export function cutTo(text: string, max: number): string {
 	if (text.length <= max) return text;
-	if (!graphemes) return cutCodePoints(text, max);
 	let end = 0;
 	for (const { index, segment } of graphemes.segment(text)) {
 		if (index + segment.length > max) break;
@@ -93,7 +92,9 @@ function importedFolder(raw: unknown): Folder | null {
 	};
 }
 
-function importedBookmark(raw: unknown): Bookmark | null {
+function importedBookmark(
+	raw: unknown,
+): { bookmark: Bookmark; queryDropped: boolean } | null {
 	const parsed = v.safeParse(BookmarkSchema, raw);
 	if (!parsed.success) return null;
 	const b = parsed.output;
@@ -110,7 +111,7 @@ function importedBookmark(raw: unknown): Bookmark | null {
 	const lostSomething = query !== b.query || searchId !== b.searchId;
 	if (lostSomething && query === undefined && searchId === undefined)
 		return null;
-	return {
+	const bookmark: Bookmark = {
 		id: b.id,
 		folderId: b.folderId,
 		name: cutTo(b.name, IMPORT_LIMITS.name),
@@ -127,6 +128,7 @@ function importedBookmark(raw: unknown): Bookmark | null {
 		createdAt: b.createdAt,
 		updatedAt: b.updatedAt,
 	};
+	return { bookmark, queryDropped: query !== b.query };
 }
 
 /**
@@ -137,7 +139,7 @@ function importedBookmark(raw: unknown): Bookmark | null {
 export function cleanPayload(
 	rawFolders: readonly unknown[],
 	rawBookmarks: readonly unknown[],
-	skipped = 0,
+	earlier: { skipped?: number; queriesDropped?: number } = {},
 ): Payload {
 	const folderIds = new Set<string>();
 	const folders = rawFolders.flatMap((raw) => {
@@ -146,15 +148,19 @@ export function cleanPayload(
 		folderIds.add(f.id);
 		return [f];
 	});
+	let queriesDropped = earlier.queriesDropped ?? 0;
 	const bookmarks = rawBookmarks.flatMap((raw) => {
-		const b = importedBookmark(raw);
-		return b && folderIds.has(b.folderId) ? [b] : [];
+		const kept = importedBookmark(raw);
+		if (!kept || !folderIds.has(kept.bookmark.folderId)) return [];
+		if (kept.queryDropped) queriesDropped++;
+		return [kept.bookmark];
 	});
 	return {
 		folders,
 		bookmarks,
+		queriesDropped,
 		skipped:
-			skipped +
+			(earlier.skipped ?? 0) +
 			rawFolders.length -
 			folders.length +
 			rawBookmarks.length -
@@ -349,13 +355,15 @@ export function importPayload(
 	library: Library,
 	payload: Payload,
 	{ now, newId }: Clock,
-): { library: Library; folders: number; bookmarks: number; skipped: number } {
+): {
+	library: Library;
+	folders: number;
+	bookmarks: number;
+	skipped: number;
+	queriesDropped: number;
+} {
 	// Cleaned again here so no caller can add records that skipped the limits.
-	const clean = cleanPayload(
-		payload.folders,
-		payload.bookmarks,
-		payload.skipped,
-	);
+	const clean = cleanPayload(payload.folders, payload.bookmarks, payload);
 	const repaired = repairTree(clean.folders);
 	const ids = new Map(repaired.map((f) => [f.id, newId()]));
 	const rootOrder: Record<Folder["game"], number> = { poe1: 0, poe2: 0 };
@@ -385,5 +393,6 @@ export function importPayload(
 		folders: folders.length,
 		bookmarks: bookmarks.length,
 		skipped: clean.skipped ?? 0,
+		queriesDropped: clean.queriesDropped ?? 0,
 	};
 }

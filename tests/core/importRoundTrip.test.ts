@@ -273,6 +273,7 @@ describe("data saved before the query cap", () => {
 		expect(withId).toMatchObject({ searchId: "Ab12cD", live: true });
 		// Only the bookmark left with nothing to open is skipped, and counted.
 		expect(result.skipped).toBe(1);
+		expect(result.queriesDropped).toBe(1);
 	});
 
 	it("restores a library seeded with an over-cap bookmark, as v0.1.0 stored it", () => {
@@ -309,6 +310,7 @@ describe("data saved before the query cap", () => {
 		);
 		expect(result.skipped).toBe(0);
 		expect(result.bookmarks).toBe(seeded.bookmarks.length);
+		expect(result.queriesDropped).toBe(1);
 		const old = result.library.bookmarks.find((b) => b.name === "From v0.1.0");
 		expect(old?.searchId).toBe("Old1");
 		expect(old?.query).toBeUndefined();

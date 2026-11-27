@@ -331,6 +331,11 @@ export const fr: Messages = {
 				one: `${n} élément a été ignoré, car il était endommagé ou trop volumineux.`,
 				other: `${n} éléments ont été ignorés, car ils étaient endommagés ou trop volumineux.`,
 			}),
+		queriesDropped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} favori a été conservé sans sa recherche enregistrée, trop volumineuse : il s'ouvre par son identifiant de recherche et ne peut pas être suivi.`,
+				other: `${n} favoris ont été conservés sans leur recherche enregistrée, trop volumineuse : ils s'ouvrent par leur identifiant de recherche et ne peuvent pas être suivis.`,
+			}),
 		sources: {
 			"exile-ledger": "Dossier partagé",
 			"better-trading": "Export Better Trading",
