@@ -122,7 +122,7 @@ jobs:
             for suffix in chrome firefox sources; do
               name=$(grep -- "-${suffix}\.zip$" <<< "$assets")
               if [ "$(wc -l <<< "$name")" -ne 1 ]; then
-                echo "::error::Expected one *-${suffix}.zip on $TAG, found: $name"
+                echo "::error::Expected one *-${suffix}.zip on $TAG, found: ${name//$'\n'/, }"
                 exit 1
               fi
               gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir .output

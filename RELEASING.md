@@ -25,9 +25,9 @@ The release and build jobs also need `CLIENT_ID` and `APP_PRIVATE_KEY` for the G
 
 ## Retrying a failed store upload
 
-Do not use **Re-run all jobs**: changesetter only reports a release from the run that pushed the tag, so a re-run skips the build and both stores. **Re-run failed jobs** on the original run does work, because it keeps the outputs of the jobs that passed.
+Do not use **Re-run all jobs**: changesetter only reports a release from the run that pushed the tag, so a re-run skips the build and both stores. **Re-run failed jobs** on the original run does work for 7 days, because it keeps the outputs of the jobs that passed; after that the built zips it hands to the store jobs have expired.
 
-Instead, run the workflow by hand with the release tag:
+At any time, you can also run the workflow by hand with the release tag:
 
 ```bash
 gh workflow run release.yml -f tag=v0.2.0
