@@ -62,7 +62,8 @@ export function useWriteFailures<T>(source: Source<T>) {
 	return {
 		source: reporting,
 		failure,
-		report: setFailure,
+		report: (next: WriteFailure) =>
+			setFailure((current) => (current === "reload" ? current : next)),
 		dismiss: () => setFailure(null),
 	};
 }

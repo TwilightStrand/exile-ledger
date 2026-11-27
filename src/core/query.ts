@@ -51,9 +51,9 @@ export type StatGroup = v.InferOutput<typeof StatGroupSchema>;
 export type StatFilter = v.InferOutput<typeof StatFilterSchema>;
 
 /**
- * Largest query the app stores, in UTF-8 bytes of its JSON; saving and
- * importing both refuse a bigger one, so a backup always restores what the
- * app saved. Everything saved is synced, and storage.sync holds about 90 KB
+ * Largest query the app stores, in UTF-8 bytes of its JSON. Saving refuses
+ * a bigger one; an import drops it and keeps the bookmark when it has a
+ * search id to open from. Everything saved is synced, and storage.sync holds about 90 KB
  * (SYNC_BUDGET_BYTES), so one bookmark must not be able to fill it. A real
  * query with 150 stat filters is about 16 KB; 24 KB leaves half again as
  * much room.

@@ -145,18 +145,26 @@ describe("import size limits", () => {
 		// Under the cap in UTF-16 units but over it in UTF-8 bytes.
 		["multibyte", "가".repeat(QUERY_MAX_BYTES / 2)],
 	])(
-		"skips and counts a bookmark whose %s query is over the byte cap",
+		"keeps a bookmark whose %s query is over the byte cap, without the query",
 		(_name, term) => {
 			const query = { query: { term } };
 			expect(JSON.stringify(query).length).toBeLessThan(QUERY_MAX_BYTES * 1.1);
 			const decoded = decodeShare(
 				share({
 					folders: [folder()],
-					bookmarks: [bookmark({ id: "ok" }), bookmark({ query })],
+					bookmarks: [
+						bookmark({ id: "withId", query, live: true }),
+						bookmark({ id: "noId", query, searchId: undefined }),
+					],
 				}),
 			);
 			if (!decoded.ok) throw new Error(decoded.error);
-			expect(decoded.value.bookmarks.map((b) => b.id)).toEqual(["ok"]);
+			expect(decoded.value.bookmarks.map((b) => b.id)).toEqual(["withId"]);
+			expect(decoded.value.bookmarks[0]).not.toHaveProperty("query");
+			expect(decoded.value.bookmarks[0]).toMatchObject({
+				searchId: "abc123",
+				live: true,
+			});
 			expect(decoded.value.skipped).toBe(1);
 			const result = importPayload(emptyLibrary(), decoded.value, clock());
 			expect(result.bookmarks).toBe(1);
@@ -184,18 +192,32 @@ describe("import size limits", () => {
 		);
 	});
 
-	it("does not cut a name through the middle of an emoji", () => {
-		expect(cutTo(`${"a".repeat(9)}⚔️😀`, 10)).toBe(`${"a".repeat(9)}⚔`);
-		expect(cutTo(`${"a".repeat(9)}😀`, 10)).toBe("a".repeat(9));
+	it.each([
+		["a surrogate pair", "😀"],
+		["an emoji with a variation selector", "⚔️"],
+		["a family joined with ZWJ", "👨‍👩‍👧‍👦"],
+		["a skin tone", "👍🏽"],
+		["a flag", "🇩🇰"],
+		["a combining accent", "e\u0301"],
+	])("keeps %s whole or leaves it out when cutting", (_name, cluster) => {
+		const head = "a".repeat(9);
+		expect(cutTo(`${head}${cluster}tail`, 9 + cluster.length)).toBe(
+			`${head}${cluster}`,
+		);
+		expect(cutTo(`${head}${cluster}tail`, 9 + cluster.length - 1)).toBe(head);
 	});
 
-	it("drops an over-long search id but keeps the bookmark when it has a query", () => {
+	it("cuts at a code point when one cluster is longer than the limit", () => {
+		expect(cutTo("👨‍👩‍👧‍👦", 3)).toBe("👨\u200d");
+	});
+
+	it("drops an over-long search id and its live flag but keeps a bookmark with a query", () => {
 		const searchId = "s".repeat(IMPORT_LIMITS.searchId + 1);
 		const decoded = decodeShare(
 			share({
 				folders: [folder()],
 				bookmarks: [
-					bookmark({ id: "q", searchId, query: { query: {} } }),
+					bookmark({ id: "q", searchId, live: true, query: { query: {} } }),
 					bookmark({ id: "bare", searchId }),
 				],
 			}),
@@ -203,6 +225,7 @@ describe("import size limits", () => {
 		if (!decoded.ok) throw new Error(decoded.error);
 		expect(decoded.value.bookmarks.map((b) => b.id)).toEqual(["q"]);
 		expect(decoded.value.bookmarks[0]).not.toHaveProperty("searchId");
+		expect(decoded.value.bookmarks[0]?.live).toBe(false);
 		expect(decoded.value.skipped).toBe(1);
 	});
 

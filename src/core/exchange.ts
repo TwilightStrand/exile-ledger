@@ -37,11 +37,32 @@ export const IMPORT_LIMITS = {
 	searchId: 64,
 };
 
-/** Cuts to `max` UTF-16 units without leaving half of a surrogate pair. */
-export function cutTo(text: string, max: number): string {
-	if (text.length <= max) return text;
+const graphemes =
+	typeof Intl.Segmenter === "function"
+		? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+		: null;
+
+/** Cuts at a code point, never leaving half of a surrogate pair. */
+function cutCodePoints(text: string, max: number): string {
 	const cut = text.slice(0, max);
 	return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+}
+
+/**
+ * Cuts to at most `max` UTF-16 units on a grapheme boundary, so a family
+ * emoji, a flag, a skin tone or an accented letter is kept whole or left
+ * out, never broken. Without Intl.Segmenter, or when the first grapheme
+ * alone is longer than `max`, it cuts at a code point instead.
+ */
+export function cutTo(text: string, max: number): string {
+	if (text.length <= max) return text;
+	if (!graphemes) return cutCodePoints(text, max);
+	let end = 0;
+	for (const { index, segment } of graphemes.segment(text)) {
+		if (index + segment.length > max) break;
+		end = index + segment.length;
+	}
+	return end > 0 ? text.slice(0, end) : cutCodePoints(text, max);
 }
 
 // Arrays of anything: each record is checked on its own so one bad entry does
@@ -76,14 +97,19 @@ function importedBookmark(raw: unknown): Bookmark | null {
 	const parsed = v.safeParse(BookmarkSchema, raw);
 	if (!parsed.success) return null;
 	const b = parsed.output;
-	if (b.query !== undefined && !queryFits(b.query)) return null;
+	// A query over the cap is dropped, not the bookmark: older versions saved
+	// any size, and the bookmark still opens from its search id.
+	const query =
+		b.query !== undefined && queryFits(b.query) ? b.query : undefined;
 	// A cut search id would open another search, so an over-long one is
-	// dropped; the bookmark still opens from its query, or is skipped.
+	// dropped. The app never stores one: trade ids are about 10 characters.
 	const searchId =
 		b.searchId !== undefined && b.searchId.length <= IMPORT_LIMITS.searchId
 			? b.searchId
 			: undefined;
-	if (searchId !== b.searchId && b.query === undefined) return null;
+	const lostSomething = query !== b.query || searchId !== b.searchId;
+	if (lostSomething && query === undefined && searchId === undefined)
+		return null;
 	return {
 		id: b.id,
 		folderId: b.folderId,
@@ -91,10 +117,11 @@ function importedBookmark(raw: unknown): Bookmark | null {
 		game: b.game,
 		league: cutTo(b.league, IMPORT_LIMITS.league),
 		// The query stays loose on purpose (see TradeQuerySchema); its size is capped above.
-		...(b.query === undefined ? {} : { query: b.query }),
+		...(query === undefined ? {} : { query }),
 		...(searchId === undefined ? {} : { searchId }),
 		...(b.tradeType === undefined ? {} : { tradeType: b.tradeType }),
-		live: b.live,
+		// A live search needs its id; without one the bookmark opens as a plain search.
+		live: searchId === b.searchId ? b.live : false,
 		...(b.done === undefined ? {} : { done: b.done }),
 		order: b.order,
 		createdAt: b.createdAt,
@@ -103,7 +130,7 @@ function importedBookmark(raw: unknown): Bookmark | null {
 }
 
 /**
- * Keeps the records that validate and whose query fits, counting the rest.
+ * Keeps the records that validate and can still be opened, counting the rest.
  * A folder whose id repeats, and a bookmark whose folder is not kept, count
  * as skipped too, since importing them would merge or lose them silently.
  */

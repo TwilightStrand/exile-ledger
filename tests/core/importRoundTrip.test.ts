@@ -208,3 +208,116 @@ describe("the app's own data survives a backup and a share", () => {
 		},
 	);
 });
+
+describe("data saved before the query cap", () => {
+	const oversize = bigQuery(400);
+	const bookmark = (id: string, extra: object) => ({
+		id,
+		folderId: "saved",
+		name: id,
+		game: "poe1",
+		league: "Settlers",
+		query: oversize,
+		live: false,
+		order: 0,
+		createdAt: 1,
+		updatedAt: 1,
+		...extra,
+	});
+	/** A backup file as v0.1.0 wrote it: that version saved queries of any size. */
+	const v010Backup = {
+		format: "exile-ledger-backup",
+		version: 1,
+		exportedAt: 1_760_000_000_000,
+		library: {
+			folders: [
+				{
+					id: "saved",
+					parentId: null,
+					name: "Saved searches",
+					game: "poe1",
+					order: 0,
+					archived: false,
+					role: "saved-searches",
+					updatedAt: 1,
+				},
+			],
+			bookmarks: [
+				bookmark("small", { query: { query: { term: "ring" } } }),
+				bookmark("with-id", { searchId: "Ab12cD", live: true }),
+				bookmark("without-id", {}),
+			],
+		},
+		settings: {},
+		watchers: [],
+	};
+
+	it("is over the cap, which the save path would refuse today", () => {
+		expect(queryFits(oversize)).toBe(false);
+	});
+
+	it("keeps an over-cap bookmark that has a search id, without its query", () => {
+		const parsed = parseBackup(JSON.stringify(v010Backup));
+		if (!parsed.ok) throw new Error(parsed.error);
+		const result = importPayload(
+			emptyLibrary(),
+			parsed.value.library,
+			restoreClock(),
+		);
+		expect(result.library.bookmarks.map((b) => b.name)).toEqual([
+			"small",
+			"with-id",
+		]);
+		const withId = result.library.bookmarks[1];
+		expect(withId).not.toHaveProperty("query");
+		expect(withId).toMatchObject({ searchId: "Ab12cD", live: true });
+		// Only the bookmark left with nothing to open is skipped, and counted.
+		expect(result.skipped).toBe(1);
+	});
+
+	it("restores a library seeded with an over-cap bookmark, as v0.1.0 stored it", () => {
+		const own = ownLibrary(7);
+		const folder = own.folders[0];
+		if (!folder) throw new Error("no folder");
+		const seeded: Library = {
+			...own,
+			bookmarks: [
+				...own.bookmarks,
+				{
+					id: "old",
+					folderId: folder.id,
+					name: "From v0.1.0",
+					game: folder.game,
+					league: "Settlers",
+					query: oversize,
+					searchId: "Old1",
+					live: false,
+					order: 99,
+					createdAt: 1,
+					updatedAt: 1,
+				},
+			],
+		};
+		const parsed = parseBackup(
+			JSON.stringify(createBackup(seeded, DEFAULT_SETTINGS, 1)),
+		);
+		if (!parsed.ok) throw new Error(parsed.error);
+		const result = importPayload(
+			emptyLibrary(),
+			parsed.value.library,
+			restoreClock(),
+		);
+		expect(result.skipped).toBe(0);
+		expect(result.bookmarks).toBe(seeded.bookmarks.length);
+		const old = result.library.bookmarks.find((b) => b.name === "From v0.1.0");
+		expect(old?.searchId).toBe("Old1");
+		expect(old?.query).toBeUndefined();
+
+		const decoded = decodeShare(encodeShare(seeded, folder.id) ?? "");
+		if (!decoded.ok) throw new Error(decoded.error);
+		expect(decoded.value.skipped).toBe(0);
+		expect(decoded.value.bookmarks.some((b) => b.name === "From v0.1.0")).toBe(
+			true,
+		);
+	});
+});
