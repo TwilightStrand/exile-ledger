@@ -7,6 +7,7 @@ import {
 	FolderSchema,
 	type Library,
 } from "./model";
+import { queryFits } from "./query";
 import { repairTree } from "./repair";
 import { parseSettings, type Settings } from "./settings";
 import { subtreeIds } from "./tree";
@@ -24,19 +25,24 @@ export interface Payload {
 }
 
 /**
- * Upper bounds for one imported record. Everything an import adds is synced,
- * and storage.sync holds about 90 KB in total (SYNC_BUDGET_BYTES), so one
- * record must not be able to fill it. Real records sit far below: trade
- * search ids are about 10 characters and a saved trade query with a few
- * dozen stat filters is 1 to 5 KB of JSON; 16 KB leaves room for well over
- * a hundred stat filters.
+ * Upper bounds for one imported record's text, in UTF-16 units. Real names
+ * and leagues sit far below; longer ones, which the app does not stop anyone
+ * typing, are cut to fit rather than dropped, so restoring the app's own
+ * backup never loses a record. Trade search ids are about 10 characters.
+ * Queries are capped by QUERY_MAX_BYTES.
  */
 export const IMPORT_LIMITS = {
 	name: 200,
 	league: 100,
 	searchId: 64,
-	queryChars: 16_384,
 };
+
+/** Cuts to `max` UTF-16 units without leaving half of a surrogate pair. */
+export function cutTo(text: string, max: number): string {
+	if (text.length <= max) return text;
+	const cut = text.slice(0, max);
+	return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+}
 
 // Arrays of anything: each record is checked on its own so one bad entry does
 // not reject the rest, as when reading storage.
@@ -44,15 +50,6 @@ const PayloadShape = v.object({
 	folders: v.array(v.unknown()),
 	bookmarks: v.array(v.unknown()),
 });
-
-function jsonLength(value: unknown): number {
-	try {
-		return JSON.stringify(value)?.length ?? 0;
-	} catch {
-		// Too deeply nested to serialise, so it could never be stored either.
-		return Number.POSITIVE_INFINITY;
-	}
-}
 
 /**
  * Rebuilt from the fields this version knows: unknown fields are kept when
@@ -62,11 +59,10 @@ function importedFolder(raw: unknown): Folder | null {
 	const parsed = v.safeParse(FolderSchema, raw);
 	if (!parsed.success) return null;
 	const f = parsed.output;
-	if (f.name.length > IMPORT_LIMITS.name) return null;
 	return {
 		id: f.id,
 		parentId: f.parentId,
-		name: f.name,
+		name: cutTo(f.name, IMPORT_LIMITS.name),
 		game: f.game,
 		order: f.order,
 		archived: f.archived,
@@ -80,22 +76,23 @@ function importedBookmark(raw: unknown): Bookmark | null {
 	const parsed = v.safeParse(BookmarkSchema, raw);
 	if (!parsed.success) return null;
 	const b = parsed.output;
-	if (
-		b.name.length > IMPORT_LIMITS.name ||
-		b.league.length > IMPORT_LIMITS.league ||
-		(b.searchId?.length ?? 0) > IMPORT_LIMITS.searchId ||
-		(b.query !== undefined && jsonLength(b.query) > IMPORT_LIMITS.queryChars)
-	)
-		return null;
+	if (b.query !== undefined && !queryFits(b.query)) return null;
+	// A cut search id would open another search, so an over-long one is
+	// dropped; the bookmark still opens from its query, or is skipped.
+	const searchId =
+		b.searchId !== undefined && b.searchId.length <= IMPORT_LIMITS.searchId
+			? b.searchId
+			: undefined;
+	if (searchId !== b.searchId && b.query === undefined) return null;
 	return {
 		id: b.id,
 		folderId: b.folderId,
-		name: b.name,
+		name: cutTo(b.name, IMPORT_LIMITS.name),
 		game: b.game,
-		league: b.league,
+		league: cutTo(b.league, IMPORT_LIMITS.league),
 		// The query stays loose on purpose (see TradeQuerySchema); its size is capped above.
 		...(b.query === undefined ? {} : { query: b.query }),
-		...(b.searchId === undefined ? {} : { searchId: b.searchId }),
+		...(searchId === undefined ? {} : { searchId }),
 		...(b.tradeType === undefined ? {} : { tradeType: b.tradeType }),
 		live: b.live,
 		...(b.done === undefined ? {} : { done: b.done }),
@@ -106,7 +103,7 @@ function importedBookmark(raw: unknown): Bookmark | null {
 }
 
 /**
- * Keeps the records that validate and fit IMPORT_LIMITS, counting the rest.
+ * Keeps the records that validate and whose query fits, counting the rest.
  * A folder whose id repeats, and a bookmark whose folder is not kept, count
  * as skipped too, since importing them would merge or lose them silently.
  */

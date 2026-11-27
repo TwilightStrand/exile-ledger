@@ -79,6 +79,8 @@ export const es: Messages = {
 		saveFailed: "No se pudo guardar el cambio. Inténtalo de nuevo.",
 		reloadNeeded:
 			"Exile Ledger se ha actualizado. Recarga esta página para seguir guardando cambios.",
+		queryTooLarge:
+			"Esta búsqueda es demasiado grande para guardarla. Quita algunos filtros de estadísticas e inténtalo de nuevo.",
 		dismiss: "Cerrar",
 		tabs: {
 			bookmarks: "Marcadores",

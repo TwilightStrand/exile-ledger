@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	createBackup,
+	cutTo,
 	decodeShare,
 	IMPORT_LIMITS,
 	importPayload,
@@ -9,7 +10,11 @@ import {
 } from "../../src/core/exchange";
 import { decodeImport } from "../../src/core/importers";
 import { emptyLibrary } from "../../src/core/library";
-import type { TradeQuery } from "../../src/core/query";
+import {
+	QUERY_MAX_BYTES,
+	queryFits,
+	type TradeQuery,
+} from "../../src/core/query";
 import { DEFAULT_SETTINGS } from "../../src/core/settings";
 import searchRequest from "../fixtures/trade/poe1-search-request.json";
 
@@ -123,9 +128,10 @@ describe("imported records keep only known fields", () => {
 });
 
 describe("import size limits", () => {
-	it("still imports a query with 160 stat filters", () => {
-		const query = heavyQuery(160);
+	it("still imports a query with 150 stat filters", () => {
+		const query = heavyQuery(152);
 		expect(JSON.stringify(query).length).toBeGreaterThan(10_000);
+		expect(queryFits(query)).toBe(true);
 		const decoded = decodeShare(
 			share({ folders: [folder()], bookmarks: [bookmark({ query })] }),
 		);
@@ -135,24 +141,18 @@ describe("import size limits", () => {
 	});
 
 	it.each([
-		["a long name", { name: "n".repeat(IMPORT_LIMITS.name + 1) }],
-		["a long league", { league: "l".repeat(IMPORT_LIMITS.league + 1) }],
-		["a long search id", { searchId: "s".repeat(IMPORT_LIMITS.searchId + 1) }],
-		[
-			"a huge query",
-			{
-				query: {
-					query: { term: "t".repeat(IMPORT_LIMITS.queryChars) },
-				},
-			},
-		],
+		["ASCII", "t".repeat(QUERY_MAX_BYTES)],
+		// Under the cap in UTF-16 units but over it in UTF-8 bytes.
+		["multibyte", "가".repeat(QUERY_MAX_BYTES / 2)],
 	])(
-		"skips and counts a bookmark with %s instead of cutting it",
-		(_name, extra) => {
+		"skips and counts a bookmark whose %s query is over the byte cap",
+		(_name, term) => {
+			const query = { query: { term } };
+			expect(JSON.stringify(query).length).toBeLessThan(QUERY_MAX_BYTES * 1.1);
 			const decoded = decodeShare(
 				share({
 					folders: [folder()],
-					bookmarks: [bookmark({ id: "ok" }), bookmark(extra)],
+					bookmarks: [bookmark({ id: "ok" }), bookmark({ query })],
 				}),
 			);
 			if (!decoded.ok) throw new Error(decoded.error);
@@ -164,42 +164,90 @@ describe("import size limits", () => {
 		},
 	);
 
-	it("skips a folder with a long name together with its bookmarks", () => {
+	it("cuts a long name and league instead of dropping the bookmark", () => {
 		const decoded = decodeShare(
 			share({
-				folders: [
-					folder(),
-					folder({ id: "g", name: "n".repeat(IMPORT_LIMITS.name + 1) }),
+				folders: [folder()],
+				bookmarks: [
+					bookmark({
+						name: "n".repeat(IMPORT_LIMITS.name + 50),
+						league: "l".repeat(IMPORT_LIMITS.league + 50),
+					}),
 				],
-				bookmarks: [bookmark(), bookmark({ id: "c", folderId: "g" })],
 			}),
 		);
 		if (!decoded.ok) throw new Error(decoded.error);
-		expect(decoded.value.folders.map((f) => f.id)).toEqual(["f"]);
-		expect(decoded.value.skipped).toBe(2);
+		expect(decoded.value.skipped).toBe(0);
+		expect(decoded.value.bookmarks[0]?.name).toHaveLength(IMPORT_LIMITS.name);
+		expect(decoded.value.bookmarks[0]?.league).toHaveLength(
+			IMPORT_LIMITS.league,
+		);
 	});
 
-	it("applies the limits to other tools' exports too", () => {
+	it("does not cut a name through the middle of an emoji", () => {
+		expect(cutTo(`${"a".repeat(9)}⚔️😀`, 10)).toBe(`${"a".repeat(9)}⚔`);
+		expect(cutTo(`${"a".repeat(9)}😀`, 10)).toBe("a".repeat(9));
+	});
+
+	it("drops an over-long search id but keeps the bookmark when it has a query", () => {
+		const searchId = "s".repeat(IMPORT_LIMITS.searchId + 1);
+		const decoded = decodeShare(
+			share({
+				folders: [folder()],
+				bookmarks: [
+					bookmark({ id: "q", searchId, query: { query: {} } }),
+					bookmark({ id: "bare", searchId }),
+				],
+			}),
+		);
+		if (!decoded.ok) throw new Error(decoded.error);
+		expect(decoded.value.bookmarks.map((b) => b.id)).toEqual(["q"]);
+		expect(decoded.value.bookmarks[0]).not.toHaveProperty("searchId");
+		expect(decoded.value.skipped).toBe(1);
+	});
+
+	it("keeps a folder with a long name, its bookmarks and its subfolders", () => {
+		const decoded = decodeShare(
+			share({
+				folders: [
+					folder({ name: "n".repeat(IMPORT_LIMITS.name + 1) }),
+					folder({ id: "child", parentId: "f", name: "Child" }),
+				],
+				bookmarks: [bookmark(), bookmark({ id: "c", folderId: "child" })],
+			}),
+		);
+		if (!decoded.ok) throw new Error(decoded.error);
+		expect(decoded.value.skipped).toBe(0);
+		const { library } = importPayload(emptyLibrary(), decoded.value, clock());
+		const top = library.folders.find((f) => f.parentId === null);
+		expect(top?.name).toHaveLength(IMPORT_LIMITS.name);
+		expect(library.folders.find((f) => f.name === "Child")?.parentId).toBe(
+			top?.id,
+		);
+		expect(library.bookmarks).toHaveLength(2);
+	});
+
+	it("keeps the game suffix on a TFT stray folder with a long name", () => {
 		const decoded = decodeImport(
 			tftCode({
 				folders: [
 					{
 						id: "a",
-						name: "n".repeat(IMPORT_LIMITS.name + 1),
-						bookmarks: [{ name: "x", endpoint: "AAA1" }],
-					},
-					{
-						id: "b",
-						name: "Fine",
-						bookmarks: [{ name: "y", endpoint: "BBB2" }],
+						name: "n".repeat(IMPORT_LIMITS.name),
+						bookmarks: [
+							{ name: "x", endpoint: "AAA1" },
+							{ name: "y", endpoint: "AAA2" },
+							{ name: "z", endpoint: "BBB2", poeVersion: "Poe2" },
+						],
 					},
 				],
 			}),
 			1,
 		);
 		if (!decoded.ok) throw new Error(decoded.error);
-		expect(decoded.value.payload.folders.map((f) => f.name)).toEqual(["Fine"]);
-		expect(decoded.value.payload.skipped).toBe(2);
+		const stray = decoded.value.payload.folders.find((f) => f.game === "poe2");
+		expect(stray?.name.endsWith(" (PoE2)")).toBe(true);
+		expect(stray?.name).toHaveLength(IMPORT_LIMITS.name);
 	});
 });
 
@@ -246,9 +294,14 @@ describe("one bad record does not reject the rest", () => {
 });
 
 describe("malformed input never throws", () => {
-	const nestedLegacy = (depth: number) => {
-		let f: unknown = { name: "x", searches: [], subFolders: [] };
-		for (let i = 0; i < depth; i++)
+	/** A chain of `levels` legacy folders, each holding the next. */
+	const nestedLegacy = (levels: number) => {
+		let f: unknown = {
+			name: "x",
+			searches: [{ name: "s", url: "AAA1" }],
+			subFolders: [],
+		};
+		for (let i = 1; i < levels; i++)
 			f = {
 				name: "x",
 				searches: [{ name: "s", url: "AAA1" }],
@@ -265,9 +318,14 @@ describe("malformed input never throws", () => {
 		});
 	});
 
-	it("still reads a TFT legacy code nested as deep as people nest folders", () => {
-		const decoded = decodeImport(nestedLegacy(10), 1);
-		expect(decoded.ok).toBe(true);
+	it("reads exactly 64 levels of TFT legacy folders and refuses 65", () => {
+		const at64 = decodeImport(nestedLegacy(64), 1);
+		if (!at64.ok) throw new Error(at64.error);
+		expect(at64.value.payload.folders).toHaveLength(64);
+		expect(decodeImport(nestedLegacy(65), 1)).toEqual({
+			ok: false,
+			error: "unknown-format",
+		});
 	});
 
 	it("reports a deeply nested query in a share string instead of throwing", () => {

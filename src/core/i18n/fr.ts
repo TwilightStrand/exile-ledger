@@ -70,6 +70,8 @@ export const fr: Messages = {
 		saveFailed: "Impossible d'enregistrer la modification. Réessayez.",
 		reloadNeeded:
 			"Exile Ledger a été mis à jour. Rechargez cette page pour continuer à enregistrer vos modifications.",
+		queryTooLarge:
+			"Cette recherche est trop volumineuse pour être enregistrée. Retirez quelques filtres de stats et réessayez.",
 		dismiss: "Fermer",
 		tabs: {
 			bookmarks: "Favoris",

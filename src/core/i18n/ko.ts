@@ -65,6 +65,8 @@ export const ko: Messages = {
 		saveFailed: "변경 내용을 저장하지 못했습니다. 다시 시도하세요.",
 		reloadNeeded:
 			"Exile Ledger가 업데이트되었습니다. 변경 내용을 계속 저장하려면 이 페이지를 새로고침하세요.",
+		queryTooLarge:
+			"이 검색은 너무 커서 저장할 수 없습니다. 능력치 필터를 몇 개 지운 뒤 다시 시도하세요.",
 		dismiss: "닫기",
 		tabs: {
 			bookmarks: "북마크",

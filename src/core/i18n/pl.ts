@@ -82,6 +82,8 @@ export const pl: Messages = {
 		saveFailed: "Nie udało się zapisać zmiany. Spróbuj ponownie.",
 		reloadNeeded:
 			"Exile Ledger został zaktualizowany. Odśwież tę stronę, aby dalej zapisywać zmiany.",
+		queryTooLarge:
+			"To wyszukiwanie jest za duże, by je zapisać. Usuń kilka filtrów statystyk i spróbuj ponownie.",
 		dismiss: "Zamknij",
 		tabs: {
 			bookmarks: "Zakładki",

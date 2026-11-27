@@ -71,6 +71,8 @@ export const de: Messages = {
 			"Die Änderung konnte nicht gespeichert werden. Versuche es erneut.",
 		reloadNeeded:
 			"Exile Ledger wurde aktualisiert. Lade diese Seite neu, um weiter Änderungen zu speichern.",
+		queryTooLarge:
+			"Diese Suche ist zu groß zum Speichern. Entferne einige Statfilter und versuche es erneut.",
 		dismiss: "Schließen",
 		tabs: {
 			bookmarks: "Lesezeichen",

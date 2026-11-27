@@ -271,11 +271,11 @@ describe("SettingsPage", () => {
 		const area = root.querySelector<HTMLTextAreaElement>("textarea");
 		if (!area) throw new Error("no textarea");
 		const lib = seededLibrary();
-		const tooLong = { ...lib.bookmarks[0], id: "long", name: "n".repeat(500) };
+		const fromNewerVersion = { ...lib.bookmarks[0], id: "new", game: "poe3" };
 		area.value = `${SHARE_PREFIX}${Buffer.from(
 			JSON.stringify({
 				folders: lib.folders,
-				bookmarks: [...lib.bookmarks, tooLong],
+				bookmarks: [...lib.bookmarks, fromNewerVersion],
 			}),
 		).toString("base64url")}`;
 		await act(async () => {

@@ -10,6 +10,7 @@ import {
 	saveSearch,
 } from "../../src/core/library";
 import type { PinnedItem } from "../../src/core/pins";
+import { QUERY_MAX_BYTES } from "../../src/core/query";
 import {
 	createMemorySettings,
 	parseSettings,
@@ -978,6 +979,70 @@ describe("Panel failed library writes", () => {
 		);
 		await act(async () => button(root, en.panel.dismiss)?.click());
 		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect(document.activeElement?.getAttribute("role")).toBe("tab");
+		expect(root.contains(document.activeElement)).toBe(true);
+	});
+
+	it("clears a failed-save notice once a later write works", async () => {
+		const library = createMemoryLibrary();
+		let fail = true;
+		const flaky: LibrarySource = {
+			...library,
+			update: (change) =>
+				fail ? Promise.reject(new Error("quota")) : library.update(change),
+		};
+		const root = await mount({ feed: capturedFeed(), library: flaky });
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")).not.toBeNull();
+
+		fail = false;
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")).toBeNull();
+		expect((await library.load()).bookmarks).toHaveLength(1);
+	});
+
+	it("keeps the reload notice after a later write works", async () => {
+		const library = createMemoryLibrary();
+		let fail = true;
+		const flaky: LibrarySource = {
+			...library,
+			update: (change) =>
+				fail
+					? Promise.reject(new Error("Extension context invalidated."))
+					: library.update(change),
+		};
+		const root = await mount({ feed: capturedFeed(), library: flaky });
+		await act(async () => button(root, "Save search")?.click());
+		fail = false;
+		await act(async () => button(root, "Save search")?.click());
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
+	});
+
+	it("refuses to save a search over the size cap, and says why", async () => {
+		const feed = createCaptureFeed();
+		const search = parseSearch(searchRequest, searchResponse);
+		if (!search) throw new Error("fixture did not parse");
+		feed.push({
+			kind: "search",
+			game: "poe2",
+			realm: "poe2",
+			league: "Standard",
+			search: {
+				...search,
+				query: { query: { term: "x".repeat(QUERY_MAX_BYTES) } },
+			},
+		});
+		const library = createMemoryLibrary();
+		const root = await mount({ feed, library });
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect((await library.load()).bookmarks).toHaveLength(0);
 	});
 
 	it("asks for a reload when the extension was updated under an open tab", async () => {

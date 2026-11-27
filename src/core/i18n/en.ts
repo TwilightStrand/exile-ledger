@@ -70,6 +70,8 @@ export const en = {
 		saveFailed: "Could not save that change. Try again.",
 		reloadNeeded:
 			"Exile Ledger was updated. Reload this page to keep saving changes.",
+		queryTooLarge:
+			"This search is too large to save. Remove some stat filters and try again.",
 		dismiss: "Dismiss",
 		tabs: {
 			bookmarks: "Bookmarks",

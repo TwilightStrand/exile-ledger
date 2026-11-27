@@ -64,6 +64,7 @@ export const zh: Messages = {
 		sections: "面板分区",
 		saveFailed: "无法保存此更改。请重试。",
 		reloadNeeded: "Exile Ledger 已更新。请刷新此页面以继续保存更改。",
+		queryTooLarge: "此搜索过大，无法保存。请删除部分属性筛选后重试。",
 		dismiss: "关闭",
 		tabs: {
 			bookmarks: "书签",

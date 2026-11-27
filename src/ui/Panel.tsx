@@ -21,6 +21,7 @@ import {
 import { searchWatcherHref } from "../core/openUrl";
 import { type PinnedItem, unpin } from "../core/pins";
 import { applyPlace } from "../core/placement";
+import { queryFits } from "../core/query";
 import {
 	clampPanelWidth,
 	DEFAULT_SETTINGS,
@@ -379,6 +380,10 @@ export function Panel({
 		const event = capture.search;
 		if (!event) return;
 		const query = event.search.query;
+		if (!queryFits(query)) {
+			writes.report("too-large");
+			return;
+		}
 		librarySource.update((lib) => {
 			const saved = saveSearch(
 				lib,
@@ -411,6 +416,10 @@ export function Panel({
 				? (id) => {
 						const event = capture.search;
 						if (!event) return;
+						if (!queryFits(event.search.query)) {
+							writes.report("too-large");
+							return;
+						}
 						librarySource.update((lib) =>
 							overwriteBookmark(
 								lib,
@@ -533,6 +542,10 @@ export function Panel({
 		onSave: (id) => {
 			const entry = historyEntries.find((h) => h.id === id);
 			if (!entry) return;
+			if (!queryFits(entry.query)) {
+				writes.report("too-large");
+				return;
+			}
 			librarySource.update((lib) => {
 				const saved = saveSearch(
 					lib,

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { Payload } from "../exchange";
+import { cutTo, IMPORT_LIMITS, type Payload } from "../exchange";
 import type { Bookmark, Folder } from "../model";
 import type { Game } from "../tradeUrl";
 
@@ -136,6 +136,12 @@ function flattenLegacy(
 	});
 }
 
+/** Cut before the suffix, so the import's name limit cannot take the game off the end. */
+function strayName(name: string, game: Game): string {
+	const suffix = ` (${game === "poe2" ? "PoE2" : "PoE1"})`;
+	return `${cutTo(name, IMPORT_LIMITS.name - suffix.length)}${suffix}`;
+}
+
 function toPayload(flat: readonly Flat[], now: number): Payload {
 	// Keyed by position, not by TFT's id: a damaged or hand-edited code can
 	// repeat an id, and both folders must survive. A repeated id used as a
@@ -198,7 +204,7 @@ function toPayload(flat: readonly Flat[], now: number): Payload {
 					parent !== undefined && resolve(parent) === other
 						? idOf(parent)
 						: null,
-				name: `${name} (${other === "poe2" ? "PoE2" : "PoE1"})`,
+				name: strayName(name, other),
 				game: other,
 				order: f.order,
 				archived: false,
@@ -241,7 +247,8 @@ function legacyTooDeep(json: unknown): boolean {
 		{ value: json.searches, depth: 1 },
 	];
 	for (let next = stack.pop(); next; next = stack.pop()) {
-		if (!Array.isArray(next.value)) continue;
+		// An empty subFolders list adds no level of folders.
+		if (!Array.isArray(next.value) || next.value.length === 0) continue;
 		if (next.depth > MAX_LEGACY_DEPTH) return true;
 		for (const folder of next.value) {
 			if (
