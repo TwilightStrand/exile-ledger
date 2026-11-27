@@ -3,7 +3,7 @@ import { browser } from "wxt/browser";
 import { storage } from "wxt/utils/storage";
 import {
 	createRateLimiter,
-	REQUEST_KINDS,
+	LimiterSnapshotSchema,
 	type RequestKind,
 } from "../core/rateLimit";
 import { TRADE_ORIGINS } from "../core/sites";
@@ -33,17 +33,17 @@ const queue = createTradeQueue(limiter, {
 });
 
 // Session storage survives the background being stopped and restarted but not
-// a browser restart, which matches how long a GGG penalty can matter.
-const penalties = storage.defineItem<unknown>("session:tradePenalties");
-const PenaltiesSchema = v.record(v.picklist(REQUEST_KINDS), v.number());
+// a browser restart. After a browser restart the limiter starts cold and paces
+// by a fixed gap until the first response reports the limits.
+const limiterState = storage.defineItem<unknown>("session:tradeLimiter");
 
-// Storage failures only lose the saved penalty; the request path must go on,
+// Storage failures only lose the saved state; the request path must go on,
 // or a pass would abort after sending and repeat the request on every alarm.
-const restored = penalties
+const restored = limiterState
 	.getValue()
 	.then((saved) => {
-		const parsed = v.safeParse(PenaltiesSchema, saved);
-		if (parsed.success) limiter.restore(parsed.output);
+		const parsed = v.safeParse(LimiterSnapshotSchema, saved);
+		if (parsed.success) limiter.restore(parsed.output, Date.now());
 	})
 	.catch(() => {});
 
@@ -56,11 +56,12 @@ export async function tradeRequest(
 ): Promise<QueueResult> {
 	await restored;
 	const result = await queue.enqueue(kind, url, init, maxWaitMs);
-	await penalties.setValue(limiter.snapshot()).catch(() => {});
+	await limiterState.setValue(limiter.snapshot()).catch(() => {});
 	return result;
 }
 
 /** When the last running penalty ends, so alarms are not set to fire into one. */
-export function penaltyEndsAt(): number {
-	return Math.max(0, ...Object.values(limiter.snapshot()));
+export async function penaltyEndsAt(): Promise<number> {
+	await restored;
+	return limiter.blockedUntil();
 }

@@ -279,6 +279,8 @@ export const de: Messages = {
 		waiting: "Ein anderer Browser schreibt gerade; neuer Versuch gleich.",
 		quota:
 			"Zu viele Lesezeichen für die Browser-Synchronisierung. Deine Lesezeichen sind auf diesem Gerät sicher; archiviere oder lösche einige, um die Synchronisierung fortzusetzen.",
+		newer:
+			"Ein anderer Browser hat mit einer neueren Version von Exile Ledger synchronisiert. Aktualisiere die Erweiterung hier, um weiter zu synchronisieren; deine Lesezeichen auf diesem Gerät sind sicher.",
 		failed: "Synchronisierung fehlgeschlagen.",
 	},
 	imports: {

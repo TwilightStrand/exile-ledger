@@ -548,7 +548,9 @@ export function SettingsPage({
 							</div>
 						</div>
 					)}
-					{(sync.state === "error" || sync.state === "quota") && (
+					{(sync.state === "error" ||
+						sync.state === "quota" ||
+						sync.state === "newer") && (
 						<Notice tone="error">{syncStatusText(sync, now(), t)}</Notice>
 					)}
 				</Section>

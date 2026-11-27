@@ -279,6 +279,8 @@ export const fr: Messages = {
 			"Un autre navigateur est en train d'écrire ; nouvel essai sous peu.",
 		quota:
 			"Trop de favoris pour la synchronisation du navigateur. Vos favoris sont en sécurité sur cet appareil ; archivez ou supprimez-en pour reprendre la synchronisation.",
+		newer:
+			"Un autre navigateur a synchronisé avec une version plus récente d'Exile Ledger. Mettez l'extension à jour ici pour reprendre la synchronisation ; vos favoris sur cet appareil sont en sécurité.",
 		failed: "Échec de la synchronisation.",
 	},
 	imports: {

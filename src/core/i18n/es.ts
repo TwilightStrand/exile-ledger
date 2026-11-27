@@ -293,6 +293,8 @@ export const es: Messages = {
 		waiting: "Otro navegador está escribiendo; se reintentará en breve.",
 		quota:
 			"Demasiados marcadores para la sincronización del navegador. Tus marcadores están a salvo en este equipo; archiva o elimina algunos para reanudar la sincronización.",
+		newer:
+			"Otro navegador sincronizó con una versión más reciente de Exile Ledger. Actualiza la extensión aquí para reanudar la sincronización; tus marcadores en este equipo están a salvo.",
 		failed: "Error de sincronización.",
 	},
 	imports: {

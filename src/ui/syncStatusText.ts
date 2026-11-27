@@ -27,6 +27,8 @@ export function syncStatusText(
 			return t.sync.waiting;
 		case "quota":
 			return t.sync.quota;
+		case "newer":
+			return t.sync.newer;
 		case "error":
 			return status.error ?? t.sync.failed;
 	}
@@ -38,5 +40,6 @@ export const SYNC_DOT: Record<SyncStatus["state"], string> = {
 	waiting: "bg-ledger-gold",
 	off: "bg-ledger-faint",
 	quota: "bg-ledger-danger-mark",
+	newer: "bg-ledger-danger-mark",
 	error: "bg-ledger-danger-mark",
 };

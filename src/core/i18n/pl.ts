@@ -292,6 +292,8 @@ export const pl: Messages = {
 		waiting: "Inna przeglądarka zapisuje dane, spróbujemy ponownie za chwilę.",
 		quota:
 			"Zbyt wiele zakładek do synchronizacji przeglądarki. Twoje zakładki są bezpieczne na tym komputerze; zarchiwizuj lub usuń część, aby wznowić synchronizację.",
+		newer:
+			"Inna przeglądarka zsynchronizowała dane nowszą wersją Exile Ledger. Zaktualizuj tutaj rozszerzenie, aby wznowić synchronizację; zakładki na tym komputerze są bezpieczne.",
 		failed: "Synchronizacja nie powiodła się.",
 	},
 	imports: {

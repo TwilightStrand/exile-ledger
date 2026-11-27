@@ -54,6 +54,14 @@ function fakeServer(rules: { max: number; periodS: number }[]) {
 		pageRequest: () => hits.push(clock.now),
 		overLimit: () => overLimit,
 		hitCount: () => hits.length,
+		/** Most hits that fell in any one window of this length. */
+		peak: (periodS: number) =>
+			Math.max(
+				0,
+				...hits.map(
+					(t) => hits.filter((u) => u >= t && u < t + periodS * 1000).length,
+				),
+			),
 	};
 }
 
@@ -175,8 +183,85 @@ describe("trade queue with the rate limiter", () => {
 		const before = createRateLimiter();
 		before.observe("fetch", 429, headers({ "Retry-After": "600" }), 0);
 		const after = createRateLimiter();
-		after.restore(before.snapshot());
+		after.restore(before.snapshot(), 60_000);
 		expect(after.delayFor("fetch", 60_000)).toBe(540_000);
 		expect(after.delayFor("search", 60_000)).toBe(0);
+	});
+
+	it("carries the server's counts into a restarted limiter", () => {
+		const before = createRateLimiter();
+		before.observe(
+			"search",
+			200,
+			headers({
+				"X-Rate-Limit-Rules": "Ip",
+				"X-Rate-Limit-Ip": "30:300:1800",
+				"X-Rate-Limit-Ip-State": "29:300:0",
+			}),
+			0,
+		);
+		const after = createRateLimiter();
+		after.restore(before.snapshot(), 30_000);
+		expect(after.delayFor("search", 30_000)).toBe(270_000);
+	});
+
+	it("leaves half of every window for the user's own searches", async () => {
+		const server = fakeServer([
+			{ max: 8, periodS: 10 },
+			{ max: 30, periodS: 300 },
+		]);
+		const queue = createTradeQueue(createRateLimiter(), server.ports);
+		for (let i = 0; i < 40; i++)
+			await queue.enqueue("search", "https://example.test/s");
+		expect(server.peak(10)).toBeLessThanOrEqual(4);
+		expect(server.peak(300)).toBeLessThanOrEqual(15);
+	});
+
+	it("stays within the windows when the background restarts between requests", async () => {
+		const server = fakeServer([{ max: 30, periodS: 300 }]);
+		let limiter = createRateLimiter();
+		for (let i = 0; i < 40; i++) {
+			const next = createRateLimiter();
+			next.restore(limiter.snapshot(), server.clock.now);
+			limiter = next;
+			await createTradeQueue(limiter, server.ports).enqueue(
+				"search",
+				"https://example.test/s",
+			);
+		}
+		expect(server.overLimit()).toBe(0);
+		expect(server.peak(300)).toBeLessThanOrEqual(15);
+	});
+
+	it("forgets what a clock that went back stamped in the future", () => {
+		const before = createRateLimiter();
+		const rules = headers({
+			"X-Rate-Limit-Rules": "Ip",
+			"X-Rate-Limit-Ip": "8:10:60",
+			"X-Rate-Limit-Ip-State": "8:10:0",
+		});
+		for (const at of [3_600_000, 3_603_000, 3_606_000, 3_609_000]) {
+			before.record("search", at);
+			before.observe("search", 200, rules, at);
+		}
+		before.observe(
+			"fetch",
+			429,
+			headers({ "Retry-After": "86400" }),
+			3_600_000,
+		);
+		const after = createRateLimiter();
+		after.restore(before.snapshot(), 0);
+		expect(after.delayFor("search", 0)).toBe(0);
+		expect(after.delayFor("fetch", 0)).toBe(2 * 60 * 60_000);
+	});
+
+	it("paces by a fixed gap until a response reports the limits", () => {
+		const limiter = createRateLimiter();
+		expect(limiter.delayFor("search", 0)).toBe(0);
+		limiter.record("search", 0);
+		expect(limiter.delayFor("search", 1000)).toBe(9000);
+		limiter.observe("search", 502, headers({}), 1000);
+		expect(limiter.delayFor("search", 1000)).toBe(9000);
 	});
 });

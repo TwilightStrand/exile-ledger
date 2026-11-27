@@ -25,7 +25,15 @@ export interface SyncPorts {
 	newWriteId(): string;
 }
 
-export type SyncState = "on" | "off" | "error" | "quota" | "waiting";
+export const SYNC_STATES = [
+	"on",
+	"off",
+	"error",
+	"quota",
+	"waiting",
+	"newer",
+] as const;
+export type SyncState = (typeof SYNC_STATES)[number];
 
 export interface SyncStatus {
 	state: SyncState;
@@ -52,10 +60,22 @@ const MetaSchema = v.object({
 
 const MetaShape = v.object({ version: v.literal(1) });
 
+/**
+ * A format written by a later version. Reading it as empty would overwrite it
+ * with this version's format, and the two would keep overwriting each other;
+ * a later version that adds a field value this one rejects must raise the
+ * version, always to a whole number, so older installs stop writing instead
+ * of dropping those records.
+ */
+const NewerMetaShape = v.object({
+	version: v.pipe(v.number(), v.integer(), v.minValue(2)),
+});
+
 type Remote =
 	| { kind: "empty" }
 	| { kind: "ok"; library: Library }
-	| { kind: "partial" };
+	| { kind: "partial" }
+	| { kind: "newer" };
 
 /**
  * Every chunk is prefixed with the write id from the meta item, so a reader
@@ -63,6 +83,7 @@ type Remote =
  * waits, instead of merging half a document.
  */
 async function readRemote(items: Record<string, unknown>): Promise<Remote> {
+	if (v.is(NewerMetaShape, items[META_KEY])) return { kind: "newer" };
 	const meta = v.safeParse(MetaSchema, items[META_KEY]);
 	if (!meta.success) {
 		// A meta we wrote but cannot read is damage, not an empty sync area.
@@ -110,6 +131,15 @@ export async function syncOnce(
 			read.kind === "partial" && options.replaceDamaged
 				? { kind: "empty" }
 				: read;
+		if (remote.kind === "newer") {
+			return {
+				state: "newer",
+				usedBytes: syncBytes(items),
+				quotaBytes: SYNC_QUOTA_BYTES,
+				lastSyncAt: null,
+				error: null,
+			};
+		}
 		if (remote.kind === "partial") {
 			return {
 				state: "waiting",
@@ -175,7 +205,7 @@ export async function syncOnce(
 }
 
 const StatusSchema = v.object({
-	state: v.picklist(["on", "off", "error", "quota", "waiting"]),
+	state: v.picklist(SYNC_STATES),
 	usedBytes: v.number(),
 	quotaBytes: v.number(),
 	lastSyncAt: v.nullable(v.number()),
