@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -61,6 +62,7 @@ export const de: Messages = {
 	panel: {
 		resize: "Panelgröße ändern",
 		resizeValue: (percent: number) => `${percent} % des Fensters`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Exile Ledger einklappen",
 		expand: "Exile Ledger ausklappen",
 		expandTab: "Ledger",
@@ -336,8 +338,15 @@ export const de: Messages = {
 				"Über der Seite schweben oder die Seite beiseiteschieben, damit das Panel nie Ergebnisse verdeckt.",
 			modes: { overlay: "Schweben", push: "Beiseiteschieben" },
 			width: "Breite",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Anteil des Browserfensters, zwischen ${minPx} und ${maxPx} px. Du kannst auch den Innenrand des Panels ziehen.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Prozent des Browserfensters, das Panel wächst und schrumpft also mit dem Fenster. Es wird nie schmaler als ${minPx} px oder breiter als ${maxPx} px. Du kannst auch den Innenrand des Panels ziehen.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Eine feste Breite in Pixeln, von ${minPx} bis ${maxPx} px, unabhängig von der Fenstergröße. Du kannst auch den Innenrand des Panels ziehen.`,
+			widthUnit: "Einheit der Breite",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Panelbreite",
 		},
 		appearance: {

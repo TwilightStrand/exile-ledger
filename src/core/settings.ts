@@ -11,9 +11,10 @@ export const PANEL_MODES = ["overlay", "push"] as const;
 export type PanelMode = (typeof PANEL_MODES)[number];
 
 /**
- * Width is a share of the window, so one synced setting suits a laptop and a
- * 4K screen alike. The pixel bounds still apply: below 260 px bookmark names
- * are cut off, and past 640 px the panel covers most of the results.
+ * A percentage suits one synced setting across a laptop and a 4K screen; a
+ * pixel width suits someone who wants the panel the same size everywhere. Both
+ * keep the pixel bounds: below 260 px bookmark names are cut off, and past
+ * 640 px the panel covers most of the results.
  */
 export const PANEL_WIDTH = {
 	min: 14,
@@ -21,14 +22,22 @@ export const PANEL_WIDTH = {
 	default: 20,
 	minPx: 260,
 	maxPx: 640,
+	defaultPx: 360,
 } as const;
+
+export const PANEL_WIDTH_UNITS = ["percent", "px"] as const;
+export type PanelWidthUnit = (typeof PANEL_WIDTH_UNITS)[number];
 
 export interface Settings {
 	panelSide: PanelSide;
 	/** Overlay floats over the page; push narrows the page so nothing is covered. */
 	panelMode: PanelMode;
+	/** Resizing in one unit leaves the other unit's width untouched. */
+	panelWidthUnit: PanelWidthUnit;
 	/** Percent of the window width, within PANEL_WIDTH's pixel bounds. */
 	panelWidth: number;
+	/** Fixed width in pixels. */
+	panelWidthPx: number;
 	historyEnabled: boolean;
 	/** Bookmarks through storage.sync; settings themselves always sync. */
 	syncEnabled: boolean;
@@ -70,7 +79,9 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
 	panelSide: "left",
 	panelMode: "push",
+	panelWidthUnit: "percent",
 	panelWidth: PANEL_WIDTH.default,
+	panelWidthPx: PANEL_WIDTH.defaultPx,
 	historyEnabled: true,
 	syncEnabled: true,
 	highlightMods: true,
@@ -96,8 +107,53 @@ export function clampWidth(percent: number): number {
 	return Math.round(clamped * 10) / 10;
 }
 
-export function panelWidthCss(percent: number): string {
-	return `clamp(${PANEL_WIDTH.minPx}px, ${percent}vw, ${PANEL_WIDTH.maxPx}px)`;
+export function clampWidthPx(px: number): number {
+	return Math.round(
+		Math.min(PANEL_WIDTH.maxPx, Math.max(PANEL_WIDTH.minPx, px)),
+	);
+}
+
+export function clampPanelWidth(unit: PanelWidthUnit, value: number): number {
+	return unit === "px" ? clampWidthPx(value) : clampWidth(value);
+}
+
+export function panelWidthCss(unit: PanelWidthUnit, value: number): string {
+	return unit === "px"
+		? `${value}px`
+		: `clamp(${PANEL_WIDTH.minPx}px, ${value}vw, ${PANEL_WIDTH.maxPx}px)`;
+}
+
+/** The width setting's value in the unit it is shown and resized in. */
+export function panelWidthValue(settings: Settings): number {
+	return settings.panelWidthUnit === "px"
+		? settings.panelWidthPx
+		: settings.panelWidth;
+}
+
+/**
+ * Switching unit keeps the panel as close to its current size as the new
+ * unit's bounds allow, measured against the given window width, instead of
+ * jumping to the other unit's stored value.
+ */
+export function switchWidthUnit(
+	settings: Settings,
+	unit: PanelWidthUnit,
+	windowWidth: number,
+): Pick<Settings, "panelWidthUnit" | "panelWidth" | "panelWidthPx"> {
+	const { panelWidth, panelWidthPx } = settings;
+	if (unit === settings.panelWidthUnit || windowWidth <= 0)
+		return { panelWidthUnit: unit, panelWidth, panelWidthPx };
+	if (unit === "px")
+		return {
+			panelWidthUnit: unit,
+			panelWidth,
+			panelWidthPx: clampWidthPx((windowWidth * panelWidth) / 100),
+		};
+	return {
+		panelWidthUnit: unit,
+		panelWidth: clampWidth((panelWidthPx / windowWidth) * 100),
+		panelWidthPx,
+	};
 }
 
 // Each field falls back on its own, so one bad value from another device or an
@@ -106,9 +162,17 @@ export const SettingsSchema = v.fallback(
 	v.object({
 		panelSide: v.fallback(v.picklist(PANEL_SIDES), DEFAULT_SETTINGS.panelSide),
 		panelMode: v.fallback(v.picklist(PANEL_MODES), DEFAULT_SETTINGS.panelMode),
+		panelWidthUnit: v.fallback(
+			v.picklist(PANEL_WIDTH_UNITS),
+			DEFAULT_SETTINGS.panelWidthUnit,
+		),
 		panelWidth: v.fallback(
 			v.pipe(v.number(), v.finite(), v.transform(clampWidth)),
 			DEFAULT_SETTINGS.panelWidth,
+		),
+		panelWidthPx: v.fallback(
+			v.pipe(v.number(), v.finite(), v.transform(clampWidthPx)),
+			DEFAULT_SETTINGS.panelWidthPx,
 		),
 		historyEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.historyEnabled),
 		syncEnabled: v.fallback(v.boolean(), DEFAULT_SETTINGS.syncEnabled),

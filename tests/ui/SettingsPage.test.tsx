@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeShare } from "../../src/core/exchange";
 import type { HistoryEntry } from "../../src/core/history";
 import { en, messagesFor } from "../../src/core/i18n";
@@ -99,6 +99,10 @@ describe("SettingsPage", () => {
 		document.documentElement.removeAttribute("style");
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it("switches theme live from the picker", async () => {
 		const { root, settings } = await mount();
 		const html = document.documentElement;
@@ -116,6 +120,37 @@ describe("SettingsPage", () => {
 		);
 		expect(html.style.colorScheme).toBe("light");
 		expect(bone?.checked).toBe(true);
+	});
+
+	it("switches the width unit keeping the size, then saves pixels", async () => {
+		vi.spyOn(window, "innerWidth", "get").mockReturnValue(1600);
+		const { root, settings } = await mount();
+		await act(async () => settings.save({ panelWidth: 25 }));
+		const hint = () => root.textContent ?? "";
+		expect(hint()).toContain("Percent of the browser window");
+		const px = root.querySelector<HTMLInputElement>(
+			"input[type=radio][value=px]",
+		);
+		await act(async () => px?.click());
+		expect(await settings.load()).toMatchObject({
+			panelWidthUnit: "px",
+			panelWidthPx: 400,
+			panelWidth: 25,
+		});
+		expect(hint()).toContain("A fixed width in pixels");
+		expect(hint()).toContain("400 px");
+		const range = root.querySelector<HTMLInputElement>("input[type=range]");
+		expect(range?.min).toBe("260");
+		expect(range?.max).toBe("640");
+		if (!range) throw new Error("no width slider");
+		range.value = "500";
+		await act(async () => {
+			range.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		expect(await settings.load()).toMatchObject({
+			panelWidthPx: 500,
+			panelWidth: 25,
+		});
 	});
 
 	it("shows sync state and quota", async () => {

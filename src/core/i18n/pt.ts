@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -70,6 +71,7 @@ export const pt: Messages = {
 	panel: {
 		resize: "Redimensionar painel",
 		resizeValue: (percent: number) => `${percent}% da janela`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Recolher o Exile Ledger",
 		expand: "Expandir o Exile Ledger",
 		expandTab: "Ledger",
@@ -351,8 +353,15 @@ export const pt: Messages = {
 				"Flutuar sobre a página, ou empurrá-la para o lado para que o painel nunca cubra os resultados.",
 			modes: { overlay: "Flutuar sobre", push: "Empurrar para o lado" },
 			width: "Largura",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Proporção da janela do navegador, entre ${minPx} e ${maxPx} px. Você também pode arrastar a borda interna do painel.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Porcentagem da janela do navegador, então o painel cresce e diminui com ela. Nunca fica mais estreito que ${minPx} px nem mais largo que ${maxPx} px. Você também pode arrastar a borda interna do painel.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Uma largura fixa em pixels, de ${minPx} a ${maxPx} px, qualquer que seja o tamanho da janela. Você também pode arrastar a borda interna do painel.`,
+			widthUnit: "Unidade de largura",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Largura do painel",
 		},
 		appearance: {

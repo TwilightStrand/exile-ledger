@@ -16,10 +16,13 @@ import type { Clock, LibrarySource } from "../../core/library";
 import {
 	DEFAULT_SETTINGS,
 	PANEL_WIDTH,
+	PANEL_WIDTH_UNITS,
 	type PanelMode,
 	type PanelSide,
+	panelWidthValue,
 	type Settings,
 	type SettingsSource,
+	switchWidthUnit,
 } from "../../core/settings";
 import type { Source } from "../../core/source";
 import { OFF_STATUS, type SyncStatus } from "../../core/syncEngine";
@@ -428,24 +431,56 @@ export function SettingsPage({
 					</Field>
 					<Field
 						label={s.panel.width}
-						hint={s.panel.widthHint(PANEL_WIDTH.minPx, PANEL_WIDTH.maxPx)}
+						hint={
+							prefs.panelWidthUnit === "px"
+								? s.panel.widthHintPx(PANEL_WIDTH.minPx, PANEL_WIDTH.maxPx)
+								: s.panel.widthHintPercent(PANEL_WIDTH.minPx, PANEL_WIDTH.maxPx)
+						}
 					>
-						<div class="flex items-center gap-3">
-							<input
-								type="range"
-								aria-label={s.panel.widthInput}
-								min={PANEL_WIDTH.min}
-								max={PANEL_WIDTH.max}
-								step={1}
-								value={prefs.panelWidth}
-								class="w-40 accent-ledger-gold"
-								onChange={(e) =>
-									settings.save({ panelWidth: Number(e.currentTarget.value) })
+						<div class="flex flex-col items-end gap-2">
+							<Segmented
+								label={s.panel.widthUnit}
+								value={prefs.panelWidthUnit}
+								options={PANEL_WIDTH_UNITS.map((value) => ({
+									value,
+									label: s.panel.widthUnits[value],
+								}))}
+								onChange={(unit) =>
+									settings.save(switchWidthUnit(prefs, unit, window.innerWidth))
 								}
 							/>
-							<span class="w-14 text-right text-[13px] text-ledger-muted tabular-nums">
-								{Math.round(prefs.panelWidth)}%
-							</span>
+							<div class="flex items-center gap-3">
+								<input
+									type="range"
+									aria-label={s.panel.widthInput}
+									min={
+										prefs.panelWidthUnit === "px"
+											? PANEL_WIDTH.minPx
+											: PANEL_WIDTH.min
+									}
+									max={
+										prefs.panelWidthUnit === "px"
+											? PANEL_WIDTH.maxPx
+											: PANEL_WIDTH.max
+									}
+									step={1}
+									value={panelWidthValue(prefs)}
+									class="w-40 accent-ledger-gold"
+									onChange={(e) => {
+										const value = Number(e.currentTarget.value);
+										settings.save(
+											prefs.panelWidthUnit === "px"
+												? { panelWidthPx: value }
+												: { panelWidth: value },
+										);
+									}}
+								/>
+								<span class="w-14 text-right text-[13px] text-ledger-muted tabular-nums">
+									{prefs.panelWidthUnit === "px"
+										? t.panel.resizeValuePx(prefs.panelWidthPx)
+										: `${Math.round(prefs.panelWidth)}%`}
+								</span>
+							</div>
 						</div>
 					</Field>
 				</Section>

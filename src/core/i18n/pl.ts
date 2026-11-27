@@ -3,6 +3,7 @@ import type { HotkeyAction } from "../hotkeys";
 import type { ImportSource } from "../importers";
 import type { FolderIcon } from "../model";
 import type { GemKind, SocketItemKind } from "../searchChecks";
+import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
@@ -73,6 +74,7 @@ export const pl: Messages = {
 	panel: {
 		resize: "Zmień rozmiar panelu",
 		resizeValue: (percent: number) => `${percent}% szerokości okna`,
+		resizeValuePx: (px: number) => `${px} px`,
 		collapse: "Zwiń Exile Ledger",
 		expand: "Rozwiń Exile Ledger",
 		expandTab: "Ledger",
@@ -349,8 +351,15 @@ export const pl: Messages = {
 				"Nad stroną albo z odsunięciem strony, aby panel nigdy nie zasłaniał wyników.",
 			modes: { overlay: "Nad stroną", push: "Odsuń stronę" },
 			width: "Szerokość",
-			widthHint: (minPx: number, maxPx: number) =>
-				`Część szerokości okna przeglądarki, od ${minPx} do ${maxPx} px. Możesz też przeciągnąć wewnętrzną krawędź panelu.`,
+			widthHintPercent: (minPx: number, maxPx: number) =>
+				`Procent szerokości okna przeglądarki, więc panel rośnie i maleje razem z oknem. Nigdy nie jest węższy niż ${minPx} px ani szerszy niż ${maxPx} px. Możesz też przeciągnąć wewnętrzną krawędź panelu.`,
+			widthHintPx: (minPx: number, maxPx: number) =>
+				`Stała szerokość w pikselach, od ${minPx} do ${maxPx} px, niezależnie od rozmiaru okna. Możesz też przeciągnąć wewnętrzną krawędź panelu.`,
+			widthUnit: "Jednostka szerokości",
+			widthUnits: { percent: "%", px: "px" } satisfies Record<
+				PanelWidthUnit,
+				string
+			>,
 			widthInput: "Szerokość panelu",
 		},
 		appearance: {

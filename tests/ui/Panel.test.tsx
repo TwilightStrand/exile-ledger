@@ -571,6 +571,29 @@ describe("Panel layout and sharing", () => {
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
 		expect((await uiState.load()).panelOpen).toBe(false);
 	});
+
+	it("sizes and resizes in pixels when the unit is px", async () => {
+		const reserves: Reserve[] = [];
+		const settings = createMemorySettings({
+			panelMode: "push",
+			panelWidthUnit: "px",
+			panelWidthPx: 400,
+		});
+		const root = await mount({ settings, onReserve: (r) => reserves.push(r) });
+		expect(reserves.at(-1)).toEqual({ side: "left", width: "400px" });
+		const handle = root.querySelector("[role=separator]");
+		expect(handle?.getAttribute("aria-valuetext")).toBe("400 px");
+		await act(async () => {
+			handle?.dispatchEvent(
+				new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+			);
+		});
+		expect(handle?.getAttribute("aria-valuenow")).toBe("420");
+		await vi.waitFor(async () =>
+			expect((await settings.load()).panelWidthPx).toBe(420),
+		);
+		expect((await settings.load()).panelWidth).toBe(20);
+	});
 });
 
 describe("Panel pins", () => {
