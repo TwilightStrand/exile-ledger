@@ -3,16 +3,24 @@ name: Release
 on:
   push:
     branches: [main]
+  # Retries the store uploads for a release that already exists. "Re-run all
+  # jobs" cannot: changesetter only reports a release from the run that pushed
+  # the tag, so a re-run skips everything after the release job.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload to the stores (for example v0.2.0)
+        required: true
+        type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   # Opens or updates the "Next Release" PR from pending changesets; merging it
   # bumps package.json (which WXT turns into the manifest version), writes
   # CHANGELOG.md and tags the release.
   release:
+    if: github.event_name == 'push'
     # Every push gets a turn: a later push replacing the pending job could drop
     # the version-PR merge, and changesetter only cuts when HEAD is that merge.
     concurrency:
@@ -20,9 +28,11 @@ jobs:
       cancel-in-progress: false
       queue: max
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       released: ${{ steps.changesetter.outputs.released }}
-      version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
       # An app token, because tags and PRs pushed with GITHUB_TOKEN do not
@@ -38,39 +48,48 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: saturate/changesetter/actions/release@v1
+      - uses: saturate/changesetter/actions/release@caf3c13524586b9dd8b5951beae8f094d02d7154 # v1.2.1
         id: changesetter
         with:
           version-pr: true
           version-pr-title: "Next Release"
           token: ${{ steps.app-token.outputs.token }}
+          # The CLI the action installs defaults to the newest release; pinned
+          # so a CLI release cannot change how this repo versions.
+          version: 0.9.0
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
-      - name: Extract version
+      - name: Read the release tag
         id: version
         if: steps.changesetter.outputs.released == 'true'
         env:
           RELEASES_JSON: ${{ steps.changesetter.outputs.releases }}
         run: |
-          VERSION=$(echo "$RELEASES_JSON" | jq -r '.[0].version')
-          # The tag changesetter pushed, so later steps don't assume its format.
+          # The tag changesetter pushed, so later jobs don't assume its format.
           TAG=$(echo "$RELEASES_JSON" | jq -r '.[0].tag // ("v" + .[0].version)')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-  publish:
+  # Builds the zips once and hands the same files to both store jobs, so each
+  # store gets the bytes attached to the GitHub release.
+  build:
     needs: release
-    if: needs.release.outputs.released == 'true'
+    # The release job is skipped on a manual run, which would skip this job
+    # too without an explicit condition.
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch'
+      || needs.release.outputs.released == 'true')
     concurrency:
-      group: publish-${{ needs.release.outputs.version }}
+      group: build-${{ needs.release.outputs.tag || inputs.tag }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    # Step conditions cannot read secrets directly, so expose only whether each
-    # store is configured.
+    permissions:
+      contents: read
     env:
-      HAS_CHROME: ${{ secrets.CHROME_EXTENSION_ID != '' }}
-      HAS_FIREFOX: ${{ secrets.FIREFOX_JWT_ISSUER != '' }}
+      TAG: ${{ needs.release.outputs.tag || inputs.tag }}
+    outputs:
+      tag: ${{ needs.release.outputs.tag || inputs.tag }}
+      version: ${{ steps.manifest.outputs.version }}
     steps:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token
@@ -78,33 +97,150 @@ jobs:
           client-id: ${{ secrets.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      # A retry must send the stores the zips already attached to the release,
+      # not a rebuild; it only builds when the first run never attached them.
+      - name: Reuse the zips attached to the release
+        id: existing
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Fails here when the tag has no GitHub release.
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          found=0
+          for suffix in chrome firefox sources; do
+            if grep -q -- "-${suffix}\.zip$" <<< "$assets"; then
+              found=$((found + 1))
+            fi
+          done
+          if [ "$found" -eq 3 ]; then
+            mkdir -p .output
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir .output
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # refs/tags/ so a branch name typed into a manual run is never built.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.existing.outputs.reuse == 'false'
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: refs/tags/${{ env.TAG }}
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.existing.outputs.reuse == 'false'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.existing.outputs.reuse == 'false'
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm zip
-      - run: pnpm zip:firefox
+      - if: steps.existing.outputs.reuse == 'false'
+        run: pnpm install --frozen-lockfile
+      - if: steps.existing.outputs.reuse == 'false'
+        run: pnpm zip
+      - if: steps.existing.outputs.reuse == 'false'
+        run: pnpm zip:firefox
 
       - name: Attach the store zips to the GitHub release
-        run: gh release upload "${{ needs.release.outputs.tag }}" .output/*.zip --clobber
+        if: steps.existing.outputs.reuse == 'false'
+        run: gh release upload "$TAG" .output/*.zip --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-      # Each store is skipped until its secrets exist, so releases work before
-      # the store listings do. The first upload to each store is made by hand.
-      - name: Submit to the Chrome Web Store
+      # The stores compare the manifest version, which can differ from the tag
+      # name, so that is the version the store jobs look up.
+      - name: Read the manifest version
+        id: manifest
+        run: |
+          chrome=$(unzip -p .output/*-chrome.zip manifest.json | jq -r .version)
+          firefox=$(unzip -p .output/*-firefox.zip manifest.json | jq -r .version)
+          if [ "$chrome" != "$firefox" ]; then
+            echo "::error::Chrome zip is $chrome but Firefox zip is $firefox"
+            exit 1
+          fi
+          echo "version=$chrome" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-zips
+          path: .output/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  # The two stores run as separate jobs so one store failing never holds back
+  # the other, and each skips a version the store already has, so a retry
+  # only uploads where the last attempt failed.
+  chrome:
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    concurrency:
+      group: chrome-${{ needs.build.outputs.tag }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      # Step conditions cannot read secrets directly, so expose only whether
+      # the store is configured.
+      HAS_CHROME: ${{ secrets.CHROME_EXTENSION_ID != '' }}
+    steps:
+      # The first upload to each store is made by hand, so releases work before
+      # the listing exists; the warning keeps a skipped store from going
+      # unnoticed once it does.
+      - name: Warn when the store is not configured
+        if: env.HAS_CHROME != 'true'
+        run: |
+          echo "::warning title=Chrome Web Store skipped::CHROME_EXTENSION_ID is not set, so $VERSION was not uploaded to the Chrome Web Store."
+          echo "- Chrome Web Store: skipped, secrets not configured ($VERSION not uploaded)" >> "$GITHUB_STEP_SUMMARY"
+
+      # The workflow's own commit, not the tag: a retry of an older tag still
+      # gets the current store-version.mjs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: env.HAS_CHROME == 'true'
-        run: >-
-          pnpm wxt submit
-          --chrome-api-version v2
-          --chrome-zip .output/*-chrome.zip
-          --chrome-extension-id "$CHROME_EXTENSION_ID"
-          --chrome-publisher-id "$CHROME_PUBLISHER_ID"
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: env.HAS_CHROME == 'true'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: env.HAS_CHROME == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Secrets are set per step, not per job, so dependency install scripts
+      # never see them.
+      - name: Check whether the store has this version
+        id: store
+        if: env.HAS_CHROME == 'true'
+        run: node scripts/store-version.mjs chrome "$VERSION"
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
+          CHROME_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
+
+      - name: Skip a version the store already has
+        if: env.HAS_CHROME == 'true' && steps.store.outputs.present == 'true'
+        env:
+          DETAIL: ${{ steps.store.outputs.detail }}
+        run: |
+          echo "::notice title=Chrome Web Store::$VERSION not uploaded, the store already has it: $DETAIL"
+          echo "- Chrome Web Store: already has $VERSION ($DETAIL), not uploaded again" >> "$GITHUB_STEP_SUMMARY"
+
+      - if: env.HAS_CHROME == 'true' && steps.store.outputs.present == 'false'
+        run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.HAS_CHROME == 'true' && steps.store.outputs.present == 'false'
+        with:
+          name: store-zips
+          path: store-zips
+
+      - name: Submit to the Chrome Web Store
+        if: env.HAS_CHROME == 'true' && steps.store.outputs.present == 'false'
+        run: |
+          pnpm wxt submit \
+            --chrome-api-version v2 \
+            --chrome-zip store-zips/*-chrome.zip \
+            --chrome-extension-id "$CHROME_EXTENSION_ID" \
+            --chrome-publisher-id "$CHROME_PUBLISHER_ID"
+          echo "- Chrome Web Store: submitted $VERSION" >> "$GITHUB_STEP_SUMMARY"
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
@@ -114,14 +250,69 @@ jobs:
           CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
           CHROME_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
 
-      - name: Submit to addons.mozilla.org
+  firefox:
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    concurrency:
+      group: firefox-${{ needs.build.outputs.tag }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      HAS_FIREFOX: ${{ secrets.FIREFOX_JWT_ISSUER != '' }}
+      FIREFOX_EXTENSION_ID: exile-ledger@twilightstrand
+    steps:
+      - name: Warn when the store is not configured
+        if: env.HAS_FIREFOX != 'true'
+        run: |
+          echo "::warning title=addons.mozilla.org skipped::FIREFOX_JWT_ISSUER is not set, so $VERSION was not uploaded to addons.mozilla.org."
+          echo "- addons.mozilla.org: skipped, secrets not configured ($VERSION not uploaded)" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: env.HAS_FIREFOX == 'true'
-        run: >-
-          pnpm wxt submit
-          --firefox-zip .output/*-firefox.zip
-          --firefox-sources-zip .output/*-sources.zip
-          --firefox-extension-id exile-ledger@twilightstrand
-          --firefox-compatibility firefox
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: env.HAS_FIREFOX == 'true'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: env.HAS_FIREFOX == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Check whether the store has this version
+        id: store
+        if: env.HAS_FIREFOX == 'true'
+        run: node scripts/store-version.mjs firefox "$VERSION"
+        env:
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+
+      - name: Skip a version the store already has
+        if: env.HAS_FIREFOX == 'true' && steps.store.outputs.present == 'true'
+        env:
+          DETAIL: ${{ steps.store.outputs.detail }}
+        run: |
+          echo "::notice title=addons.mozilla.org::$VERSION not uploaded, the store already has it: $DETAIL"
+          echo "- addons.mozilla.org: already has $VERSION ($DETAIL), not uploaded again" >> "$GITHUB_STEP_SUMMARY"
+
+      - if: env.HAS_FIREFOX == 'true' && steps.store.outputs.present == 'false'
+        run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.HAS_FIREFOX == 'true' && steps.store.outputs.present == 'false'
+        with:
+          name: store-zips
+          path: store-zips
+
+      - name: Submit to addons.mozilla.org
+        if: env.HAS_FIREFOX == 'true' && steps.store.outputs.present == 'false'
+        run: |
+          pnpm wxt submit \
+            --firefox-zip store-zips/*-firefox.zip \
+            --firefox-sources-zip store-zips/*-sources.zip \
+            --firefox-extension-id "$FIREFOX_EXTENSION_ID" \
+            --firefox-compatibility firefox
+          echo "- addons.mozilla.org: submitted $VERSION" >> "$GITHUB_STEP_SUMMARY"
         # Credentials come from the environment, kept off the command line.
         env:
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}

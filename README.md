@@ -65,7 +65,7 @@ Requires Node.js 24+ and pnpm.
 
 ## Releases
 
-Every pull request carries a changeset (`changesetter add`). Merges to `main` keep a **Next Release** pull request up to date; merging it bumps the version, writes `CHANGELOG.md`, tags the release, attaches the store zips and submits them to the Chrome Web Store and addons.mozilla.org.
+Every pull request carries a changeset (`changesetter add`). Merges to `main` keep a **Next Release** pull request up to date; merging it bumps the version, writes `CHANGELOG.md`, tags the release, attaches the store zips and submits them to the Chrome Web Store and addons.mozilla.org. [RELEASING.md](RELEASING.md) lists the store secrets and how to retry a failed store upload.
 
 To build the Firefox add-on exactly as submitted, see [BUILDING.md](BUILDING.md).
 
