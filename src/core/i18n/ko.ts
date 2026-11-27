@@ -187,6 +187,8 @@ export const ko: Messages = {
 		backTitle: (name: string) => `${name}이(가) 다시 등록되었습니다`,
 		repricedTitle: (name: string) => `${name}의 가격이 변경되었습니다`,
 		newTitle: (name: string) => `${name}의 새 결과`,
+		moreTitle: (n: number) => `감시 알림 ${number(n)}개 더 있음`,
+		moreBody: "Exile Ledger 패널의 감시 탭에서 모두 볼 수 있습니다.",
 	},
 	pins: {
 		emptyTitle: "고정한 항목 없음",

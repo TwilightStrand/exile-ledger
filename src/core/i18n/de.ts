@@ -194,6 +194,13 @@ export const de: Messages = {
 		backTitle: (name: string) => `${name} wird wieder angeboten`,
 		repricedTitle: (name: string) => `Preis von ${name} geändert`,
 		newTitle: (name: string) => `Neue Ergebnisse für ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} weitere Beobachtungsmeldung`,
+				other: `${number(n)} weitere Beobachtungsmeldungen`,
+			}),
+		moreBody:
+			"Öffne den Tab Beobachten im Exile-Ledger-Panel, um alle zu sehen.",
 	},
 	pins: {
 		emptyTitle: "Nichts angepinnt",

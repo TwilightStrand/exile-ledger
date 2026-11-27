@@ -104,16 +104,32 @@ export function parseWatchers(raw: unknown): Watcher[] {
 	});
 }
 
-function dueAt(watcher: Watcher): number {
+const backoffMs = (intervalMin: number, failures: number) =>
+	Math.min(MAX_BACKOFF_MS, intervalMin * 60_000 * 2 ** (failures - 1));
+
+/**
+ * When the watcher is next due. Stored times come from the clock at the time,
+ * so after the clock is set back a check can read as made in the future, and
+ * a retry as further off than any backoff sets it: either is due now, or the
+ * watcher would pause for as long as the clock jumped.
+ */
+function dueAt(watcher: Watcher, now: number): number {
+	const checked = watcher.lastCheckedAt;
 	const scheduled =
-		watcher.lastCheckedAt === null
+		checked === null || checked > now
 			? 0
-			: watcher.lastCheckedAt + watcher.intervalMin * 60_000;
-	return Math.max(scheduled, watcher.retryAt ?? 0);
+			: checked + watcher.intervalMin * 60_000;
+	const retry = watcher.retryAt;
+	const longestRetry =
+		now + backoffMs(watcher.intervalMin, Math.max(1, watcher.failures));
+	return Math.max(
+		scheduled,
+		retry === null || retry > longestRetry ? 0 : retry,
+	);
 }
 
 export function isDue(watcher: Watcher, now: number): boolean {
-	return now >= dueAt(watcher);
+	return now >= dueAt(watcher, now);
 }
 
 /** Minutes until the soonest watcher is due, for the next alarm. */
@@ -122,18 +138,18 @@ export function nextDueInMinutes(
 	now: number,
 ): number | null {
 	if (watchers.length === 0) return null;
-	const soonest = Math.min(...watchers.map(dueAt));
+	const soonest = Math.min(...watchers.map((w) => dueAt(w, now)));
 	return Math.max(WATCH_INTERVAL.min, (soonest - now) / 60_000);
 }
 
 /** A check the server refused: wait the interval, doubled per failure in a row. */
 export function applyFailure<W extends Watcher>(watcher: W, now: number): W {
 	const failures = watcher.failures + 1;
-	const wait = Math.min(
-		MAX_BACKOFF_MS,
-		watcher.intervalMin * 60_000 * 2 ** (failures - 1),
-	);
-	return { ...watcher, failures, retryAt: now + wait };
+	return {
+		...watcher,
+		failures,
+		retryAt: now + backoffMs(watcher.intervalMin, failures),
+	};
 }
 
 const samePrice = (a: Price | null, b: Price | null) =>

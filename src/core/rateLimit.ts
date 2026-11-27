@@ -7,15 +7,24 @@
  *   X-Rate-Limit-Ip-State: 1:10:0,1:60:0      hits so far : window s : active penalty s
  *   Retry-After: 60                            on 429
  *
- * Each endpoint family has its own policy (search and fetch differ), so state
- * is kept per kind. The page's own requests share the same budget, which is
- * why the server's reported hits count, not just ours.
+ * Each endpoint family has its own policy (search and fetch differ), and each
+ * trade host counts on its own, so state is kept per host and kind. PoE1 and
+ * PoE2 on the same host share one bucket: whether GGG counts /api/trade and
+ * /api/trade2 apart is not published, and sharing can only wait too long.
+ * The page's own requests share the same budget, which is why the server's
+ * reported hits count, not just ours.
  */
 
 import * as v from "valibot";
 
 export const REQUEST_KINDS = ["search", "fetch"] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
+
+/** Which budget a request draws on: its trade host plus the endpoint kind. */
+export function limiterBucket(url: string, kind: RequestKind): string {
+	const origin = URL.canParse(url) ? new URL(url).origin : url;
+	return `${origin} ${kind}`;
+}
 
 export interface HeaderSource {
 	get(name: string): string | null;
@@ -74,11 +83,15 @@ const KindStateSchema = v.object({
 	sent: v.array(v.number()),
 });
 
-/** Everything the limiter knows, to carry across a background restart. */
-export const LimiterSnapshotSchema = v.record(
-	v.picklist(REQUEST_KINDS),
-	KindStateSchema,
-);
+/**
+ * Everything the limiter knows, to carry across a background restart. The
+ * version tag makes a snapshot saved by an older build, keyed by kind alone,
+ * fail to parse and be dropped instead of being read as a host.
+ */
+export const LimiterSnapshotSchema = v.object({
+	version: v.literal(2),
+	buckets: v.record(v.string(), KindStateSchema),
+});
 export type LimiterSnapshot = v.InferOutput<typeof LimiterSnapshotSchema>;
 
 function parseTriples(value: string | null): [number, number, number][] {
@@ -97,20 +110,20 @@ function parseTriples(value: string | null): [number, number, number][] {
 }
 
 export function createRateLimiter() {
-	const kinds = new Map<RequestKind, KindState>();
-	const stateOf = (kind: RequestKind): KindState => {
-		let state = kinds.get(kind);
+	const buckets = new Map<string, KindState>();
+	const stateOf = (bucket: string): KindState => {
+		let state = buckets.get(bucket);
 		if (!state) {
 			state = { rules: [], blockedUntil: 0, sent: [] };
-			kinds.set(kind, state);
+			buckets.set(bucket, state);
 		}
 		return state;
 	};
 
 	return {
-		/** Milliseconds to wait before the next request of this kind may go out. */
-		delayFor(kind: RequestKind, now: number): number {
-			const state = stateOf(kind);
+		/** Milliseconds to wait before the next request in this bucket (see limiterBucket) may go out. */
+		delayFor(bucket: string, now: number): number {
+			const state = stateOf(bucket);
 			let readyAt = state.blockedUntil;
 			const last = state.sent.at(-1);
 			if (state.rules.length === 0 && last !== undefined)
@@ -132,15 +145,15 @@ export function createRateLimiter() {
 			return Math.max(0, readyAt - now);
 		},
 
-		record(kind: RequestKind, now: number): void {
-			const state = stateOf(kind);
+		record(bucket: string, now: number): void {
+			const state = stateOf(bucket);
 			const longest = Math.max(0, ...state.rules.map((r) => r.rule.periodMs));
 			state.sent = [...state.sent.filter((t) => t > now - longest), now];
 		},
 
 		/** When the last running penalty ends, 0 when none is running. */
 		blockedUntil(): number {
-			return Math.max(0, ...[...kinds.values()].map((s) => s.blockedUntil));
+			return Math.max(0, ...[...buckets.values()].map((s) => s.blockedUntil));
 		},
 
 		/**
@@ -149,9 +162,9 @@ export function createRateLimiter() {
 		 * server's counts would send unpaced into a window that is already full.
 		 */
 		snapshot(now: number): LimiterSnapshot {
-			const out: LimiterSnapshot = {};
-			for (const [kind, state] of kinds)
-				out[kind] = {
+			const out: LimiterSnapshot = { version: 2, buckets: {} };
+			for (const [bucket, state] of buckets)
+				out.buckets[bucket] = {
 					rules: state.rules.map((r) => ({ ...r, rule: { ...r.rule } })),
 					// A penalty already over is dropped: after a clock set back, a
 					// stored end time would read as a penalty still running.
@@ -167,10 +180,8 @@ export function createRateLimiter() {
 		 * request for as long as the jump, and survive every restart after.
 		 */
 		restore(saved: LimiterSnapshot, now: number): void {
-			for (const kind of REQUEST_KINDS) {
-				const kept = saved[kind];
-				if (!kept) continue;
-				const state = stateOf(kind);
+			for (const [bucket, kept] of Object.entries(saved.buckets)) {
+				const state = stateOf(bucket);
 				state.rules = kept.rules
 					.filter((r) => r.observedAt <= now)
 					.map((r) => ({ ...r, rule: { ...r.rule } }));
@@ -183,12 +194,12 @@ export function createRateLimiter() {
 		},
 
 		observe(
-			kind: RequestKind,
+			bucket: string,
 			status: number,
 			headers: HeaderSource,
 			now: number,
 		): void {
-			const state = stateOf(kind);
+			const state = stateOf(bucket);
 			const names = (headers.get("X-Rate-Limit-Rules") ?? "")
 				.split(",")
 				.map((n) => n.trim())

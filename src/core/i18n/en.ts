@@ -192,6 +192,12 @@ export const en = {
 		backTitle: (name: string) => `${name} is listed again`,
 		repricedTitle: (name: string) => `${name} changed price`,
 		newTitle: (name: string) => `New results for ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} more watcher update`,
+				other: `${number(n)} more watcher updates`,
+			}),
+		moreBody: "Open the Watch tab in the Exile Ledger panel to see them all.",
 	},
 	pins: {
 		emptyTitle: "Nothing pinned",

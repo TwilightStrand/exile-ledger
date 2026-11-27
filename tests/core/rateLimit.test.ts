@@ -1,5 +1,10 @@
+import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-import { createRateLimiter } from "../../src/core/rateLimit";
+import {
+	createRateLimiter,
+	LimiterSnapshotSchema,
+	limiterBucket,
+} from "../../src/core/rateLimit";
 import { createTradeQueue, type QueuePorts } from "../../src/core/tradeQueue";
 
 const headers = (values: Record<string, string>) => ({
@@ -165,7 +170,12 @@ describe("trade queue with the rate limiter", () => {
 
 	it("defers instead of sleeping past the caller's limit", async () => {
 		const limiter = createRateLimiter();
-		limiter.observe("fetch", 429, headers({ "Retry-After": "120" }), 0);
+		limiter.observe(
+			limiterBucket("https://example.test", "fetch"),
+			429,
+			headers({ "Retry-After": "120" }),
+			0,
+		);
 		let fetched = false;
 		const queue = createTradeQueue(limiter, {
 			now: () => 0,
@@ -280,5 +290,126 @@ describe("trade queue with the rate limiter", () => {
 		expect(limiter.delayFor("search", 1000)).toBe(9000);
 		limiter.observe("search", 502, headers({}), 1000);
 		expect(limiter.delayFor("search", 1000)).toBe(9000);
+	});
+
+	describe("per trade host", () => {
+		const queueAnswering = (status: number, extra: Record<string, string>) => {
+			const limiter = createRateLimiter();
+			const queue = createTradeQueue(limiter, {
+				now: () => 0,
+				sleep: async () => {},
+				fetch: async (url) => ({
+					status: url.startsWith("https://pathofexile.tw") ? status : 200,
+					headers: headers({
+						"X-Rate-Limit-Rules": "Ip",
+						"X-Rate-Limit-Ip": "8:10:60",
+						"X-Rate-Limit-Ip-State": "1:10:0",
+						...(url.startsWith("https://pathofexile.tw") ? extra : {}),
+					}),
+					json: async () => ({ result: [] }),
+				}),
+			});
+			return { limiter, queue };
+		};
+
+		it("does not hold one host's requests for another host's penalty", async () => {
+			const { queue } = queueAnswering(429, { "Retry-After": "600" });
+			expect(
+				(
+					await queue.enqueue(
+						"search",
+						"https://pathofexile.tw/api/trade/search/x",
+					)
+				).ok,
+			).toBe(false);
+			expect(
+				await queue.enqueue(
+					"search",
+					"https://www.pathofexile.com/api/trade/search/Standard",
+					{},
+					20_000,
+				),
+			).toMatchObject({ ok: true });
+		});
+
+		it("does not let one host's counts replace another's", () => {
+			const limiter = createRateLimiter();
+			const www = limiterBucket(
+				"https://www.pathofexile.com/api/trade/search/x",
+				"search",
+			);
+			const tw = limiterBucket(
+				"https://pathofexile.tw/api/trade/search/x",
+				"search",
+			);
+			limiter.observe(
+				www,
+				200,
+				headers({
+					"X-Rate-Limit-Rules": "Ip",
+					"X-Rate-Limit-Ip": "8:10:60",
+					"X-Rate-Limit-Ip-State": "8:10:0",
+				}),
+				0,
+			);
+			limiter.observe(
+				tw,
+				200,
+				headers({
+					"X-Rate-Limit-Rules": "Ip",
+					"X-Rate-Limit-Ip": "8:10:60",
+					"X-Rate-Limit-Ip-State": "0:10:0",
+				}),
+				0,
+			);
+			expect(limiter.delayFor(www, 0)).toBe(10_000);
+			expect(limiter.delayFor(tw, 0)).toBe(0);
+		});
+
+		it("counts PoE1 and PoE2 on one host against one budget", async () => {
+			const limiter = createRateLimiter();
+			limiter.observe(
+				limiterBucket(
+					"https://www.pathofexile.com/api/trade/search/x",
+					"search",
+				),
+				429,
+				headers({ "Retry-After": "600" }),
+				0,
+			);
+			expect(
+				limiter.delayFor(
+					limiterBucket(
+						"https://www.pathofexile.com/api/trade2/search/x",
+						"search",
+					),
+					0,
+				),
+			).toBe(600_000);
+		});
+
+		it("drops a snapshot saved in the per-kind shape", () => {
+			const old = {
+				search: { rules: [], blockedUntil: 5_000, sent: [1] },
+				fetch: { rules: [], blockedUntil: 0, sent: [] },
+			};
+			expect(v.safeParse(LimiterSnapshotSchema, old).success).toBe(false);
+		});
+
+		it("restores a snapshot per host", () => {
+			const before = createRateLimiter();
+			const tw = limiterBucket("https://pathofexile.tw/x", "fetch");
+			before.observe(tw, 429, headers({ "Retry-After": "600" }), 0);
+			const saved = v.parse(LimiterSnapshotSchema, before.snapshot(0));
+			const after = createRateLimiter();
+			after.restore(saved, 0);
+			expect(after.delayFor(tw, 0)).toBe(600_000);
+			expect(
+				after.delayFor(
+					limiterBucket("https://www.pathofexile.com/x", "fetch"),
+					0,
+				),
+			).toBe(0);
+		});
 	});
 });

@@ -89,6 +89,7 @@ const CALLS: Record<string, (t: Messages) => string> = {
 	"notices.backTitle": (t) => t.notices.backTitle("Garb"),
 	"notices.repricedTitle": (t) => t.notices.repricedTitle("Garb"),
 	"notices.newTitle": (t) => t.notices.newTitle("Rings"),
+	"notices.moreTitle": (t) => t.notices.moreTitle(3),
 	"settings.hotkeys.change": (t) => t.settings.hotkeys.change("Clear"),
 	"settings.hotkeys.remove": (t) => t.settings.hotkeys.remove("Clear"),
 	"settings.hotkeys.reserved": (t) => t.settings.hotkeys.reserved("Ctrl+T"),

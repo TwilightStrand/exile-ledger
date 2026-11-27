@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { WatcherOpSchema } from "./watcherOps";
 
 /** Content script to background: rates for one game and league. */
 export const RatesRequestSchema = v.object({
@@ -26,9 +27,10 @@ export const LibraryWriteSchema = v.object({
 export const PRICING_ACCESS_KEY = "pricingAccessAt";
 
 /**
- * storage.local key holding whether the background may call the trade API.
- * Content scripts have no permissions API, so the panel reads this to say
- * when watchers are waiting for access.
+ * storage.local key holding whether the background may call the trade site
+ * of every stored watcher; false while any of them waits for access. Content
+ * scripts have no permissions API, so the panel reads this to say when
+ * watchers are waiting for access.
  */
 export const TRADE_ACCESS_KEY = "tradeAccess";
 
@@ -36,3 +38,16 @@ export const TRADE_ACCESS_KEY = "tradeAccess";
 export const OpenSettingsSchema = v.object({
 	type: v.literal("exile-ledger:open-settings"),
 });
+
+/**
+ * Extension page or content script to background: changes to the stored
+ * watchers. The background is the only writer of the watcher list and
+ * applies these one batch at a time, in turn with its own end-of-pass
+ * writes, so no write is lost to another made at the same moment. Replies
+ * true once stored.
+ */
+export const WatcherWriteSchema = v.object({
+	type: v.literal("exile-ledger:watchers-write"),
+	ops: v.array(WatcherOpSchema),
+});
+export type WatcherWrite = v.InferOutput<typeof WatcherWriteSchema>;

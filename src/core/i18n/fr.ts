@@ -193,6 +193,13 @@ export const fr: Messages = {
 		backTitle: (name: string) => `${name} est de nouveau en vente`,
 		repricedTitle: (name: string) => `Le prix de ${name} a changé`,
 		newTitle: (name: string) => `Nouveaux résultats pour ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} autre mise à jour de suivi`,
+				other: `${number(n)} autres mises à jour de suivi`,
+			}),
+		moreBody:
+			"Ouvrez l’onglet Suivi du panneau Exile Ledger pour toutes les voir.",
 	},
 	pins: {
 		emptyTitle: "Rien n'est épinglé",

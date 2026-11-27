@@ -207,6 +207,15 @@ export const pl: Messages = {
 		backTitle: (name: string) => `${name}: znów wystawiona`,
 		repricedTitle: (name: string) => `${name}: zmieniła się cena`,
 		newTitle: (name: string) => `Nowe wyniki: ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} kolejna zmiana w obserwacjach`,
+				few: `${number(n)} kolejne zmiany w obserwacjach`,
+				many: `${number(n)} kolejnych zmian w obserwacjach`,
+				other: `${number(n)} kolejnej zmiany w obserwacjach`,
+			}),
+		moreBody:
+			"Otwórz kartę Obserwacje w panelu Exile Ledger, aby zobaczyć wszystkie.",
 	},
 	pins: {
 		emptyTitle: "Nic nie jest przypięte",

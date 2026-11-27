@@ -208,6 +208,12 @@ export const pt: Messages = {
 		backTitle: (name: string) => `${name} está à venda de novo`,
 		repricedTitle: (name: string) => `${name} mudou de preço`,
 		newTitle: (name: string) => `Novos resultados para ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `Mais ${number(n)} atualização de monitoramento`,
+				other: `Mais ${number(n)} atualizações de monitoramento`,
+			}),
+		moreBody: "Abra a aba Monitorar no painel do Exile Ledger para ver todas.",
 	},
 	pins: {
 		emptyTitle: "Nada fixado",
