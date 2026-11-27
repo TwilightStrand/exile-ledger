@@ -1,3 +1,4 @@
+import { memo } from "preact/compat";
 import { useState } from "preact/hooks";
 import type { PinnedItem } from "../core/pins";
 import { useMessages } from "./i18n";
@@ -7,7 +8,7 @@ import { EmptyState } from "./parts";
 const ICON_BUTTON =
 	"grid size-6 shrink-0 place-items-center rounded text-ledger-faint transition-colors hover:bg-ledger-border hover:text-ledger-danger focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
-export function PinnedList({
+export const PinnedList = memo(function PinnedList({
 	pins,
 	onJump,
 	onUnpin,
@@ -61,4 +62,4 @@ export function PinnedList({
 			))}
 		</ul>
 	);
-}
+});

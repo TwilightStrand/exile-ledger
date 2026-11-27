@@ -234,6 +234,7 @@ function Preview() {
 	const [reserve, setReserve] = useState<Reserve>({
 		side: "left",
 		width: null,
+		resizing: false,
 	});
 	const feed = useMemo(() => feedFor(withSearch), [withSearch]);
 	const history = useMemo(

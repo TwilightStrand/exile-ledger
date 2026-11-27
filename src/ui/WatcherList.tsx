@@ -1,3 +1,4 @@
+import { memo } from "preact/compat";
 import { formatAgo } from "../core/describe";
 import type {
 	ListingWatcher,
@@ -141,7 +142,7 @@ function SearchRow({
 	);
 }
 
-export function WatcherList({
+export const WatcherList = memo(function WatcherList({
 	watchers,
 	hasAccess,
 	now,
@@ -206,4 +207,4 @@ export function WatcherList({
 			)}
 		</div>
 	);
-}
+});

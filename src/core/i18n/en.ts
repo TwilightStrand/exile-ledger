@@ -7,6 +7,7 @@ import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
+import { listingDateTime } from "./dateTime";
 import { plural } from "./plural";
 
 const locale = "en";
@@ -230,8 +231,7 @@ export const en = {
 			exalted: "ex",
 		} satisfies Record<string, string>,
 		/** Exact listing time, in the browser's own locale and time zone. */
-		listedAt: (at: number) =>
-			`Listed ${new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`,
+		listedAt: (at: number) => `Listed ${listingDateTime(undefined, at)}`,
 		affixes: (prefixes: number, suffixes: number) =>
 			`${prefixes}P · ${suffixes}S`,
 		affixesTitle: (prefixes: number, suffixes: number) =>

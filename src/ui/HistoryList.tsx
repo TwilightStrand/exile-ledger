@@ -1,3 +1,4 @@
+import { memo } from "preact/compat";
 import { formatAgo } from "../core/describe";
 import { useMessages } from "./i18n";
 import { Bookmark, Check, Clock } from "./icons";
@@ -12,7 +13,7 @@ export interface HistoryActions {
 const ICON_BUTTON =
 	"grid size-6 shrink-0 place-items-center rounded text-ledger-faint transition-colors hover:bg-ledger-border hover:text-ledger-gold focus-visible:outline-2 focus-visible:outline-ledger-gold";
 
-export function HistoryList({
+export const HistoryList = memo(function HistoryList({
 	entries,
 	now,
 	actions,
@@ -87,4 +88,4 @@ export function HistoryList({
 			</ol>
 		</div>
 	);
-}
+});

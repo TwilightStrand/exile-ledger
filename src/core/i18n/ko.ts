@@ -7,6 +7,7 @@ import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
+import { listingDateTime } from "./dateTime";
 import type { Messages } from "./en";
 import { plural } from "./plural";
 
@@ -219,8 +220,7 @@ export const ko: Messages = {
 			divine: "div",
 			exalted: "ex",
 		} satisfies Record<string, string>,
-		listedAt: (at: number) =>
-			`${new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} 등록`,
+		listedAt: (at: number) => `${listingDateTime(undefined, at)} 등록`,
 		affixes: (prefixes: number, suffixes: number) =>
 			`접두 ${prefixes} · 접미 ${suffixes}`,
 		affixesTitle: (prefixes: number, suffixes: number) =>

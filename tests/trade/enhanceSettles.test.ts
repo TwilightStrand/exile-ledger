@@ -5,8 +5,8 @@ import { parseOverview } from "../../src/core/pricing";
 import { parseFetchResponse, parseSearch } from "../../src/core/tradeApi";
 import { createCaptureFeed } from "../../src/trade/captureFeed";
 import { highlightMods } from "../../src/trade/enhanceResults";
+import { scheduleEnhance } from "../../src/trade/enhanceScheduler";
 import { annotatePrices } from "../../src/trade/equivalentPrices";
-import { observeResults } from "../../src/trade/observeResults";
 import { syncPinButtons } from "../../src/trade/pinButtons";
 import poe2Rates from "../fixtures/poe-ninja/poe2-currency-standard.json";
 import fetchResponse from "../fixtures/trade/poe2-fetch-response.json";
@@ -37,18 +37,19 @@ describe("result enhancers with the results observer", () => {
 		});
 		const rates = parseOverview(poe2Rates, "poe2", "Standard", 0);
 		let passes = 0;
-		const enhance = () => {
+		const enhance = (rows: HTMLElement[]) => {
 			passes++;
-			highlightMods(document, feed.get(), true);
-			syncPinButtons(document, [], () => {});
-			annotatePrices(document, feed.get(), rates, true);
+			highlightMods(rows, feed.get(), true);
+			syncPinButtons(rows, [], () => {});
+			annotatePrices(rows, feed.get(), rates, true);
 		};
-		enhance();
-		const stop = observeResults(document, enhance);
-		await new Promise((r) => setTimeout(r, 50));
-		enhance();
+		const scheduler = scheduleEnhance(document, enhance);
+		scheduler.all();
+		await new Promise((r) => setTimeout(r, 100));
+		scheduler.all();
 		await new Promise((r) => setTimeout(r, 200));
-		stop();
+		scheduler.stop();
+		expect(document.querySelector("[data-exile-ledger-price]")).not.toBeNull();
 		expect(passes).toBe(2);
 	});
 });

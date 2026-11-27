@@ -4,6 +4,7 @@ import { socketShortfall } from "../core/items/sockets";
 import type { ResultItem } from "../core/tradeApi";
 import type { Game } from "../core/tradeUrl";
 import type { CaptureState } from "./captureFeed";
+import { type RowScope, resultRows } from "./resultRows";
 import { SELECTORS } from "./selectors";
 
 export const LISTED_ATTR = "data-exile-ledger-listed";
@@ -150,19 +151,20 @@ function place(
  * item below its base's socket count. Both come from the captured API data.
  */
 export function annotateResults(
-	root: ParentNode,
+	scope: RowScope,
 	capture: CaptureState,
 	options: ResultHelperOptions,
 	t: Messages = en,
 	copy: CopyText = defaultCopy,
 ): number {
 	const game = capture.search?.game ?? null;
-	const byId = new Map(capture.results.map((item) => [item.id, item]));
 	let added = 0;
-	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
+	for (const row of resultRows(scope)) {
 		const host = row.querySelector(SELECTORS.details);
 		if (!host) continue;
-		const item = row.dataset.id ? byId.get(row.dataset.id) : undefined;
+		const item = row.dataset.id
+			? capture.results.get(row.dataset.id)
+			: undefined;
 		const before = host.querySelector(`:scope > ${SELECTORS.buttons}`);
 		const listed = item && options.listingTime ? listedNote(item, t) : null;
 		const sockets = item && options.socketWarning ? socketNote(item, t) : null;

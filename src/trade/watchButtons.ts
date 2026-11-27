@@ -1,16 +1,17 @@
 import { en, type Messages } from "../core/i18n";
+import { type RowScope, resultRows } from "./resultRows";
 import { SELECTORS } from "./selectors";
 
 export const WATCH_BUTTON_ATTR = "data-exile-ledger-watch";
 
 /** Adds a Watch button to each result row, labelled by whether its listing is watched. */
 export function syncWatchButtons(
-	root: ParentNode,
+	scope: RowScope,
 	watchedItemIds: ReadonlySet<string>,
 	onToggle: (id: string) => void,
 	t: Messages = en,
 ): void {
-	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
+	for (const row of resultRows(scope)) {
 		const id = row.dataset.id;
 		const host = row.querySelector(SELECTORS.actions);
 		if (!id || !host) continue;

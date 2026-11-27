@@ -7,6 +7,7 @@ import type { PanelWidthUnit } from "../settings";
 import type { ThemeId } from "../themes";
 import type { Game } from "../tradeUrl";
 import type { ListingWatcher } from "../watchers";
+import { listingDateTime } from "./dateTime";
 import type { Messages } from "./en";
 import { plural } from "./plural";
 
@@ -230,8 +231,7 @@ export const fr: Messages = {
 			divine: "div",
 			exalted: "ex",
 		} satisfies Record<string, string>,
-		listedAt: (at: number) =>
-			`Mis en vente ${new Date(at).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}`,
+		listedAt: (at: number) => `Mis en vente ${listingDateTime(locale, at)}`,
 		affixes: (prefixes: number, suffixes: number) =>
 			`${prefixes}P · ${suffixes}S`,
 		affixesTitle: (prefixes: number, suffixes: number) =>

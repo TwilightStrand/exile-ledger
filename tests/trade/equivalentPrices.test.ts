@@ -78,7 +78,7 @@ describe("divination card stacks", () => {
 			'<div class="resultset"><div class="row" data-id="card1"><span class="price">15 chaos</span></div></div>';
 		annotatePrices(
 			document,
-			{ search: null, results: [item] },
+			{ search: null, results: new Map([[item.id, item]]) },
 			{ ...base, cards: parseCardOverview(cards) },
 			true,
 		);

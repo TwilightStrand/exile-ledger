@@ -1,5 +1,6 @@
 import { en, type Messages } from "../core/i18n";
 import type { PinnedItem } from "../core/pins";
+import { type RowScope, resultRows } from "./resultRows";
 import { SELECTORS } from "./selectors";
 
 export const PIN_BUTTON_ATTR = "data-exile-ledger-pin";
@@ -8,13 +9,13 @@ export const FLASH_ATTR = "data-exile-ledger-flash";
 
 /** Adds a Pin button to each result row and keeps its label and the row mark in step with the pins. */
 export function syncPinButtons(
-	root: ParentNode,
-	pins: PinnedItem[],
+	scope: RowScope,
+	pins: readonly PinnedItem[],
 	onToggle: (id: string) => void,
 	t: Messages = en,
 ): void {
 	const pinned = new Set(pins.map((p) => p.id));
-	for (const row of root.querySelectorAll<HTMLElement>(SELECTORS.resultRow)) {
+	for (const row of resultRows(scope)) {
 		const id = row.dataset.id;
 		const host = row.querySelector(SELECTORS.actions);
 		if (!id || !host) continue;
@@ -25,7 +26,15 @@ export function syncPinButtons(
 			// The site's own button classes, so the pin matches its neighbours.
 			button.className = "btn btn-xs btn-default";
 			button.setAttribute(PIN_BUTTON_ATTR, "");
-			button.addEventListener("click", () => onToggle(id));
+			// The row is read at click time: the site may reuse a row element for another listing.
+			button.addEventListener("click", (event) => {
+				const target = event.currentTarget;
+				const current =
+					target instanceof Element
+						? target.closest<HTMLElement>(SELECTORS.resultRow)?.dataset.id
+						: undefined;
+				if (current) onToggle(current);
+			});
 			host.append(button);
 		}
 		const isPinned = pinned.has(id);

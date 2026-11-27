@@ -18,7 +18,8 @@ const OFF = {
 	affixCount: false,
 	itemTools: false,
 };
-const capture: CaptureState = { search: null, results: items };
+const byId = new Map(items.map((item) => [item.id, item]));
+const capture: CaptureState = { search: null, results: byId };
 const poe1Capture = (): CaptureState => {
 	const search = parseSearch(poe1SearchRequest, poe1SearchResponse);
 	if (!search) throw new Error("fixture");
@@ -30,7 +31,7 @@ const poe1Capture = (): CaptureState => {
 			league: "Standard",
 			search,
 		},
-		results: items,
+		results: byId,
 	};
 };
 

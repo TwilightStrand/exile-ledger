@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryEntry } from "../../src/core/history";
 import { en } from "../../src/core/i18n";
 import {
@@ -16,7 +16,7 @@ import {
 	parseSettings,
 	type SettingsSource,
 } from "../../src/core/settings";
-import { createMemorySource } from "../../src/core/source";
+import { createMemorySource, type Source } from "../../src/core/source";
 import { THEMES } from "../../src/core/themes";
 import { parseSearch } from "../../src/core/tradeApi";
 import { parseTradeUrl } from "../../src/core/tradeUrl";
@@ -561,9 +561,14 @@ describe("Panel layout and sharing", () => {
 		expect(reserves.at(-1)).toEqual({
 			side: "left",
 			width: "clamp(260px, 25vw, 640px)",
+			resizing: false,
 		});
 		await act(async () => button(root, "Collapse Exile Ledger")?.click());
-		expect(reserves.at(-1)).toEqual({ side: "left", width: null });
+		expect(reserves.at(-1)).toEqual({
+			side: "left",
+			width: null,
+			resizing: false,
+		});
 	});
 
 	it("resizes from the keyboard and remembers the open state", async () => {
@@ -599,7 +604,11 @@ describe("Panel layout and sharing", () => {
 			panelWidthPx: 400,
 		});
 		const root = await mount({ settings, onReserve: (r) => reserves.push(r) });
-		expect(reserves.at(-1)).toEqual({ side: "left", width: "400px" });
+		expect(reserves.at(-1)).toEqual({
+			side: "left",
+			width: "400px",
+			resizing: false,
+		});
 		const handle = root.querySelector("[role=separator]");
 		expect(handle?.getAttribute("aria-valuetext")).toBe("400 px");
 		await act(async () => {
@@ -1184,5 +1193,152 @@ describe("Panel failed library writes", () => {
 		expect(root.querySelector("[role=alert]")?.textContent).toContain(
 			en.panel.reloadNeeded,
 		);
+	});
+});
+
+describe("Panel watcher writes that fail", () => {
+	/** A source that rejects every write once `failing` is set, counting attempts. */
+	function counting<T>(initial: T) {
+		const inner = createMemorySource<T>(initial);
+		const state = { failing: false, writes: 0 };
+		const source: Source<T> = {
+			load: () => inner.load(),
+			watch: (onChange) => inner.watch(onChange),
+			update: (change) => {
+				state.writes++;
+				return state.failing
+					? Promise.reject(new Error("quota"))
+					: inner.update(change);
+			},
+		};
+		return { source, state };
+	}
+
+	function watchedBookmark() {
+		const { library, bookmark } = saveSearch(
+			emptyLibrary(),
+			{
+				game: "poe2",
+				league: "Standard",
+				name: "Life rings",
+				query: { query: { term: "ring" } },
+				searchId: "r1",
+				live: false,
+			},
+			{ now: 1, newId: () => `fw${++n}` },
+		);
+		const watcher: SearchWatcher = {
+			kind: "search",
+			id: "sw1",
+			origin: "https://www.pathofexile.com",
+			game: "poe2",
+			realm: "poe2",
+			league: "Dawn",
+			intervalMin: 5,
+			createdAt: 0,
+			lastCheckedAt: 400,
+			failures: 0,
+			retryAt: null,
+			bookmarkId: bookmark.id,
+			name: "Life rings",
+			query: { query: { term: "ring" } },
+			seenIds: ["a"],
+			newIds: ["b"],
+			total: 2,
+		};
+		return { library, watcher };
+	}
+
+	let unhandled: unknown[] = [];
+	const onUnhandled = (reason: unknown) => unhandled.push(reason);
+	beforeEach(() => {
+		unhandled = [];
+		process.on("unhandledRejection", onUnhandled);
+	});
+	afterEach(() => {
+		process.off("unhandledRejection", onUnhandled);
+	});
+	const settle = () =>
+		act(async () => {
+			await new Promise((r) => setTimeout(r, 10));
+		});
+
+	it("toggling a watch on a rejecting store tries once and leaves no unhandled rejection", async () => {
+		const { library } = watchedBookmark();
+		const watchers = counting<Watcher[]>([]);
+		watchers.state.failing = true;
+		const root = await mount({
+			library: createMemoryLibrary(library),
+			watchers: watchers.source,
+		});
+		await act(async () =>
+			button(root, "Watch Life rings for new results")?.click(),
+		);
+		await settle();
+		expect(watchers.state.writes).toBe(1);
+		expect(unhandled).toEqual([]);
+	});
+
+	it("still opens a search watcher when marking it seen fails", async () => {
+		const { watcher } = watchedBookmark();
+		const watchers = counting<Watcher[]>([watcher]);
+		watchers.state.failing = true;
+		const visited: string[] = [];
+		const root = await mount({
+			watchers: watchers.source,
+			navigate: (href) => visited.push(href),
+		});
+		await act(async () =>
+			root
+				.querySelector<HTMLButtonElement>("#exile-ledger-tab-watchers")
+				?.click(),
+		);
+		const open = [...root.querySelectorAll("button")].find((b) =>
+			b.textContent?.includes("Life rings"),
+		);
+		await act(async () => open?.click());
+		await settle();
+		expect(watchers.state.writes).toBe(1);
+		expect(visited).toHaveLength(1);
+		expect(unhandled).toEqual([]);
+	});
+
+	it("still tries to forget the watchers of a deleted bookmark or folder", async () => {
+		for (const target of ["Life rings", DEFAULT_FOLDER_NAME]) {
+			document.body.innerHTML = "";
+			const { library, watcher } = watchedBookmark();
+			const watchers = counting<Watcher[]>([watcher]);
+			watchers.state.failing = true;
+			const root = await mount({
+				library: createMemoryLibrary(library),
+				watchers: watchers.source,
+			});
+			await act(async () => button(root, `Delete ${target}`)?.click());
+			await act(async () => button(root, "Delete")?.click());
+			await settle();
+			expect(watchers.state.writes).toBe(1);
+		}
+		expect(unhandled).toEqual([]);
+	});
+
+	it("an over-size overwrite writes neither the library nor the watchers", async () => {
+		const { library, watcher } = watchedBookmark();
+		const libraryWrites = counting(library);
+		const watchers = counting<Watcher[]>([watcher]);
+		const root = await mount({
+			feed: oversizeFeed(),
+			library: { ...createMemoryLibrary(library), ...libraryWrites.source },
+			watchers: watchers.source,
+		});
+		await act(async () =>
+			button(root, "Replace Life rings with the current search")?.click(),
+		);
+		await act(async () => button(root, "Replace")?.click());
+		await settle();
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.queryTooLarge,
+		);
+		expect(libraryWrites.state.writes).toBe(0);
+		expect(watchers.state.writes).toBe(0);
 	});
 });
