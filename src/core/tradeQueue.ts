@@ -1,4 +1,9 @@
-import type { HeaderSource, RateLimiter, RequestKind } from "./rateLimit";
+import {
+	type HeaderSource,
+	limiterBucket,
+	type RateLimiter,
+	type RequestKind,
+} from "./rateLimit";
 
 export interface QueueResponse {
 	status: number;
@@ -34,27 +39,34 @@ export function createTradeQueue(limiter: RateLimiter, ports: QueuePorts) {
 		init: RequestInit,
 		maxWaitMs: number,
 	): Promise<QueueResult> => {
-		const wait = limiter.delayFor(kind, ports.now());
+		const bucket = limiterBucket(url, kind);
+		const wait = limiter.delayFor(bucket, ports.now());
 		// A background that waits too long is stopped by the browser mid-sleep;
 		// the caller's next alarm tries again instead.
 		if (wait > maxWaitMs) return { ok: false, status: 0, reason: "deferred" };
 		if (wait > 0) await ports.sleep(wait);
-		limiter.record(kind, ports.now());
+		limiter.record(bucket, ports.now());
 		let response: QueueResponse;
 		try {
 			response = await ports.fetch(url, init);
 		} catch {
 			return { ok: false, status: 0, reason: "network" };
 		}
-		limiter.observe(kind, response.status, response.headers, ports.now());
+		limiter.observe(bucket, response.status, response.headers, ports.now());
 		if (response.status === 429)
 			return { ok: false, status: 429, reason: "rate-limited" };
 		if (response.status < 200 || response.status >= 300)
 			return { ok: false, status: response.status, reason: "http" };
 		try {
 			return { ok: true, status: response.status, body: await response.json() };
-		} catch {
-			return { ok: false, status: response.status, reason: "http" };
+		} catch (error) {
+			// Only a body that is not JSON is the server's answer. A timeout or a
+			// connection dropped while reading is the network failing.
+			return {
+				ok: false,
+				status: response.status,
+				reason: error instanceof SyntaxError ? "http" : "network",
+			};
 		}
 	};
 

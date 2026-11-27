@@ -6,12 +6,25 @@ import {
 	LimiterSnapshotSchema,
 	type RequestKind,
 } from "../core/rateLimit";
-import { TRADE_ORIGINS } from "../core/sites";
 import { createTradeQueue, type QueueResult } from "../core/tradeQueue";
 
-/** Whether the user has allowed the background to call the trade API. */
-export function hasTradeAccess(): Promise<boolean> {
-	return browser.permissions.contains({ origins: TRADE_ORIGINS });
+/**
+ * The trade sites among `origins` the background may call. Checked per site:
+ * Firefox lets the user switch each optional host off on its own, and one
+ * regional host turned off must not stop watchers on the others.
+ */
+export async function grantedOrigins(
+	origins: readonly string[],
+): Promise<Set<string>> {
+	const unique = [...new Set(origins)];
+	const granted = await Promise.all(
+		unique.map((origin) =>
+			browser.permissions
+				.contains({ origins: [`${origin}/*`] })
+				.catch(() => false),
+		),
+	);
+	return new Set(unique.filter((_, i) => granted[i]));
 }
 
 /**
@@ -22,12 +35,26 @@ export function hasTradeAccess(): Promise<boolean> {
  */
 export const PASS_BUDGET_MS = 20_000;
 
+/**
+ * A request that hangs would hold the queue, and with it every later pass.
+ * Well inside the pass budget, so a stuck request still leaves room for the
+ * end-of-pass write.
+ */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
 const limiter = createRateLimiter();
 const queue = createTradeQueue(limiter, {
 	// The session cookie goes along because the trade API answers watchers the
 	// same way it answers the user's own tab; the extension never reads it.
 	fetch: (url, init) =>
-		fetch(url, { ...init, credentials: "include", cache: "no-store" }),
+		fetch(url, {
+			...init,
+			credentials: "include",
+			cache: "no-store",
+			// A timeout rejects like a dropped connection, so the queue reports
+			// it as a network failure and the watcher is retried, not backed off.
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		}),
 	now: Date.now,
 	sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });

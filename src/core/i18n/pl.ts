@@ -207,6 +207,15 @@ export const pl: Messages = {
 		backTitle: (name: string) => `${name}: znów wystawiona`,
 		repricedTitle: (name: string) => `${name}: zmieniła się cena`,
 		newTitle: (name: string) => `Nowe wyniki: ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} kolejna zmiana w obserwacjach`,
+				few: `${number(n)} kolejne zmiany w obserwacjach`,
+				many: `${number(n)} kolejnych zmian w obserwacjach`,
+				other: `${number(n)} kolejnej zmiany w obserwacjach`,
+			}),
+		moreBody:
+			"Otwórz kartę Obserwacje w panelu Exile Ledger, aby zobaczyć wszystkie.",
 	},
 	pins: {
 		emptyTitle: "Nic nie jest przypięte",
@@ -319,6 +328,8 @@ export const pl: Messages = {
 			`${folders(folderCount)} i ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Zapisano kopię: ${summary}.`,
 		imported: (summary: string) => `Zaimportowano: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Zaimportowano: ${summary}. Nie udało się jednak zapisać obserwacji z kopii zapasowej.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Kopia z ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

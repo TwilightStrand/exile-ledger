@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { browser } from "wxt/browser";
 import { TRADE_ACCESS_KEY } from "../core/messages";
-import { TRADE_ORIGINS } from "../core/sites";
+import { isTradePattern } from "../core/sites";
 import { fetchApiUrl, searchApiUrl } from "../core/tradeApiUrls";
 import type { QueueResult } from "../core/tradeQueue";
 import {
@@ -16,9 +16,9 @@ import {
 	nextDueInMinutes,
 	type Watcher,
 } from "../core/watchers";
-import { browserWatchers } from "../storage/watcherStore";
+import { browserWatchers, writeWatchers } from "../storage/watcherStore";
 import {
-	hasTradeAccess,
+	grantedOrigins,
 	PASS_BUDGET_MS,
 	penaltyEndsAt,
 	tradeRequest,
@@ -81,14 +81,21 @@ function apiUntil(deadline: number): WatcherApi {
 	};
 }
 
+/** The watchers whose trade site the background may call; the rest wait for access. */
+async function runnable(watchers: readonly Watcher[]): Promise<Watcher[]> {
+	const granted = await grantedOrigins(watchers.map((w) => w.origin));
+	return watchers.filter((w) => granted.has(w.origin));
+}
+
 /**
- * Sets the alarm for the next due watcher, never inside a running penalty,
+ * Sets the alarm for the next due watcher that has access, never inside a running penalty,
  * and never later than an alarm already set: storage writes from a tab would
  * otherwise keep pushing a due check back.
  */
 async function schedule(watchers: readonly Watcher[]): Promise<void> {
+	const ready = await runnable(watchers);
 	const now = Date.now();
-	const minutes = nextDueInMinutes(watchers, now);
+	const minutes = nextDueInMinutes(ready, now);
 	if (minutes === null) {
 		await browser.alarms.clear(WATCHER_ALARM);
 		return;
@@ -109,7 +116,8 @@ let running = false;
 /**
  * One pass over the due watchers. A fallback alarm is set first, so a pass the
  * browser cuts short still leads to another. Results are merged into whatever
- * is stored at the end, keeping watchers a tab added or removed meanwhile.
+ * is stored at the end, in turn with tab edits (see writeWatchers), keeping
+ * watchers a tab added or removed meanwhile.
  */
 export async function runWatchers(
 	onEvents: (events: WatcherEvent[]) => void,
@@ -117,8 +125,8 @@ export async function runWatchers(
 	if (running) return;
 	running = true;
 	try {
-		const watchers = await browserWatchers.load();
-		if (watchers.length === 0 || !(await hasTradeAccess())) {
+		const watchers = await runnable(await browserWatchers.load());
+		if (watchers.length === 0) {
 			await browser.alarms.clear(WATCHER_ALARM);
 			return;
 		}
@@ -131,7 +139,7 @@ export async function runWatchers(
 			deadline,
 		);
 		let applied = new Set<string>();
-		const stored = await browserWatchers.update((current) => {
+		const stored = await writeWatchers((current) => {
 			const merged = mergeCheckResults(watchers, checked, current);
 			applied = merged.applied;
 			return merged.watchers;
@@ -146,10 +154,27 @@ export async function runWatchers(
 	}
 }
 
-async function publishAccess(): Promise<void> {
-	await browser.storage.local.set({
-		[TRADE_ACCESS_KEY]: await hasTradeAccess(),
-	});
+let publishing: Promise<unknown> = Promise.resolve();
+
+/**
+ * Tells the panel whether any watcher waits for access. Written only when it
+ * changes, since every pass changes the watchers and a write wakes every tab.
+ * One at a time: two overlapping calls could otherwise each compare against
+ * the old value and land in the wrong order.
+ */
+function publishAccess(watchers?: readonly Watcher[]): Promise<void> {
+	const run = publishing.then(() => writeAccess(watchers));
+	publishing = run.catch(() => {});
+	return run;
+}
+
+async function writeAccess(watchers?: readonly Watcher[]): Promise<void> {
+	const all = watchers ?? (await browserWatchers.load());
+	const ready = await runnable(all);
+	const value = ready.length === all.length;
+	const stored = await browser.storage.local.get(TRADE_ACCESS_KEY);
+	if (stored[TRADE_ACCESS_KEY] === value) return;
+	await browser.storage.local.set({ [TRADE_ACCESS_KEY]: value });
 }
 
 /** Wires the alarm, reschedules on edits, and restarts once access is granted. */
@@ -163,9 +188,12 @@ export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
 	});
 	browserWatchers.watch((watchers) => {
 		schedule(watchers).catch(() => {});
+		publishAccess(watchers).catch(() => {});
 	});
 	browser.permissions.onAdded.addListener((granted) => {
-		if (granted.origins?.some((o) => TRADE_ORIGINS.includes(o))) {
+		// Chrome may report a single host such as https://www.pathofexile.com/*
+		// rather than one of the patterns the extension asked for.
+		if (granted.origins?.some(isTradePattern)) {
 			publishAccess().catch(() => {});
 			runWatchers(onEvents).catch(() => {});
 		}
@@ -178,7 +206,7 @@ export function startWatchers(onEvents: (events: WatcherEvent[]) => void) {
 }
 
 async function rescheduleOnStart(): Promise<void> {
-	// Without access every alarm would only wake the background to clear itself.
-	if (!(await hasTradeAccess())) return;
+	// schedule only counts watchers with access: without it every alarm would
+	// only wake the background to clear itself.
 	await schedule(await browserWatchers.load());
 }

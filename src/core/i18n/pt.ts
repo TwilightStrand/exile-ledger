@@ -208,6 +208,12 @@ export const pt: Messages = {
 		backTitle: (name: string) => `${name} está à venda de novo`,
 		repricedTitle: (name: string) => `${name} mudou de preço`,
 		newTitle: (name: string) => `Novos resultados para ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `Mais ${number(n)} atualização de monitoramento`,
+				other: `Mais ${number(n)} atualizações de monitoramento`,
+			}),
+		moreBody: "Abra a aba Monitorar no painel do Exile Ledger para ver todas.",
 	},
 	pins: {
 		emptyTitle: "Nada fixado",
@@ -320,6 +326,8 @@ export const pt: Messages = {
 			`${folders(folderCount)} e ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Backup salvo com ${summary}.`,
 		imported: (summary: string) => `Importado: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importado: ${summary}. Mas não foi possível salvar os monitoramentos do backup.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Backup de ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

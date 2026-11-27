@@ -193,6 +193,13 @@ export const fr: Messages = {
 		backTitle: (name: string) => `${name} est de nouveau en vente`,
 		repricedTitle: (name: string) => `Le prix de ${name} a changé`,
 		newTitle: (name: string) => `Nouveaux résultats pour ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} autre mise à jour de suivi`,
+				other: `${number(n)} autres mises à jour de suivi`,
+			}),
+		moreBody:
+			"Ouvrez l’onglet Suivi du panneau Exile Ledger pour toutes les voir.",
 	},
 	pins: {
 		emptyTitle: "Rien n'est épinglé",
@@ -306,6 +313,8 @@ export const fr: Messages = {
 			`${folders(folderCount)} et ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Sauvegarde enregistrée avec ${summary}.`,
 		imported: (summary: string) => `Importé : ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importé : ${summary}. Les suivis de la sauvegarde n’ont cependant pas pu être enregistrés.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Sauvegarde du ${new Date(exportedAt).toLocaleString(locale)} : ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source} : ${summary}.`,

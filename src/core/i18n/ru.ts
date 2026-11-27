@@ -205,6 +205,15 @@ export const ru: Messages = {
 		backTitle: (name: string) => `${name}: снова в продаже`,
 		repricedTitle: (name: string) => `${name}: цена изменилась`,
 		newTitle: (name: string) => `Новые результаты: ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `Ещё ${number(n)} изменение в слежке`,
+				few: `Ещё ${number(n)} изменения в слежке`,
+				many: `Ещё ${number(n)} изменений в слежке`,
+				other: `Ещё ${number(n)} изменения в слежке`,
+			}),
+		moreBody:
+			"Откройте вкладку «Слежка» в панели Exile Ledger, чтобы увидеть все.",
 	},
 	pins: {
 		emptyTitle: "Ничего не закреплено",
@@ -317,6 +326,8 @@ export const ru: Messages = {
 			`${folders(folderCount)} и ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Копия сохранена: ${summary}.`,
 		imported: (summary: string) => `Импортировано: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Импортировано: ${summary}. Но слежку из резервной копии сохранить не удалось.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Копия от ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

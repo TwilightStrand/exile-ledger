@@ -208,6 +208,13 @@ export const es: Messages = {
 		backTitle: (name: string) => `${name} está en venta de nuevo`,
 		repricedTitle: (name: string) => `${name} cambió de precio`,
 		newTitle: (name: string) => `Resultados nuevos para ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} aviso más de vigilancia`,
+				other: `${number(n)} avisos más de vigilancia`,
+			}),
+		moreBody:
+			"Abre la pestaña Vigilar en el panel de Exile Ledger para verlos todos.",
 	},
 	pins: {
 		emptyTitle: "Nada fijado",
@@ -320,6 +327,8 @@ export const es: Messages = {
 			`${folders(folderCount)} y ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Copia guardada con ${summary}.`,
 		imported: (summary: string) => `Importado: ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Importado: ${summary}. Pero no se pudieron guardar los vigilantes de la copia de seguridad.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Copia del ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

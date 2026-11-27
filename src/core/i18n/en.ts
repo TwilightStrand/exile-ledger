@@ -192,6 +192,12 @@ export const en = {
 		backTitle: (name: string) => `${name} is listed again`,
 		repricedTitle: (name: string) => `${name} changed price`,
 		newTitle: (name: string) => `New results for ${name}`,
+		moreTitle: (n: number) =>
+			plural(locale, n, {
+				one: `${number(n)} more watcher update`,
+				other: `${number(n)} more watcher updates`,
+			}),
+		moreBody: "Open the Watch tab in the Exile Ledger panel to see them all.",
 	},
 	pins: {
 		emptyTitle: "Nothing pinned",
@@ -307,6 +313,8 @@ export const en = {
 			`${folders(folderCount)} and ${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `Backup saved with ${summary}.`,
 		imported: (summary: string) => `Imported ${summary}.`,
+		watchersFailed: (summary: string) =>
+			`Imported ${summary}, but the watchers from the backup could not be saved.`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`Backup from ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,

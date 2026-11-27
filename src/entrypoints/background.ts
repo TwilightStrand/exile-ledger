@@ -13,6 +13,7 @@ import { getRates, NINJA_ORIGIN } from "../pricing/ratesService";
 import { listenForLibraryWrites } from "../storage/libraryStore";
 import { browserSettings } from "../storage/settingsStore";
 import { browserSyncPorts, browserSyncStatus } from "../storage/syncPorts";
+import { listenForWatcherWrites } from "../storage/watcherStore";
 
 /** Waits after a local edit so a burst of renames or drags syncs once. */
 const PUSH_DELAY_MS = 5000;
@@ -36,6 +37,7 @@ const MAX_WAITS = 5;
 
 export default defineBackground(() => {
 	listenForLibraryWrites();
+	listenForWatcherWrites();
 	startNotifications();
 	startWatchers((events) => {
 		notify(events).catch(() => {});

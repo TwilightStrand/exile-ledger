@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	applyFailure,
 	applyListingCheck,
 	applySearchCheck,
 	forgetBookmark,
@@ -146,6 +147,28 @@ describe("scheduling", () => {
 			),
 		).toBe(3);
 		expect(nextDueInMinutes([listing], 0)).toBe(1);
+	});
+
+	describe("after the clock is set back", () => {
+		const hour = 60 * 60_000;
+		const now = 10 * hour;
+
+		it("is due when the last check reads as made in the future", () => {
+			const checked = { ...listing, lastCheckedAt: now + hour };
+			expect(isDue(checked, now)).toBe(true);
+			expect(nextDueInMinutes([checked], now)).toBe(1);
+		});
+
+		it("is due when a retry is further off than any backoff sets it", () => {
+			const failed = applyFailure({ ...listing, lastCheckedAt: 0 }, now + hour);
+			expect(isDue(failed, now)).toBe(true);
+		});
+
+		it("still waits out a backoff the clock did not move", () => {
+			const failed = applyFailure({ ...listing, lastCheckedAt: 0 }, now);
+			expect(isDue(failed, now + 60_000)).toBe(false);
+			expect(isDue(failed, now + 5 * 60_000)).toBe(true);
+		});
 	});
 });
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { MatchPattern } from "wxt/utils/match-patterns";
-import { isTradePage, TRADE_MATCHES } from "../../src/core/sites";
+import {
+	isTradePage,
+	isTradePattern,
+	TRADE_MATCHES,
+	TRADE_ORIGINS,
+	tradeBudget,
+	tradeDomain,
+} from "../../src/core/sites";
 
 const tradePages = [
 	"https://www.pathofexile.com/trade/search/Standard",
@@ -50,4 +57,39 @@ describe("TRADE_MATCHES", () => {
 			expect(matchesAny(url)).toBe(false);
 		},
 	);
+});
+
+describe("tradeDomain", () => {
+	it("maps every pathofexile.com front end to one backend", () => {
+		for (const host of [
+			"www.pathofexile.com",
+			"pathofexile.com",
+			"br.pathofexile.com",
+		])
+			expect(tradeDomain(host)).toBe("pathofexile.com");
+		expect(tradeDomain("www.pathofexile.com.tw")).toBe("pathofexile.com.tw");
+		expect(tradeDomain("pathofexile.tw")).toBe("pathofexile.tw");
+		expect(tradeDomain("example.com")).toBeNull();
+	});
+});
+
+describe("tradeBudget", () => {
+	it("shares a budget wherever a shared backend is possible", () => {
+		expect(tradeBudget("www.pathofexile.com")).toBe("pathofexile.com");
+		expect(tradeBudget("www.pathofexile.com.tw")).toBe("pathofexile.tw");
+		expect(tradeBudget("pathofexile.tw")).toBe("pathofexile.tw");
+		expect(tradeBudget("poe.kakaogames.com")).toBe("kakaogames.com");
+		expect(tradeBudget("poe2.kakaogames.com")).toBe("kakaogames.com");
+		expect(tradeBudget("example.com")).toBeNull();
+	});
+});
+
+describe("isTradePattern", () => {
+	it("accepts the requested patterns and single trade hosts", () => {
+		for (const pattern of TRADE_ORIGINS)
+			expect(isTradePattern(pattern)).toBe(true);
+		expect(isTradePattern("https://www.pathofexile.com/*")).toBe(true);
+		expect(isTradePattern("https://poe.ninja/*")).toBe(false);
+		expect(isTradePattern("https://evilpathofexile.com/*")).toBe(false);
+	});
 });

@@ -182,6 +182,8 @@ export const zh: Messages = {
 		backTitle: (name: string) => `${name} 重新上架`,
 		repricedTitle: (name: string) => `${name} 价格变动`,
 		newTitle: (name: string) => `${name} 有新结果`,
+		moreTitle: (n: number) => `另有 ${number(n)} 条监视更新`,
+		moreBody: "在 Exile Ledger 面板的“监视”标签中查看全部。",
 	},
 	pins: {
 		emptyTitle: "没有置顶项",
@@ -292,6 +294,8 @@ export const zh: Messages = {
 			`${folders(folderCount)}和${bookmarks(bookmarkCount)}`,
 		backupSaved: (summary: string) => `备份已保存，包含${summary}。`,
 		imported: (summary: string) => `已导入${summary}。`,
+		watchersFailed: (summary: string) =>
+			`已导入${summary}，但备份中的监视项未能保存。`,
 		backupFrom: (exportedAt: number, summary: string) =>
 			`备份时间 ${new Date(exportedAt).toLocaleString(locale)}：${summary}。`,
 		fromSource: (source: string, summary: string) => `${source}：${summary}。`,
