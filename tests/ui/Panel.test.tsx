@@ -957,3 +957,39 @@ describe("league field blur", () => {
 		expect((await source.load()).bookmarks[0]?.league).toBe("Standard");
 	});
 });
+
+describe("Panel failed library writes", () => {
+	function failingLibrary(message: string): LibrarySource {
+		const library = createMemoryLibrary();
+		return { ...library, update: () => Promise.reject(new Error(message)) };
+	}
+
+	it("says a change was not saved, and can be dismissed", async () => {
+		const root = await mount({
+			feed: capturedFeed(),
+			library: failingLibrary("QUOTA_BYTES quota exceeded"),
+		});
+		expect(root.querySelector("[role=alert]")).toBeNull();
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.saveFailed,
+		);
+		await act(async () => button(root, en.panel.dismiss)?.click());
+		expect(root.querySelector("[role=alert]")).toBeNull();
+	});
+
+	it("asks for a reload when the extension was updated under an open tab", async () => {
+		const root = await mount({
+			feed: capturedFeed(),
+			library: failingLibrary("Extension context invalidated."),
+		});
+
+		await act(async () => button(root, "Save search")?.click());
+
+		expect(root.querySelector("[role=alert]")?.textContent).toContain(
+			en.panel.reloadNeeded,
+		);
+	});
+});

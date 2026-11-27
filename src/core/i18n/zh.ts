@@ -62,6 +62,9 @@ export const zh: Messages = {
 		expand: "展开 Exile Ledger",
 		expandTab: "账本",
 		sections: "面板分区",
+		saveFailed: "无法保存此更改。请重试。",
+		reloadNeeded: "Exile Ledger 已更新。请刷新此页面以继续保存更改。",
+		dismiss: "关闭",
 		tabs: {
 			bookmarks: "书签",
 			history: "历史",
@@ -300,6 +303,8 @@ export const zh: Messages = {
 			`备份时间 ${new Date(exportedAt).toLocaleString(locale)}：${summary}。`,
 		fromSource: (source: string, summary: string) => `${source}：${summary}。`,
 		saveFailed: "无法保存导入内容。请刷新此页面后重试。",
+		skipped: (n: number) =>
+			plural(locale, n, { other: `已跳过 ${n} 条损坏或过大的记录。` }),
 		sources: {
 			"exile-ledger": "分享的文件夹",
 			"better-trading": "Better Trading 导出",

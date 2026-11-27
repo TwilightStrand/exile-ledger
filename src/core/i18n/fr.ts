@@ -67,6 +67,10 @@ export const fr: Messages = {
 		expand: "Développer Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Sections du panneau",
+		saveFailed: "Impossible d'enregistrer la modification. Réessayez.",
+		reloadNeeded:
+			"Exile Ledger a été mis à jour. Rechargez cette page pour continuer à enregistrer vos modifications.",
+		dismiss: "Fermer",
 		tabs: {
 			bookmarks: "Favoris",
 			history: "Historique",
@@ -320,6 +324,11 @@ export const fr: Messages = {
 		fromSource: (source: string, summary: string) => `${source} : ${summary}.`,
 		saveFailed:
 			"Impossible d'enregistrer l'import. Rechargez cette page et réessayez.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} élément a été ignoré, car il était endommagé ou trop volumineux.`,
+				other: `${n} éléments ont été ignorés, car ils étaient endommagés ou trop volumineux.`,
+			}),
 		sources: {
 			"exile-ledger": "Dossier partagé",
 			"better-trading": "Export Better Trading",

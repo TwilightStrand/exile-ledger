@@ -68,6 +68,7 @@ import { SYNC_DOT, syncStatusText } from "./syncStatusText";
 import { themeStyle } from "./theme";
 import { countBookmarks } from "./viewModels";
 import { type WatcherActions, WatcherList } from "./WatcherList";
+import { useWriteFailures, WriteFailureNotice } from "./writeFailure";
 
 function useCapture(feed: CaptureFeed): CaptureState {
 	const [state, setState] = useState(feed.get);
@@ -286,7 +287,7 @@ export function Panel({
 	feed,
 	settings,
 	initialSettings,
-	library: librarySource,
+	library: rawLibrarySource,
 	uiState,
 	page,
 	history: historySource,
@@ -305,6 +306,8 @@ export function Panel({
 	newId = () => crypto.randomUUID(),
 }: PanelProps) {
 	const t = useMessages();
+	const writes = useWriteFailures(rawLibrarySource);
+	const librarySource = writes.source;
 	const [tab, setTab] = useState<TabId>(initialTab);
 	const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 	const capture = useCapture(feed);
@@ -641,6 +644,10 @@ export function Panel({
 						</button>
 					</header>
 
+					<WriteFailureNotice
+						failure={writes.failure}
+						onDismiss={writes.dismiss}
+					/>
 					<CurrentSearch capture={capture} saved={saved} onSave={saveCurrent} />
 
 					<div

@@ -19,18 +19,133 @@ export const BACKUP_FORMAT = "exile-ledger-backup";
 export interface Payload {
 	folders: Folder[];
 	bookmarks: Bookmark[];
+	/** Records left out while reading because they were invalid or too large. */
+	skipped?: number;
 }
 
-const PayloadSchema = v.object({
-	folders: v.array(FolderSchema),
-	bookmarks: v.array(BookmarkSchema),
+/**
+ * Upper bounds for one imported record. Everything an import adds is synced,
+ * and storage.sync holds about 90 KB in total (SYNC_BUDGET_BYTES), so one
+ * record must not be able to fill it. Real records sit far below: trade
+ * search ids are about 10 characters and a saved trade query with a few
+ * dozen stat filters is 1 to 5 KB of JSON; 16 KB leaves room for well over
+ * a hundred stat filters.
+ */
+export const IMPORT_LIMITS = {
+	name: 200,
+	league: 100,
+	searchId: 64,
+	queryChars: 16_384,
+};
+
+// Arrays of anything: each record is checked on its own so one bad entry does
+// not reject the rest, as when reading storage.
+const PayloadShape = v.object({
+	folders: v.array(v.unknown()),
+	bookmarks: v.array(v.unknown()),
 });
+
+function jsonLength(value: unknown): number {
+	try {
+		return JSON.stringify(value)?.length ?? 0;
+	} catch {
+		// Too deeply nested to serialise, so it could never be stored either.
+		return Number.POSITIVE_INFINITY;
+	}
+}
+
+/**
+ * Rebuilt from the fields this version knows: unknown fields are kept when
+ * syncing our own data, but an import must not carry hidden bulk into it.
+ */
+function importedFolder(raw: unknown): Folder | null {
+	const parsed = v.safeParse(FolderSchema, raw);
+	if (!parsed.success) return null;
+	const f = parsed.output;
+	if (f.name.length > IMPORT_LIMITS.name) return null;
+	return {
+		id: f.id,
+		parentId: f.parentId,
+		name: f.name,
+		game: f.game,
+		order: f.order,
+		archived: f.archived,
+		...(f.icon === undefined ? {} : { icon: f.icon }),
+		// No role: an imported copy is never where saves go; the user's own folder stays that.
+		updatedAt: f.updatedAt,
+	};
+}
+
+function importedBookmark(raw: unknown): Bookmark | null {
+	const parsed = v.safeParse(BookmarkSchema, raw);
+	if (!parsed.success) return null;
+	const b = parsed.output;
+	if (
+		b.name.length > IMPORT_LIMITS.name ||
+		b.league.length > IMPORT_LIMITS.league ||
+		(b.searchId?.length ?? 0) > IMPORT_LIMITS.searchId ||
+		(b.query !== undefined && jsonLength(b.query) > IMPORT_LIMITS.queryChars)
+	)
+		return null;
+	return {
+		id: b.id,
+		folderId: b.folderId,
+		name: b.name,
+		game: b.game,
+		league: b.league,
+		// The query stays loose on purpose (see TradeQuerySchema); its size is capped above.
+		...(b.query === undefined ? {} : { query: b.query }),
+		...(b.searchId === undefined ? {} : { searchId: b.searchId }),
+		...(b.tradeType === undefined ? {} : { tradeType: b.tradeType }),
+		live: b.live,
+		...(b.done === undefined ? {} : { done: b.done }),
+		order: b.order,
+		createdAt: b.createdAt,
+		updatedAt: b.updatedAt,
+	};
+}
+
+/**
+ * Keeps the records that validate and fit IMPORT_LIMITS, counting the rest.
+ * A folder whose id repeats, and a bookmark whose folder is not kept, count
+ * as skipped too, since importing them would merge or lose them silently.
+ */
+export function cleanPayload(
+	rawFolders: readonly unknown[],
+	rawBookmarks: readonly unknown[],
+	skipped = 0,
+): Payload {
+	const folderIds = new Set<string>();
+	const folders = rawFolders.flatMap((raw) => {
+		const f = importedFolder(raw);
+		if (!f || folderIds.has(f.id)) return [];
+		folderIds.add(f.id);
+		return [f];
+	});
+	const bookmarks = rawBookmarks.flatMap((raw) => {
+		const b = importedBookmark(raw);
+		return b && folderIds.has(b.folderId) ? [b] : [];
+	});
+	return {
+		folders,
+		bookmarks,
+		skipped:
+			skipped +
+			rawFolders.length -
+			folders.length +
+			rawBookmarks.length -
+			bookmarks.length,
+	};
+}
 
 const BackupSchema = v.object({
 	format: v.literal(BACKUP_FORMAT),
 	version: v.literal(1),
 	exportedAt: v.number(),
-	library: PayloadSchema,
+	library: v.pipe(
+		PayloadShape,
+		v.transform((p): Payload => cleanPayload(p.folders, p.bookmarks)),
+	),
 	// Kept raw: a restore applies only the keys the file has, so a backup from
 	// an older version does not reset settings it never knew about.
 	settings: v.optional(v.record(v.string(), v.unknown())),
@@ -107,13 +222,16 @@ export function decodeShare(text: string): Parsed<Payload> {
 	}
 	const json = fromBase64Url(trimmed.slice(SHARE_PREFIX.length));
 	const parsed = v.safeParse(
-		PayloadSchema,
+		PayloadShape,
 		json === null ? undefined : parseJson(json),
 	);
 	if (!parsed.success) return { ok: false, error: "share-damaged" };
 	if (parsed.output.folders.length === 0)
 		return { ok: false, error: "share-empty" };
-	return { ok: true, value: parsed.output };
+	const payload = cleanPayload(parsed.output.folders, parsed.output.bookmarks);
+	if (payload.folders.length === 0)
+		return { ok: false, error: "share-damaged" };
+	return { ok: true, value: payload };
 }
 
 export function createBackup(
@@ -187,10 +305,15 @@ export function backupSettings(backup: Backup): Partial<Settings> {
 	);
 }
 
+/** Never throws: a file that cannot be read is reported, not fatal. */
 export function parseBackup(text: string): Parsed<Backup> {
-	const parsed = v.safeParse(BackupSchema, parseJson(text));
-	if (!parsed.success) return { ok: false, error: "not-backup" };
-	return { ok: true, value: parsed.output };
+	try {
+		const parsed = v.safeParse(BackupSchema, parseJson(text));
+		if (!parsed.success) return { ok: false, error: "not-backup" };
+		return { ok: true, value: parsed.output };
+	} catch {
+		return { ok: false, error: "not-backup" };
+	}
 }
 
 /**
@@ -202,8 +325,14 @@ export function importPayload(
 	library: Library,
 	payload: Payload,
 	{ now, newId }: Clock,
-): { library: Library; folders: number; bookmarks: number } {
-	const repaired = repairTree(payload.folders);
+): { library: Library; folders: number; bookmarks: number; skipped: number } {
+	// Cleaned again here so no caller can add records that skipped the limits.
+	const clean = cleanPayload(
+		payload.folders,
+		payload.bookmarks,
+		payload.skipped,
+	);
+	const repaired = repairTree(clean.folders);
 	const ids = new Map(repaired.map((f) => [f.id, newId()]));
 	const rootOrder: Record<Folder["game"], number> = { poe1: 0, poe2: 0 };
 	for (const f of library.folders) {
@@ -216,11 +345,9 @@ export function importPayload(
 		if (!id) return [];
 		const parentId = f.parentId === null ? null : (ids.get(f.parentId) ?? null);
 		const order = parentId === null ? rootOrder[f.game]++ : f.order;
-		// An imported copy is never where saves go; the user's own folder stays that.
-		const { role: _role, ...rest } = f;
-		return [{ ...rest, id, parentId, order, updatedAt: now }];
+		return [{ ...f, id, parentId, order, updatedAt: now }];
 	});
-	const bookmarks = payload.bookmarks.flatMap((b): Bookmark[] => {
+	const bookmarks = clean.bookmarks.flatMap((b): Bookmark[] => {
 		const folderId = ids.get(b.folderId);
 		return folderId ? [{ ...b, id: newId(), folderId, updatedAt: now }] : [];
 	});
@@ -233,5 +360,6 @@ export function importPayload(
 		},
 		folders: folders.length,
 		bookmarks: bookmarks.length,
+		skipped: clean.skipped ?? 0,
 	};
 }

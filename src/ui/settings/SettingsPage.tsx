@@ -129,6 +129,8 @@ function BackupSection({
 	const t = useMessages();
 	const summary = (payload: Payload) =>
 		t.imports.summary(payload.folders.length, payload.bookmarks.length);
+	const withSkipped = (text: string, skipped = 0) =>
+		skipped > 0 ? `${text} ${t.imports.skipped(skipped)}` : text;
 	const [pending, setPending] = useState<Pending>(null);
 	const [restoreSettings, setRestoreSettings] = useState(true);
 	const [shareText, setShareText] = useState("");
@@ -208,7 +210,7 @@ function BackupSection({
 		if (!pending) return;
 		const payload =
 			pending.kind === "backup" ? pending.backup.library : pending.payload;
-		let counts = { folders: 0, bookmarks: 0 };
+		let counts = { folders: 0, bookmarks: 0, skipped: 0 };
 		try {
 			await library.update((lib) => {
 				const result = importPayload(lib, payload, clock());
@@ -251,8 +253,17 @@ function BackupSection({
 		const summary = t.imports.summary(counts.folders, counts.bookmarks);
 		setMessage(
 			watchersSaved
-				? { tone: "ok", text: t.imports.imported(summary) }
-				: { tone: "error", text: t.imports.watchersFailed(summary) },
+				? {
+						tone: "ok",
+						text: withSkipped(t.imports.imported(summary), counts.skipped),
+					}
+				: {
+						tone: "error",
+						text: withSkipped(
+							t.imports.watchersFailed(summary),
+							counts.skipped,
+						),
+					},
 		);
 	};
 
@@ -308,13 +319,19 @@ function BackupSection({
 				<div class="animate-pop-in rounded-md border border-ledger-gold/40 bg-ledger-gold/5 p-4">
 					<p class="text-[14px] text-ledger-text">
 						{pending.kind === "backup"
-							? t.imports.backupFrom(
-									pending.backup.exportedAt,
-									summary(pending.backup.library),
+							? withSkipped(
+									t.imports.backupFrom(
+										pending.backup.exportedAt,
+										summary(pending.backup.library),
+									),
+									pending.backup.library.skipped,
 								)
-							: t.imports.fromSource(
-									t.imports.sources[pending.source],
-									summary(pending.payload),
+							: withSkipped(
+									t.imports.fromSource(
+										t.imports.sources[pending.source],
+										summary(pending.payload),
+									),
+									pending.payload.skipped,
 								)}
 					</p>
 					{pending.kind === "backup" && pending.backup.settings && (

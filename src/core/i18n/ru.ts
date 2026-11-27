@@ -79,6 +79,10 @@ export const ru: Messages = {
 		expand: "Развернуть Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Разделы панели",
+		saveFailed: "Не удалось сохранить изменение. Повторите попытку.",
+		reloadNeeded:
+			"Exile Ledger обновлён. Перезагрузите страницу, чтобы снова сохранять изменения.",
+		dismiss: "Закрыть",
 		tabs: {
 			bookmarks: "Закладки",
 			history: "История",
@@ -333,6 +337,13 @@ export const ru: Messages = {
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed:
 			"Не удалось сохранить импорт. Перезагрузите страницу и повторите попытку.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `Пропущена ${n} запись: она повреждена или слишком велика.`,
+				few: `Пропущены ${n} записи: они повреждены или слишком велики.`,
+				many: `Пропущено ${n} записей: они повреждены или слишком велики.`,
+				other: `Пропущено ${n} записи: они повреждены или слишком велики.`,
+			}),
 		sources: {
 			"exile-ledger": "Общая папка",
 			"better-trading": "Экспорт Better Trading",

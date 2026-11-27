@@ -67,6 +67,10 @@ export const en = {
 		expand: "Expand Exile Ledger",
 		expandTab: "Ledger",
 		sections: "Panel sections",
+		saveFailed: "Could not save that change. Try again.",
+		reloadNeeded:
+			"Exile Ledger was updated. Reload this page to keep saving changes.",
+		dismiss: "Dismiss",
 		tabs: {
 			bookmarks: "Bookmarks",
 			history: "History",
@@ -319,6 +323,11 @@ export const en = {
 			`Backup from ${new Date(exportedAt).toLocaleString(locale)}: ${summary}.`,
 		fromSource: (source: string, summary: string) => `${source}: ${summary}.`,
 		saveFailed: "Could not save the import. Reload this page and try again.",
+		skipped: (n: number) =>
+			plural(locale, n, {
+				one: `${n} record was left out because it was damaged or too large.`,
+				other: `${n} records were left out because they were damaged or too large.`,
+			}),
 		sources: {
 			"exile-ledger": "Shared folder",
 			"better-trading": "Better Trading export",

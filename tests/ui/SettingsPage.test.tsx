@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { encodeShare } from "../../src/core/exchange";
+import { encodeShare, SHARE_PREFIX } from "../../src/core/exchange";
 import type { HistoryEntry } from "../../src/core/history";
 import { en, messagesFor } from "../../src/core/i18n";
 import {
@@ -264,6 +264,32 @@ describe("SettingsPage", () => {
 		await act(async () => button(root, "Read")?.click());
 		await act(async () => button(root, "Import")?.click());
 		expect((await library.load()).folders).toHaveLength(2);
+	});
+
+	it("says how many records of a share string were left out", async () => {
+		const { root, library } = await mount();
+		const area = root.querySelector<HTMLTextAreaElement>("textarea");
+		if (!area) throw new Error("no textarea");
+		const lib = seededLibrary();
+		const tooLong = { ...lib.bookmarks[0], id: "long", name: "n".repeat(500) };
+		area.value = `${SHARE_PREFIX}${Buffer.from(
+			JSON.stringify({
+				folders: lib.folders,
+				bookmarks: [...lib.bookmarks, tooLong],
+			}),
+		).toString("base64url")}`;
+		await act(async () => {
+			area.dispatchEvent(new Event("input"));
+		});
+		await act(async () => button(root, "Read")?.click());
+		expect(root.textContent).toContain(
+			"1 record was left out because it was damaged or too large.",
+		);
+		await act(async () => button(root, "Import")?.click());
+		expect(root.textContent).toContain(
+			"Imported 1 folder and 1 bookmark. 1 record was left out",
+		);
+		expect((await library.load()).bookmarks).toHaveLength(2);
 	});
 });
 
