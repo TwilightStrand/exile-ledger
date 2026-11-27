@@ -8,7 +8,8 @@ type SearchEvent = Extract<CaptureEvent, { kind: "search" }>;
  * Live search keeps fetching for as long as the tab is open, so results are
  * capped. Well above the 100 a normal search shows; the oldest go first, but
  * never while the page still shows their row, which would lose its marks and
- * leave its Pin and Watch buttons with nothing to act on.
+ * leave its Pin and Watch buttons with nothing to act on. So the map holds at
+ * most CAPTURE_LIMIT, plus the rows on the page, plus DRAW_WINDOW.
  */
 export const CAPTURE_LIMIT = 500;
 
@@ -17,6 +18,14 @@ export interface CaptureState {
 	/** By listing id, oldest first; a result fetched again replaces its earlier copy. */
 	results: ReadonlyMap<string, ResultItem>;
 }
+
+/**
+ * The newest results are never what makes room: the site draws rows after the
+ * fetch is captured, and may take more than one fetch to do it. A count of
+ * entries rather than "since the last enhance pass" keeps this working in a
+ * hidden tab, where no pass runs. Ten of the site's 10-listing fetches.
+ */
+const DRAW_WINDOW = 100;
 
 /** Listing ids of the result rows on the page. */
 export function shownResultIds(root: ParentNode): Set<string> {
@@ -53,11 +62,12 @@ export function createCaptureFeed(
 				}
 				if (results.size > CAPTURE_LIMIT) {
 					const onPage = shown();
-					// The site draws rows after the fetch we just captured, so this
-					// batch has no rows yet and must not be what makes room.
 					const arriving = new Set(event.items.map((item) => item.id));
+					const newest = results.size - DRAW_WINDOW;
+					let index = 0;
 					for (const id of results.keys()) {
-						if (results.size <= CAPTURE_LIMIT) break;
+						if (results.size <= CAPTURE_LIMIT || index >= newest) break;
+						index++;
 						if (!onPage.has(id) && !arriving.has(id)) results.delete(id);
 					}
 				}

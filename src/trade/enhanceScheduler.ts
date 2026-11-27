@@ -1,3 +1,4 @@
+import { CAPTURE_LIMIT } from "./captureFeed";
 import { SELECTORS } from "./selectors";
 
 export interface EnhanceScheduler {
@@ -106,7 +107,13 @@ export function scheduleEnhance(
 			request();
 		},
 		items(ids) {
-			for (const id of ids) dirtyIds.add(id);
+			if (!everything) for (const id of ids) dirtyIds.add(id);
+			// A hidden tab collects ids until it shows again; past what the feed
+			// keeps, redoing every row is cheaper than remembering each id.
+			if (dirtyIds.size > CAPTURE_LIMIT) {
+				dirtyIds.clear();
+				everything = true;
+			}
 			request();
 		},
 		stop() {

@@ -270,6 +270,39 @@ describe("Panel render work, round 2", () => {
 		expect(panelText(root)).toContain("5m ago");
 	});
 
+	it("pauses the relative-time clock in a hidden tab and catches up when shown", async () => {
+		vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+		let hidden = false;
+		Object.defineProperty(document, "hidden", {
+			configurable: true,
+			get: () => hidden,
+		});
+		let clock = 60_000;
+		const root = await mount({
+			history: historyAt(60_000),
+			now: () => clock,
+		});
+		await act(async () => tabButton(root, "history")?.click());
+		hidden = true;
+		await act(async () => {
+			document.dispatchEvent(new Event("visibilitychange"));
+		});
+		clock += 5 * 60_000;
+		await act(async () => {
+			vi.advanceTimersByTime(60_000);
+		});
+		expect(panelText(root)).toContain("just now");
+		hidden = false;
+		await act(async () => {
+			document.dispatchEvent(new Event("visibilitychange"));
+		});
+		expect(panelText(root)).toContain("5m ago");
+		Object.defineProperty(document, "hidden", {
+			configurable: true,
+			get: () => false,
+		});
+	});
+
 	it("shows a search captured between the first render and the subscription", async () => {
 		const { feed } = capturedFeed();
 		const empty = createCaptureFeed();
@@ -324,5 +357,33 @@ describe("Panel render work, round 2", () => {
 		});
 		expect(handle.getAttribute("aria-valuenow")).toBe(dragged);
 		expect(String((await memory.load()).panelWidth)).toBe(dragged);
+	});
+
+	it("keeps the held width when the handle is pressed again before the save lands", async () => {
+		const memory = createMemorySettings();
+		const settings: SettingsSource = {
+			load: () => memory.load(),
+			watch: (onChange) => memory.watch(onChange),
+			save: () => new Promise(() => {}),
+		};
+		const root = await mount({ settings });
+		const handle = root.querySelector<HTMLElement>("[role=separator]");
+		if (!handle) throw new Error("no handle");
+		await act(async () => {
+			handle.dispatchEvent(
+				new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
+			);
+			window.dispatchEvent(new PointerEvent("pointermove", { clientX: 200 }));
+			window.dispatchEvent(new PointerEvent("pointerup", {}));
+		});
+		const dragged = handle.getAttribute("aria-valuenow");
+		expect(dragged).not.toBe("20");
+		await act(async () => {
+			handle.dispatchEvent(
+				new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
+			);
+			window.dispatchEvent(new PointerEvent("pointerup", {}));
+		});
+		expect(handle.getAttribute("aria-valuenow")).toBe(dragged);
 	});
 });

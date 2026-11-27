@@ -154,13 +154,29 @@ const KEY_RESIZE_SAVE_MS = 400;
 /** "2m ago" labels move on this often; they show minutes at the finest. */
 const CLOCK_TICK_MS = 30_000;
 
-/** Counts up every CLOCK_TICK_MS while `active`, to refresh relative times. */
+/**
+ * Counts up every CLOCK_TICK_MS while `active` and the tab is visible, to
+ * refresh relative times; once more when a hidden tab shows again.
+ */
 function useTick(active: boolean): number {
 	const [tick, setTick] = useState(0);
 	useEffect(() => {
 		if (!active) return;
-		const timer = setInterval(() => setTick((n) => n + 1), CLOCK_TICK_MS);
-		return () => clearInterval(timer);
+		const bump = () => setTick((n) => n + 1);
+		let timer: ReturnType<typeof setInterval> | undefined;
+		const follow = () => {
+			clearInterval(timer);
+			timer = undefined;
+			if (document.hidden) return;
+			bump();
+			timer = setInterval(bump, CLOCK_TICK_MS);
+		};
+		if (!document.hidden) timer = setInterval(bump, CLOCK_TICK_MS);
+		document.addEventListener("visibilitychange", follow);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener("visibilitychange", follow);
+		};
 	}, [active]);
 	return tick;
 }
@@ -228,7 +244,8 @@ function useResize(
 		const startPx = panel.getBoundingClientRect().width;
 		const viewport = window.innerWidth;
 		const direction = side === "left" ? 1 : -1;
-		let latest = width;
+		// A press during the hold after a resize starts from the held width.
+		let latest = dragWidth ?? width;
 		const move = (ev: PointerEvent) => {
 			const px = Math.min(
 				PANEL_WIDTH.maxPx,

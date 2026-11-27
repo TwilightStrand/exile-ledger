@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CaptureEvent } from "../../src/trade/capture";
 import { CAPTURE_LIMIT, createCaptureFeed } from "../../src/trade/captureFeed";
+import { scheduleEnhance } from "../../src/trade/enhanceScheduler";
 import { syncPinButtons } from "../../src/trade/pinButtons";
 import { annotateResults, TOOLS_ATTR } from "../../src/trade/resultHelpers";
 
@@ -132,6 +133,52 @@ describe("captureFeed cap with rows on the page", () => {
 			);
 		}
 		expect(feed.get().results.size).toBe(count);
+		document.body.innerHTML = "";
+	});
+});
+
+describe("captureFeed with batches the site draws late", () => {
+	it("keeps two batches fetched before either is drawn, so a full pass marks every row", async () => {
+		const row = (id: string) =>
+			`<div class="row" data-id="${id}"><div class="details"><div class="btns"></div></div></div>`;
+		document.body.innerHTML = '<div class="resultset"></div>';
+		const list = document.querySelector(".resultset");
+		if (!list) throw new Error("no list");
+		const feed = createCaptureFeed();
+		const enhance = (rows: HTMLElement[]) =>
+			annotateResults(rows, feed.get(), {
+				listingTime: false,
+				socketWarning: false,
+				affixCount: false,
+				itemTools: true,
+			});
+		const scheduler = scheduleEnhance(document, enhance);
+		feed.subscribe((_, event) =>
+			event.kind === "search"
+				? scheduler.all()
+				: scheduler.items(event.items.map((item) => item.id)),
+		);
+		feed.push(search("A"));
+		for (let i = 0; i < CAPTURE_LIMIT - 5; i++) {
+			feed.push(results("A", `${i}`));
+			list.insertAdjacentHTML("afterbegin", row(`${i}`));
+		}
+		const first = Array.from({ length: 10 }, (_, k) => `a${k}`);
+		const second = Array.from({ length: 10 }, (_, k) => `b${k}`);
+		for (const id of first) feed.push(results("A", id));
+		for (const id of second) feed.push(results("A", id));
+		// The site draws both batches in one step.
+		list.insertAdjacentHTML(
+			"afterbegin",
+			[...first, ...second].map(row).join(""),
+		);
+		scheduler.all();
+		await new Promise((r) => setTimeout(r, 40));
+		scheduler.stop();
+		expect(list.querySelectorAll(".row")).toHaveLength(CAPTURE_LIMIT + 15);
+		expect(document.querySelectorAll(`[${TOOLS_ATTR}]`)).toHaveLength(
+			CAPTURE_LIMIT + 15,
+		);
 		document.body.innerHTML = "";
 	});
 });

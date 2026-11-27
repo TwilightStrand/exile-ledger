@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { CAPTURE_LIMIT } from "../../src/trade/captureFeed";
 import { scheduleEnhance } from "../../src/trade/enhanceScheduler";
 
 const row = (id: string) =>
@@ -135,5 +136,26 @@ describe("scheduleEnhance", () => {
 		document.dispatchEvent(new Event("visibilitychange"));
 		await frame();
 		expect(passes).toEqual([["id-0", "id-1"]]);
+	});
+
+	it("stops collecting ids in a hidden tab past the feed's cap and redoes every row instead", async () => {
+		page(3);
+		const { passes, enhance } = recorder();
+		const scheduler = scheduleEnhance(document, enhance);
+		stop = scheduler.stop;
+		scheduler.all();
+		await frame();
+		let hidden = true;
+		Object.defineProperty(document, "hidden", {
+			configurable: true,
+			get: () => hidden,
+		});
+		scheduler.items(
+			Array.from({ length: CAPTURE_LIMIT + 1 }, (_, i) => `gone-${i}`),
+		);
+		hidden = false;
+		document.dispatchEvent(new Event("visibilitychange"));
+		await frame();
+		expect(passes.at(-1)).toEqual(["id-0", "id-1", "id-2"]);
 	});
 });
