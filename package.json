@@ -2,7 +2,7 @@
 	"name": "exile-ledger",
 	"description": "Path of Exile trade site companion: bookmarks, history, synced across machines",
 	"private": true,
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"type": "module",
 	"license": "MIT",
 	"scripts": {
